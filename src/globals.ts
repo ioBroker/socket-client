@@ -8,4 +8,8 @@ declare global {
     socketUrl: string;
     registerSocketOnLoad: Function;
   }
+
+  interface Navigator {
+    userLanguage: string;
+  }
 }

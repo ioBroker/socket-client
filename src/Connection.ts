@@ -1,4 +1,3 @@
-import PropTypes from 'prop-types';
 import { ConnectionProps } from './ConnectionProps';
 import type { Socket } from 'socket.io'
 
@@ -33,10 +32,10 @@ class Connection {
     public waitForRestart: any;
     public subscribed: boolean;
     public loaded: boolean;
-    public statesSubscribes: { [index: string]: { reg: RegExp; cbs: StateChangeHandler[] } };
-    public objectsSubscribes: { [index: string]: { reg: RegExp; cbs: ObjectChangeHandler[] } };
+    public statesSubscribes: Record<string, { reg: RegExp; cbs: ioBroker.StateChangeHandler[] }>;
+    public objectsSubscribes: Record<string, { reg: RegExp; cbs: ioBroker.ObjectChangeHandler[] }>;
     public objects: any;
-    public states: { [index: string]: State };
+    public states: { [index: string]: ioBroker.State };
     public acl: any;
     public firstConnect: boolean;
     public systemLang: string;
@@ -56,8 +55,10 @@ class Connection {
     public onCmdExitHandler: (id: string, exitCode: number) => void;
 
     private _socket: Socket;
-    private _promises: { installed: { [index: string]: Promise<any> }, [index: string]: any | Promise<any> };
-    
+    private _promises: Record<string, Promise<any>>;
+    private _authTimer: any;
+    systemConfig: any;
+
     constructor(props: ConnectionProps) {
         this.props = props || { protocol: window.location.protocol, host: window.location.hostname };
 
@@ -342,7 +343,7 @@ class Connection {
                 .then(data => {
                     if (this.doNotLoadACL) {
                         if (this.loaded) {
-                            return;
+                            return undefined;
                         }
                         this.loaded = true;
                         clearTimeout(this.loadTimer);
@@ -364,7 +365,7 @@ class Connection {
                         }
                     }
 
-                    this.props.onLanguage && this.props.onLanguage(this.systemLang);
+                    this.props.onLanguage && this.props.onLanguage(<any>this.systemLang);
 
                     if (!this.doNotLoadAllObjects) {
                         return this.getObjects()
@@ -377,6 +378,7 @@ class Connection {
                         this.onProgress(PROGRESS.READY);
                         this.props.onReady && this.props.onReady(this.objects);
                     }
+                    return undefined;
                 })
                 .catch(e => this.onError('Cannot read system config: ' + e));
         });
@@ -553,6 +555,7 @@ class Connection {
 
         Object.keys(this.objectsSubscribes).forEach(_id => {
             if (_id === id || this.objectsSubscribes[_id].reg.test(id)) {
+                //@ts-ignore
                 this.objectsSubscribes[_id].cbs.forEach(cb => cb(id, obj, oldObj));
             }
         });
@@ -589,6 +592,7 @@ class Connection {
         return new Promise((resolve, reject) =>
             this._socket.emit('getStates', (err, res) => {
                 this.states = res;
+                //@ts-ignore
                 !disableProgressUpdate && this.onProgress(PROGRESS.STATES_LOADED);
                 return err ? reject(err) : resolve(this.states);
             }));
@@ -665,7 +669,7 @@ class Connection {
 * @param {boolean} disableProgressUpdate don't call onProgress() when done
 * @returns {Promise<Record<string, ioBroker.Object>> | undefined}
 */
-    getObjects(update, disableProgressUpdate) {
+    getObjects(update?: (par?: any) => void | boolean, disableProgressUpdate?: boolean) {
         if (typeof update === 'function') {
             const callback = update;
             // BF(2020_06_01): old code, must be removed when adapter-react will be updated
@@ -700,6 +704,7 @@ class Connection {
                 });
             }
         }
+        return undefined;
     }
 
     /**
@@ -936,8 +941,11 @@ class Connection {
 
                                 return this.setObject(obj._id, obj);
                             }
+
+                            return undefined;
                         });
                 }
+                return undefined;
             });
     }
 
@@ -1283,6 +1291,7 @@ class Connection {
         return new Promise((resolve, reject) => {
             if (!base64) {
                 this._socket.emit('readFile', adapter, fileName, (err, data, type) => {
+                    //@ts-ignore
                     err ? reject(err) : resolve(data, type);
                 });
             } else {
@@ -1615,6 +1624,7 @@ class Connection {
             return Promise.reject('Allowed only in admin');
         }
 
+        //@ts-ignore
         this._promises.installed = this._promises.installed || {};
 
         if (!update && this._promises.installed[host]) {
@@ -1891,7 +1901,9 @@ class Connection {
         this._promises.systemConfig = this.getObject('system.config')
             .then(systemConfig => {
                 systemConfig = systemConfig || {};
+                //@ts-ignore
                 systemConfig.common = systemConfig.common || {};
+                //@ts-ignore
                 systemConfig.native = systemConfig.native || {};
                 return systemConfig;
             });
@@ -2346,6 +2358,7 @@ class Connection {
             return Promise.reject('Allowed only in admin');
         }
 
+        //@ts-ignore
         this._promises.installedCompact = this._promises.installedCompact || {};
 
         if (!update && this._promises.installedCompact[host]) {
@@ -2490,17 +2503,22 @@ class Connection {
         }
 
         this._promises.uuid = this.getObject('system.meta.uuid')
+            //@ts-ignore
             .then(obj => obj?.native?.uuid);
 
         return this._promises.uuid;
     }
 }
 
+
+/*
+//this should be done in react code...
 Connection.Connection = {
     onLog: PropTypes.func,
     onReady: PropTypes.func,
     onProgress: PropTypes.func,
 };
+*/
 
 export { ERRORS };
 
