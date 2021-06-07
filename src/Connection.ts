@@ -2470,7 +2470,7 @@ class Connection {
      * @param {boolean} [update] Force update.
      * @returns {Promise<ioBroker.Object[]>}
      */
-    getCompactHosts(update) {
+    getCompactHosts(update: boolean): Promise<ioBroker.Object[]> {
         if (Connection.isWeb()) {
             return Promise.reject('Allowed only in admin');
         }
@@ -2493,7 +2493,7 @@ class Connection {
      * Get uuid
      * @returns {Promise<ioBroker.Object[]>}
      */
-    getUuid() {
+    getUuid(): Promise<ioBroker.Object[]> {
         if (this._promises.uuid) {
             return this._promises.uuid;
         }
@@ -2509,16 +2509,6 @@ class Connection {
         return this._promises.uuid;
     }
 }
-
-
-/*
-//this should be done in react code...
-Connection.Connection = {
-    onLog: PropTypes.func,
-    onReady: PropTypes.func,
-    onProgress: PropTypes.func,
-};
-*/
 
 export { ERRORS };
 
