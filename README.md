@@ -1,1 +1,1 @@
-# socketio-clientlib
+# ioBroker/socket-client
