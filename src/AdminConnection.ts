@@ -77,7 +77,7 @@ export class AdminConnection extends Connection {
      * @param {number} [linesNumber]
      * @returns {Promise<string[]>}
      */
-    getLogs(host, linesNumber) {
+    getLogs(host: string, linesNumber: number): Promise<string[]> {
         if (Connection.isWeb()) {
             return Promise.reject('Allowed only in admin');
         }
@@ -95,7 +95,7 @@ export class AdminConnection extends Connection {
      * Get the log files (only for admin connection).
      * @returns {Promise<string[]>}
      */
-    getLogsFiles(host) {
+    getLogsFiles(host): Promise<string[]> {
         if (Connection.isWeb()) {
             return Promise.reject('Allowed only in admin');
         }
@@ -112,7 +112,7 @@ export class AdminConnection extends Connection {
     * @param {string} host
     * @returns {Promise<void>}
     */
-    delLogs(host) {
+    delLogs(host: string): Promise<void> {
         if (Connection.isWeb()) {
             return Promise.reject('Allowed only in admin');
         }
@@ -130,7 +130,7 @@ export class AdminConnection extends Connection {
      * @param {string} fileName The file name.
      * @returns {Promise<void>}
      */
-    deleteFile(adapter, fileName) {
+    deleteFile(adapter: string, fileName: string): Promise<void> {
         if (Connection.isWeb()) {
             return Promise.reject('Allowed only in admin');
         }
@@ -148,7 +148,7 @@ export class AdminConnection extends Connection {
      * @param {string} folderName The folder name.
      * @returns {Promise<void>}
      */
-    deleteFolder(adapter, folderName) {
+    deleteFolder(adapter: string, folderName: string): Promise<void> {
         if (Connection.isWeb()) {
             return Promise.reject('Allowed only in admin');
         }
@@ -165,7 +165,7 @@ export class AdminConnection extends Connection {
      * @param {boolean} [update] Force update.
      * @returns {Promise<ioBroker.Object[]>}
      */
-    getHosts(update) {
+    getHosts(update: boolean): Promise<ioBroker.Object[]> {
         if (Connection.isWeb()) {
             return Promise.reject('Allowed only in admin');
         }
@@ -199,7 +199,7 @@ export class AdminConnection extends Connection {
      * @param {boolean} [update] Force update.
      * @returns {Promise<ioBroker.Object[]>}
      */
-    getUsers(update) {
+    getUsers(update: boolean): Promise<ioBroker.Object[]> {
         if (Connection.isWeb()) {
             return Promise.reject('Allowed only in admin');
         }
@@ -232,7 +232,7 @@ export class AdminConnection extends Connection {
      * @param {boolean} [update] Force update.
      * @returns {Promise<ioBroker.Object[]>}
      */
-    getGroups(update) {
+    getGroups(update: boolean): Promise<ioBroker.Object[]> {
         if (Connection.isWeb()) {
             return Promise.reject('Allowed only in admin');
         }
@@ -266,7 +266,7 @@ export class AdminConnection extends Connection {
      * @param {any[]} objs
      * @param {(err?: any) => void} cb
      */
-    private _renameGroups(objs, cb) {
+    private _renameGroups(objs:any[], cb:(err?: any) => void) {
         if (!objs || !objs.length) {
             cb && cb();
         } else {
@@ -288,24 +288,24 @@ export class AdminConnection extends Connection {
      * @param {string} newId The new id.
      * @param {string | { [lang in ioBroker.Languages]?: string; }} newName The new name.
      */
-    renameGroup(id, newId, newName) {
+    renameGroup(id: string, newId: string, newName: string | { [lang in ioBroker.Languages]?: string }) {
         return this.getGroups(true)
             .then(groups => {
                 if (groups.length) {
                     // find all elements
                     const groupsToRename = groups
                         .filter(group => group._id.startsWith(id + '.'))
-                        .forEach(group => group.newId = newId + group._id.substring(id.length));
+                        .forEach(group => (<any>group).newId = newId + group._id.substring(id.length));
 
                     return new Promise<void>((resolve, reject) =>
-                        this._renameGroups(groupsToRename, err => err ? reject(err) : resolve()))
+                        this._renameGroups(<any>groupsToRename, err => err ? reject(err) : resolve()))
                         .then(() => {
                             const obj = groups.find(group => group._id === id);
 
                             if (obj) {
                                 obj._id = newId;
                                 if (newName !== undefined) {
-                                    obj.common = obj.common || {};
+                                    (<any>obj).common = obj.common || {};
                                     obj.common.name = newName;
                                 }
 
@@ -895,7 +895,7 @@ export class AdminConnection extends Connection {
      * Read easy mode configuration (only for admin connection).
      * @returns {Promise<any>}
      */
-    getEasyMode() {
+    getEasyMode(): Promise<any> {
         if (Connection.isWeb()) {
             return Promise.reject('Allowed only in admin');
         }
@@ -911,7 +911,7 @@ export class AdminConnection extends Connection {
     * Read adapter ratings
     * @returns {Promise<any>}
     */
-    getRatings(update) {
+    getRatings(update): Promise<any> {
         if (Connection.isWeb()) {
             return Promise.reject('Allowed only in admin');
         }
@@ -1015,7 +1015,7 @@ export class AdminConnection extends Connection {
      * @param {number} [timeoutMs] timeout in ms.
      * @returns {Promise<any>}
      */
-    getCompactRepository(host, update, timeoutMs) {
+    getCompactRepository(host: string, update: boolean, timeoutMs: number): Promise<any> {
         if (Connection.isWeb()) {
             return Promise.reject('Allowed only in admin');
         }

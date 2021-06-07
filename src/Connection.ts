@@ -259,7 +259,7 @@ export class Connection {
      * @param {boolean} isOk
      * @param {boolean} isSecure
      */
-    private onPreConnect(isOk, isSecure: boolean) {
+    private onPreConnect(isOk: boolean, isSecure: boolean) {
         if (this._authTimer) {
             clearTimeout(this._authTimer);
             this._authTimer = null;
@@ -476,7 +476,7 @@ export class Connection {
      * @param {ioBroker.ObjectChangeHandler} cb The callback.
      * @returns {Promise<void>}
      */
-    subscribeObject(id, cb: ioBroker.ObjectChangeHandler) {
+    subscribeObject(id: string, cb: ioBroker.ObjectChangeHandler): Promise<void> {
         if (!this.objectsSubscribes[id]) {
             let reg = id.replace(/\./g, '\\.').replace(/\*/g, '.*');
             if (!reg.includes('*')) {
@@ -502,7 +502,7 @@ export class Connection {
      * @param {ioBroker.ObjectChangeHandler} cb The callback.
      * @returns {Promise<void>}
      */
-    unsubscribeObject(id: string, cb: ioBroker.ObjectChangeHandler) {
+    unsubscribeObject(id: string, cb: ioBroker.ObjectChangeHandler): Promise<void> {
         if (this.objectsSubscribes[id]) {
             if (cb) {
                 const pos = this.objectsSubscribes[id].cbs.indexOf(cb);
