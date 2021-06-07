@@ -664,12 +664,13 @@ export class Connection {
      * Gets all objects.
      * @param {(objects?: Record<string, ioBroker.Object>) => void} update Callback that is executed when all objects are retrieved.
      * @returns {void}
-     *//**
-* Gets all objects.
-* @param {boolean} update Set to true to retrieve all objects from the server (instead of using the local cache).
-* @param {boolean} disableProgressUpdate don't call onProgress() when done
-* @returns {Promise<Record<string, ioBroker.Object>> | undefined}
-*/
+     */
+    /**
+     * Gets all objects.
+     * @param {boolean} update Set to true to retrieve all objects from the server (instead of using the local cache).
+     * @param {boolean} disableProgressUpdate don't call onProgress() when done
+     * @returns {Promise<Record<string, ioBroker.Object>> | undefined}
+     */
     getObjects(update?: ((par?: any) => void) | boolean, disableProgressUpdate?: boolean): Promise<Record<string, ioBroker.Object>> | undefined {
         if (typeof update === 'function') {
             const callback = update;
@@ -681,7 +682,7 @@ export class Connection {
                 if (this.objects && Object.keys(this.objects).length > 2) {
                     setTimeout(() => callback(this.objects), 100);
                 } else {
-                    this._socket.emit('getAllObjects', (err, res) => {
+                    this._socket.emit((Connection.isWeb ? 'getObjects' : 'getAllObjects'), (err, res) => {
                         this.objects = res || {};
                         disableProgressUpdate && this.onProgress(PROGRESS.OBJECTS_LOADED);
                         callback(this.objects);
@@ -697,7 +698,7 @@ export class Connection {
                         return resolve(this.objects);
                     }
 
-                    this._socket.emit('getAllObjects', (err, res) => {
+                    this._socket.emit((Connection.isWeb ? 'getObjects' : 'getAllObjects'), (err, res) => {
                         this.objects = res;
                         disableProgressUpdate && this.onProgress(PROGRESS.OBJECTS_LOADED);
                         err ? reject(err) : resolve(this.objects);
@@ -1322,7 +1323,7 @@ export class Connection {
      * @deprecated use getVersion()
      * @returns {Promise<{version: string; serverName: string}>}
      */
-    getAdminVersion() {
+    getAdminVersion(): Promise<{ version: string; serverName: string }> {
         console.log('Deprecated: use getVersion');
         return this.getVersion();
     }
@@ -1333,7 +1334,7 @@ export class Connection {
      * @param {string} [filename] file name with full path. it could be like vis.0/*
      * @returns {Promise<boolean>}
      */
-    fileExists(adapter, filename) {
+    fileExists(adapter, filename): Promise<boolean> {
         if (!this.connected) {
             return Promise.reject(NOT_CONNECTED);
         }
@@ -1347,7 +1348,7 @@ export class Connection {
      * Read current user
      * @returns {Promise<string>}
      */
-    getCurrentUser() {
+    getCurrentUser(): Promise<string> {
         if (!this.connected) {
             return Promise.reject(NOT_CONNECTED);
         }
