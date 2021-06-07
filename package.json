@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "client librarys for ioBroker using socket.io",
   "type": "module",
-  "main": "/dist/Connection.js",
+  "main": "/dist/index.js",
   "scripts": {
     "tsc": "tsc"
   },
