@@ -3,7 +3,7 @@ import { Connection, NOT_CONNECTED, PERMISSION_ERROR } from './Connection';
 
 
 export class AdminConnection extends Connection {
-    
+
     constructor(props: ConnectionProps) {
         super(props);
     }
@@ -13,7 +13,7 @@ export class AdminConnection extends Connection {
      * @param {boolean} [update] Force update.
      * @returns {Promise<{name: string; type: 'public' | 'private' | 'chained'}[]>}
      */
-    getCertificates(update) {
+    getCertificates(update): Promise<{ name: string; type: 'public' | 'private' | 'chained' }[]> {
         if (Connection.isWeb()) {
             return Promise.reject('Allowed only in admin');
         }

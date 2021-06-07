@@ -38,7 +38,7 @@ export class Connection {
     public states: { [index: string]: ioBroker.State };
     public acl: any;
     public firstConnect: boolean;
-    public systemLang: string;
+    public systemLang: ioBroker.Languages;
     public admin5only: any;
     public certPromise: any;
     public loadCounter: number;
@@ -80,7 +80,6 @@ export class Connection {
         this.acl = null;
         this.firstConnect = true;
         this.waitForRestart = false;
-        /** @type {ioBroker.Languages} */
         this.systemLang = 'en';
         this.connected = false;
 
@@ -98,7 +97,6 @@ export class Connection {
         this.onConnectionHandlers = [];
         this.onLogHandlers = [];
 
-        /** @type {Record<string, Promise<any>>} */
         this._promises = {};
         this.startSocket();
     }
@@ -357,7 +355,7 @@ export class Connection {
                     if (this.systemConfig && this.systemConfig.common) {
                         this.systemLang = this.systemConfig.common.language;
                     } else {
-                        this.systemLang = window.navigator.userLanguage || window.navigator.language;
+                        this.systemLang = <any>window.navigator.userLanguage || window.navigator.language;
 
                         if (this.systemLang !== 'en' && this.systemLang !== 'de' && this.systemLang !== 'ru') {
                             this.systemConfig.common.language = 'en';
@@ -400,13 +398,14 @@ export class Connection {
      * Subscribe to changes of the given state.
      * @param {string} id The ioBroker state ID.
      * @param {ioBroker.StateChangeHandler} cb The callback.
-     *//**
-* Subscribe to changes of the given state.
-* @param {string} id The ioBroker state ID.
-* @param {boolean} binary Set to true if the given state is binary and requires Base64 decoding.
-* @param {ioBroker.StateChangeHandler} cb The callback.
-*/
-    subscribeState(id, binary, cb) {
+     */
+    /**
+     * Subscribe to changes of the given state.
+     * @param {string} id The ioBroker state ID.
+     * @param {boolean} binary Set to true if the given state is binary and requires Base64 decoding.
+     * @param {ioBroker.StateChangeHandler} cb The callback.
+     */
+    subscribeState(id: string, binary: ioBroker.StateChangeHandler | boolean, cb: ioBroker.StateChangeHandler) {
         if (typeof binary === 'function') {
             cb = binary;
             binary = false;
@@ -435,7 +434,7 @@ export class Connection {
         if (typeof cb === 'function' && this.connected) {
             if (binary) {
                 this.getBinaryState(id)
-                    .then(base64 => cb(id, base64))
+                    .then(base64 => cb(id, <any>base64))
                     .catch(e => console.error(`Cannot getForeignStates "${id}": ${JSON.stringify(e)}`));
             } else {
                 this._socket.emit('getForeignStates', id, (err, states) => {
@@ -449,12 +448,13 @@ export class Connection {
     /**
      * Unsubscribes all callbacks from changes of the given state.
      * @param {string} id The ioBroker state ID.
-     *//**
-* Unsubscribes the given callback from changes of the given state.
-* @param {string} id The ioBroker state ID.
-* @param {ioBroker.StateChangeHandler} cb The callback.
-*/
-    unsubscribeState(id, cb) {
+     */
+    /**
+     * Unsubscribes the given callback from changes of the given state.
+     * @param {string} id The ioBroker state ID.
+     * @param {ioBroker.StateChangeHandler} cb The callback.
+     */
+    unsubscribeState(id: string, cb?: ioBroker.StateChangeHandler) {
         if (this.statesSubscribes[id]) {
             if (cb) {
                 const pos = this.statesSubscribes[id].cbs.indexOf(cb);
@@ -473,10 +473,10 @@ export class Connection {
     /**
      * Subscribe to changes of the given object.
      * @param {string} id The ioBroker object ID.
-     * @param {import('./types').ObjectChangeHandler} cb The callback.
+     * @param {ioBroker.ObjectChangeHandler} cb The callback.
      * @returns {Promise<void>}
      */
-    subscribeObject(id, cb) {
+    subscribeObject(id, cb: ioBroker.ObjectChangeHandler) {
         if (!this.objectsSubscribes[id]) {
             let reg = id.replace(/\./g, '\\.').replace(/\*/g, '.*');
             if (!reg.includes('*')) {
@@ -495,13 +495,14 @@ export class Connection {
      * Unsubscribes all callbacks from changes of the given object.
      * @param {string} id The ioBroker object ID.
      * @returns {Promise<void>}
-     *//**
-* Unsubscribes the given callback from changes of the given object.
-* @param {string} id The ioBroker object ID.
-* @param {import('./types').ObjectChangeHandler} cb The callback.
-* @returns {Promise<void>}
-*/
-    unsubscribeObject(id, cb) {
+     */
+    /**
+     * Unsubscribes the given callback from changes of the given object.
+     * @param {string} id The ioBroker object ID.
+     * @param {ioBroker.ObjectChangeHandler} cb The callback.
+     * @returns {Promise<void>}
+     */
+    unsubscribeObject(id: string, cb: ioBroker.ObjectChangeHandler) {
         if (this.objectsSubscribes[id]) {
             if (cb) {
                 const pos = this.objectsSubscribes[id].cbs.indexOf(cb);
@@ -584,7 +585,7 @@ export class Connection {
      * @param {boolean} disableProgressUpdate don't call onProgress() when done
      * @returns {Promise<Record<string, ioBroker.State>>}
      */
-    getStates(disableProgressUpdate) {
+    getStates(disableProgressUpdate?: boolean): Promise<Record<string, ioBroker.State>> {
         if (!this.connected) {
             return Promise.reject(NOT_CONNECTED);
         }
@@ -669,7 +670,7 @@ export class Connection {
 * @param {boolean} disableProgressUpdate don't call onProgress() when done
 * @returns {Promise<Record<string, ioBroker.Object>> | undefined}
 */
-    getObjects(update?: (par?: any) => void | boolean, disableProgressUpdate?: boolean) {
+    getObjects(update?: ((par?: any) => void) | boolean, disableProgressUpdate?: boolean): Promise<Record<string, ioBroker.Object>> | undefined {
         if (typeof update === 'function') {
             const callback = update;
             // BF(2020_06_01): old code, must be removed when adapter-react will be updated
