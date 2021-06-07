@@ -1,0 +1,24 @@
+{
+  "name": "@iobroker/socketio-clientlib",
+  "version": "1.0.0",
+  "description": "Demonstration Project using web-component-designer",
+  "type": "module",
+  "scripts": {
+    "tsc": "tsc"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jogibear9988/socketio-clientlib.git"
+  },
+  "author": "",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/jogibear9988/socketio-clientlib/issues"
+  },
+  "homepage": "https://github.com/jogibear9988/socketio-clientlib",
+  "devDependencies": {
+    "@types/iobroker": "^3.3.0",
+    "socket.io": "^4.1.2",
+    "typescript": "^4.3.2"
+  }
+}
