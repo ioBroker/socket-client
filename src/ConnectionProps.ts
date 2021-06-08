@@ -31,5 +31,6 @@ export interface ConnectionProps {
     onObjectChange?: ioBroker.ObjectChangeHandler;
     /** Language callback */
     onLanguage?: (lang: ioBroker.Languages) => void;
+    /** Forces the use of the Compact Methods, wich only exists in admin 5 UI. */
     admin5only?: boolean;
 }
