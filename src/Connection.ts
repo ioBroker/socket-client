@@ -621,7 +621,7 @@ export class Connection {
      * @param {string} id The state ID.
      * @returns {Promise<ioBroker.State | null | undefined>}
      */
-    getState(id) {
+    getState(id: string): Promise<ioBroker.State | null | undefined> {
         if (!this.connected) {
             return Promise.reject(NOT_CONNECTED);
         }
@@ -635,7 +635,7 @@ export class Connection {
      * @param {string} id The state ID.
      * @returns {Promise<Buffer | undefined>}
      */
-    getBinaryState(id) {
+    getBinaryState(id: string): Promise<Buffer | undefined> {
         if (!this.connected) {
             return Promise.reject(NOT_CONNECTED);
         }
@@ -651,7 +651,7 @@ export class Connection {
      * @param {string} base64 The Base64 encoded binary data.
      * @returns {Promise<void>}
      */
-    setBinaryState(id, base64) {
+    setBinaryState(id: string, base64: string): Promise<void> {
         if (!this.connected) {
             return Promise.reject(NOT_CONNECTED);
         }
@@ -667,7 +667,7 @@ export class Connection {
      * @param {string | number | boolean | ioBroker.State | ioBroker.SettableState | null} val The state value.
      * @returns {Promise<void>}
      */
-    setState(id, val) {
+    setState(id: string, val: string | number | boolean | ioBroker.State | ioBroker.SettableState | null): Promise<void> {
         if (!this.connected) {
             return Promise.reject(NOT_CONNECTED);
         }
