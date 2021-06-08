@@ -5,7 +5,8 @@
   "type": "module",
   "main": "/dist/index.js",
   "scripts": {
-    "tsc": "tsc"
+    "tsc": "tsc",
+    "prepare": "tsc"
   },
   "repository": {
     "type": "git",
