@@ -59,6 +59,9 @@ export class Connection {
     protected _authTimer: any;
     protected systemConfig: any;
 
+    private _waitForFirstConnection: Promise<void>;
+    private _waitForFirstConnectionResolve: (value: void | PromiseLike<void>) => void;
+
     constructor(props: ConnectionProps) {
         this.props = props || { protocol: window.location.protocol, host: window.location.hostname };
 
@@ -82,6 +85,7 @@ export class Connection {
         this.waitForRestart = false;
         this.systemLang = 'en';
         this.connected = false;
+        this._waitForFirstConnection = new Promise(resolve => { this._waitForFirstConnectionResolve = resolve });
 
         this.statesSubscribes = {}; // subscribe for states
 
@@ -291,14 +295,27 @@ export class Connection {
             this._subscribe(true);
             this.onConnectionHandlers.forEach(cb => cb(true));
         }
+
+        if (this._waitForFirstConnectionResolve) {
+            this._waitForFirstConnectionResolve();
+            this._waitForFirstConnectionResolve = null;
+        }
     }
 
     /**
      * Checks if the socket is connected.
      * @returns {boolean} true if connected.
      */
-    isConnected() {
+    isConnected(): boolean {
         return this.connected;
+    }
+
+    /**
+    * Checks if the socket is connected.
+    * @returns {Promise<void>} Promise resolves if once connected.
+    */
+    waitForFirstConnection(): Promise<void> {
+        return this._waitForFirstConnection;
     }
 
     /**
@@ -757,7 +774,7 @@ export class Connection {
      * @param {boolean} maintenance Force deletion of non conform IDs.
      * @returns {Promise<void>}
      */
-    delObject(id, maintenance?) {
+    delObject(id: string, maintenance?: boolean): Promise<void> {
         if (!this.connected) {
             return Promise.reject(NOT_CONNECTED);
         }
@@ -772,7 +789,7 @@ export class Connection {
      * @param {boolean} maintenance Force deletion of non conform IDs.
      * @returns {Promise<void>}
      */
-    delObjects(id, maintenance) {
+    delObjects(id: string, maintenance: boolean): Promise<void> {
         if (!this.connected) {
             return Promise.reject(NOT_CONNECTED);
         }
@@ -787,7 +804,7 @@ export class Connection {
      * @param {ioBroker.SettableObject} obj The object.
      * @returns {Promise<void>}
      */
-    setObject(id, obj) {
+    setObject(id: string, obj: ioBroker.SettableObject): Promise<void> {
         if (!this.connected) {
             return Promise.reject(NOT_CONNECTED);
         }
@@ -818,7 +835,7 @@ export class Connection {
      * @param {string} id The object ID.
      * @returns {ioBroker.GetObjectPromise} The object.
      */
-    getObject(id) {
+    getObject(id: string): ioBroker.GetObjectPromise {
         if (!this.connected) {
             return Promise.reject(NOT_CONNECTED);
         }
@@ -831,12 +848,13 @@ export class Connection {
      * Get all adapter instances.
      * @param {boolean} [update] Force update.
      * @returns {Promise<ioBroker.Object[]>}
-     *//**
-* Get all instances of the given adapter.
-* @param {string} adapter The name of the adapter.
-* @param {boolean} [update] Force update.
-* @returns {Promise<ioBroker.Object[]>}
-*/
+     */
+    /**
+     * Get all instances of the given adapter.
+     * @param {string} adapter The name of the adapter.
+     * @param {boolean} [update] Force update.
+     * @returns {Promise<ioBroker.Object[]>}
+     */
     getAdapterInstances(adapter, update) {
         if (typeof adapter === 'boolean') {
             update = adapter;
@@ -1227,6 +1245,7 @@ export class Connection {
 
         this._promises.systemConfig = this.getObject('system.config')
             .then(systemConfig => {
+                //@ts-ignore
                 systemConfig = systemConfig || {};
                 //@ts-ignore
                 systemConfig.common = systemConfig.common || {};
