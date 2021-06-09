@@ -14,6 +14,13 @@ AdminConnection => for Admin UI Connections, these have access to more commands
 npm run tsc -watch
 
 ## Changelog
+<!--
+	Placeholder for the next version (at the beginning of the line):
+	### **WORK IN PROGRESS**
+-->
+
+### **WORK IN PROGRESS**
+* (UncleSamSwiss) Add release script and release workflow
 
 ### 1.0.0 (2021-06-08)
 * (jogibear9988) Create the Repository from the Code in https://github.com/ioBroker/adapter-react

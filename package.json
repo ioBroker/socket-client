@@ -6,7 +6,8 @@
   "main": "/dist/index.js",
   "scripts": {
     "tsc": "tsc",
-    "prepare": "tsc"
+    "prepare": "tsc",
+    "release": "release-script"
   },
   "repository": {
     "type": "git",
@@ -19,6 +20,7 @@
   },
   "homepage": "https://github.com/ioBroker/socket-client",
   "devDependencies": {
+    "@alcalzone/release-script": "^1.10.0",
     "@types/iobroker": "^3.3.0",
     "socket.io": "^4.1.2",
     "typescript": "^4.3.2"
