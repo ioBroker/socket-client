@@ -17,7 +17,7 @@ There are 2 connection types in it:
 	### **WORK IN PROGRESS**
 -->
 
-### 1.0.1 (2021-06-10)
+### 1.0.2 (2021-06-10)
 * (bluefox) Update methods
 * (UncleSamSwiss) Add release script and release workflow
 
