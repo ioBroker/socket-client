@@ -1,6 +1,6 @@
 {
   "name": "@iobroker/socket-client",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "client librarys for ioBroker using socket.io",
   "type": "module",
   "main": "/dist/index.js",

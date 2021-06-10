@@ -40,7 +40,6 @@ export class Connection {
     public firstConnect: boolean;
     public systemLang: ioBroker.Languages;
     public admin5only: any;
-    public certPromise: any;
     public loadCounter: number;
     public loadTimer: any;
     public scriptLoadCounter: number;
@@ -95,7 +94,6 @@ export class Connection {
         this.loaded = false;
         this.loadTimer = null;
         this.loadCounter = 0;
-        this.certPromise = null;
         this.admin5only = this.props.admin5only || false;
 
         this.onConnectionHandlers = [];
@@ -207,7 +205,7 @@ export class Connection {
         });
 
         this._socket.on('disconnect', () => {
-            this.connected = false;
+            this.connected  = false;
             this.subscribed = false;
             this.onProgress(PROGRESS.CONNECTING);
             this.onConnectionHandlers.forEach(cb => cb(false));
@@ -339,22 +337,22 @@ export class Connection {
             if (err) {
                 return this.onError('Cannot read user permissions: ' + err);
             } else
-                if (!this.doNotLoadACL) {
-                    if (this.loaded) {
-                        return;
-                    }
-                    this.loaded = true;
-                    clearTimeout(this.loadTimer);
-                    this.loadTimer = null;
-
-                    this.onProgress(PROGRESS.CONNECTED);
-                    this.firstConnect = false;
-
-                    this.acl = acl;
+            if (!this.doNotLoadACL) {
+                if (this.loaded) {
+                    return;
                 }
+                this.loaded = true;
+                clearTimeout(this.loadTimer);
+                this.loadTimer = null;
+
+                this.onProgress(PROGRESS.CONNECTED);
+                this.firstConnect = false;
+
+                this.acl = acl;
+            }
 
             // Read system configuration
-            return (this.admin5only ? this.getCompactSystemConfig() : this.getSystemConfig())
+            return (this.admin5only && !Connection.isWeb() ? this.getCompactSystemConfig() : this.getSystemConfig())
                 .then(data => {
                     if (this.doNotLoadACL) {
                         if (this.loaded) {
@@ -689,41 +687,21 @@ export class Connection {
      * @returns {Promise<Record<string, ioBroker.Object>> | undefined}
      */
     getObjects(update?: ((par?: any) => void) | boolean, disableProgressUpdate?: boolean): Promise<Record<string, ioBroker.Object>> | undefined {
-        if (typeof update === 'function') {
-            const callback = update;
-            // BF(2020_06_01): old code, must be removed when adapter-react will be updated
-            if (!this.connected) {
-                console.error(NOT_CONNECTED);
-                callback();
-            } else {
-                if (this.objects && Object.keys(this.objects).length > 2) {
-                    setTimeout(() => callback(this.objects), 100);
-                } else {
-                    this._socket.emit((Connection.isWeb ? 'getObjects' : 'getAllObjects'), (err, res) => {
-                        this.objects = res || {};
-                        disableProgressUpdate && this.onProgress(PROGRESS.OBJECTS_LOADED);
-                        callback(this.objects);
-                    });
-                }
-            }
+        if (!this.connected) {
+            return Promise.reject(NOT_CONNECTED);
         } else {
-            if (!this.connected) {
-                return Promise.reject(NOT_CONNECTED);
-            } else {
-                return new Promise((resolve, reject) => {
-                    if (!update && this.objects) {
-                        return resolve(this.objects);
-                    }
+            return new Promise((resolve, reject) => {
+                if (!update && this.objects) {
+                    return resolve(this.objects);
+                }
 
-                    this._socket.emit((Connection.isWeb ? 'getObjects' : 'getAllObjects'), (err, res) => {
-                        this.objects = res;
-                        disableProgressUpdate && this.onProgress(PROGRESS.OBJECTS_LOADED);
-                        err ? reject(err) : resolve(this.objects);
-                    });
+                this._socket.emit(Connection.isWeb() ? 'getObjects' : 'getAllObjects', (err, res) => {
+                    this.objects = res;
+                    disableProgressUpdate && this.onProgress(PROGRESS.OBJECTS_LOADED);
+                    err ? reject(err) : resolve(this.objects);
                 });
-            }
+            });
         }
-        return undefined;
     }
 
     /**
@@ -842,72 +820,6 @@ export class Connection {
         return new Promise((resolve, reject) =>
             this._socket.emit('getObject', id, (err, obj) =>
                 err ? reject(err) : resolve(obj)));
-    }
-
-    /**
-     * Get all adapter instances.
-     * @param {boolean} [update] Force update.
-     * @returns {Promise<ioBroker.Object[]>}
-     */
-    /**
-     * Get all instances of the given adapter.
-     * @param {string} adapter The name of the adapter.
-     * @param {boolean} [update] Force update.
-     * @returns {Promise<ioBroker.Object[]>}
-     */
-    getAdapterInstances(adapter, update) {
-        if (typeof adapter === 'boolean') {
-            update = adapter;
-            adapter = '';
-        }
-        adapter = adapter || '';
-
-        if (!update && this._promises['instances_' + adapter]) {
-            return this._promises['instances_' + adapter];
-        }
-
-        if (!this.connected) {
-            return Promise.reject(NOT_CONNECTED);
-        }
-
-        this._promises['instances_' + adapter] = new Promise((resolve, reject) =>
-            this._socket.emit('getAdapterInstances', adapter, (err, instances) =>
-                err ? reject(err) : resolve(instances)));
-
-        return this._promises['instances_' + adapter];
-    }
-
-    /**
-     * Get all adapters.
-     * @param {boolean} [update] Force update.
-     * @returns {Promise<ioBroker.Object[]>}
-     *//**
-* Get adapters with the given name.
-* @param {string} adapter The name of the adapter.
-* @param {boolean} [update] Force update.
-* @returns {Promise<ioBroker.Object[]>}
-*/
-    getAdapters(adapter, update) {
-        if (typeof adapter === 'boolean') {
-            update = adapter;
-            adapter = '';
-        }
-
-        adapter = adapter || '';
-
-        if (!update && this._promises['adapter_' + adapter]) {
-            return this._promises['adapter_' + adapter];
-        }
-
-        if (!this.connected) {
-            return Promise.reject(NOT_CONNECTED);
-        }
-
-        this._promises['adapter_' + adapter] = new Promise((resolve, reject) =>
-            this._socket.emit('getAdapters', adapter, (err, instances) =>
-                err ? reject(err) : resolve(instances)));
-
-        return this._promises['adapter_' + adapter];
     }
 
     /**
@@ -1082,7 +994,7 @@ export class Connection {
         }
 
         start = start || '';
-        end = end || '\u9999';
+        end   = end   || '\u9999';
 
         return new Promise((resolve, reject) => {
             this._socket.emit('getObjectView', 'system', type, { startkey: start, endkey: end }, (err, res) => {
@@ -1173,60 +1085,73 @@ export class Connection {
         });
     }
 
-
-
     /**
-     * Checks if a given feature is supported.
-     * @param {string} feature The feature to check.
-     * @param {boolean} [update] Force update.
-     * @returns {Promise<any>}
+     * Delete a file of an adapter.
+     * @param {string} adapter The adapter name.
+     * @param {string} fileName The file name.
+     * @returns {Promise<void>}
      */
-    checkFeatureSupported(feature, update?) {
-        if (!update && this._promises['supportedFeatures_' + feature]) {
-            return this._promises['supportedFeatures_' + feature];
-        }
-
-        if (!this.connected) {
-            return Promise.reject(NOT_CONNECTED);
-        }
-
-        this._promises['supportedFeatures_' + feature] = new Promise((resolve, reject) =>
-            this._socket.emit('checkFeatureSupported', feature, (err, features) => {
-                err ? reject(err) : resolve(features)
-            }));
-
-        return this._promises['supportedFeatures_' + feature];
-    }
-
-
-
-    /**
-     * Read all states (which might not belong to this adapter) which match the given pattern.
-     * @param {string} pattern
-     * @returns {ioBroker.GetStatesPromise}
-     */
-    getForeignStates(pattern) {
+    deleteFile(adapter, fileName) {
         if (!this.connected) {
             return Promise.reject(NOT_CONNECTED);
         }
         return new Promise((resolve, reject) =>
-            this._socket.emit('getForeignStates', pattern || '*', (err, states) =>
-                err ? reject(err) : resolve(states)));
+            this._socket.emit('deleteFile', adapter, fileName, err =>
+                err ? reject(err) : resolve(undefined)));
     }
 
     /**
-     * Get foreign objects by pattern, by specific type and resolve their enums.
-     * @param {string} pattern
-     * @param {string} [type]
-     * @returns {ioBroker.GetObjectsPromise}
+     * Delete a folder of an adapter.
+     * @param {string} adapter The adapter name.
+     * @param {string} folderName The folder name.
+     * @returns {Promise<void>}
      */
-    getForeignObjects(pattern, type) {
+    deleteFolder(adapter, folderName) {
         if (!this.connected) {
             return Promise.reject(NOT_CONNECTED);
         }
         return new Promise((resolve, reject) =>
-            this._socket.emit('getForeignObjects', pattern || '*', type, (err, states) =>
-                err ? reject(err) : resolve(states)));
+            this._socket.emit('deleteFolder', adapter, folderName, err =>
+                err ? reject(err) : resolve(undefined)));
+    }
+
+    /**
+     * Execute a command on a host.
+     * @param {string} host The host name.
+     * @param {string} cmd The command.
+     * @param {string} cmdId The command ID.
+     * @param {number} cmdTimeout Timeout of command in ms
+     * @returns {Promise<void>}
+     */
+    cmdExec(host, cmd, cmdId, cmdTimeout?) {
+        if (!this.connected) {
+            return Promise.reject(NOT_CONNECTED);
+        }
+
+        if (!host.startsWith(host)) {
+            host += 'system.host.' + host;
+        }
+
+        return new Promise((resolve, reject) => {
+            let timeout = cmdTimeout && setTimeout(() => {
+                if (timeout) {
+                    timeout = null;
+                    reject('cmdExec timeout');
+                }
+            }, cmdTimeout);
+
+            this._socket.emit('cmdExec', host, cmdId, cmd, null, err => {
+                if (!cmdTimeout || timeout) {
+                    timeout && clearTimeout(timeout);
+                    timeout = null;
+                    if (err) {
+                        reject(err);
+                    } else {
+                        resolve(undefined);
+                    }
+                }
+            });
+        });
     }
 
     /**
@@ -1255,6 +1180,56 @@ export class Connection {
             });
 
         return this._promises.systemConfig;
+    }
+
+    // returns very optimized information for adapters to minimize connection load
+    getCompactSystemConfig(update?) {
+        if (Connection.isWeb()) {
+            return Promise.reject('Allowed only in admin');
+        }
+
+        if (!update && this._promises.systemConfigCommon) {
+            return this._promises.systemConfigCommon;
+        }
+
+        if (!this.connected) {
+            return Promise.reject(NOT_CONNECTED);
+        }
+
+        this._promises.systemConfigCommon = new Promise((resolve, reject) =>
+            this._socket.emit('getCompactSystemConfig', (err, systemConfig) =>
+                err ? reject(err) : resolve(systemConfig)));
+
+        return this._promises.systemConfigCommon;
+    }
+
+    /**
+     * Read all states (which might not belong to this adapter) which match the given pattern.
+     * @param {string} pattern
+     * @returns {ioBroker.GetStatesPromise}
+     */
+    getForeignStates(pattern) {
+        if (!this.connected) {
+            return Promise.reject(NOT_CONNECTED);
+        }
+        return new Promise((resolve, reject) =>
+            this._socket.emit('getForeignStates', pattern || '*', (err, states) =>
+                err ? reject(err) : resolve(states)));
+    }
+
+    /**
+     * Get foreign objects by pattern, by specific type and resolve their enums.
+     * @param {string} pattern
+     * @param {string} [type]
+     * @returns {ioBroker.GetObjectsPromise}
+     */
+    getForeignObjects(pattern, type) {
+        if (!this.connected) {
+            return Promise.reject(NOT_CONNECTED);
+        }
+        return new Promise((resolve, reject) =>
+            this._socket.emit('getForeignObjects', pattern || '*', type, (err, states) =>
+                err ? reject(err) : resolve(states)));
     }
 
     /**
@@ -1308,6 +1283,26 @@ export class Connection {
     }
 
     /**
+     * Get the IP addresses of the given host.
+     * @param {string} host
+     * @param {boolean} [update] Force update.
+     * @returns {Promise<string[]>}
+     */
+    getIpAddresses(host, update) {
+        if (!host.startsWith('system.host.')) {
+            host = 'system.host.' + host;
+        }
+
+        if (!update && this._promises['IPs_' + host]) {
+            return this._promises['IPs_' + host];
+        }
+        this._promises['IPs_' + host] = this.getObject(host)
+            .then(obj => obj && obj.common ? obj.common.address || [] : []);
+
+        return this._promises['IPs_' + host];
+    }
+
+    /**
      * Gets the version.
      * @returns {Promise<{version: string; serverName: string}>}
      */
@@ -1335,16 +1330,6 @@ export class Connection {
                 err ? reject(err) : resolve(name)));
 
         return this._promises.webName;
-    }
-
-    /**
-     * Gets the admin version.
-     * @deprecated use getVersion()
-     * @returns {Promise<{version: string; serverName: string}>}
-     */
-    getAdminVersion(): Promise<{ version: string; serverName: string }> {
-        console.log('Deprecated: use getVersion');
-        return this.getVersion();
     }
 
     /**
@@ -1376,73 +1361,6 @@ export class Connection {
                 resolve(user)));
     }
 
-    getCurrentSession(cmdTimeout) {
-        if (!this.connected) {
-            return Promise.reject(NOT_CONNECTED);
-        }
-
-        return new Promise((resolve, reject) => {
-            const controller = new AbortController();
-
-            let timeout = setTimeout(() => {
-                if (timeout) {
-                    timeout = null;
-                    controller.abort();
-                    reject('getCurrentSession timeout');
-                }
-            }, cmdTimeout || 5000);
-
-            return fetch('./session', { signal: controller.signal })
-                .then(res => res.json())
-                .then(json => {
-                    if (timeout) {
-                        clearTimeout(timeout);
-                        timeout = null;
-                        resolve(json);
-                    }
-                })
-                .catch(e => {
-                    reject('getCurrentSession: ' + e);
-                });
-        });
-    }
-
-    /**
-     * Read current web, socketio or admin namespace, like admin.0
-     * @returns {Promise<string>}
-     */
-    getCurrentInstance() {
-        if (!this.connected) {
-            return Promise.reject(NOT_CONNECTED);
-        }
-
-        this._promises.currentInstance = this._promises.currentInstance ||
-            new Promise((resolve, reject) =>
-                this._socket.emit('getCurrentInstance', (err, namespace) =>
-                    err ? reject(err) : resolve(namespace)));
-
-        return this._promises.currentInstance;
-    }
-
-
-
-    // returns very optimized information for adapters to minimize connection load
-    getCompactSystemConfig(update?) {
-        if (!update && this._promises.systemConfigCommon) {
-            return this._promises.systemConfigCommon;
-        }
-
-        if (!this.connected) {
-            return Promise.reject(NOT_CONNECTED);
-        }
-
-        this._promises.systemConfigCommon = new Promise((resolve, reject) =>
-            this._socket.emit('getCompactSystemConfig', (err, systemConfig) =>
-                err ? reject(err) : resolve(systemConfig)));
-
-        return this._promises.systemConfigCommon;
-    }
-
     /**
      * Get uuid
      * @returns {Promise<ioBroker.Object[]>}
@@ -1461,5 +1379,110 @@ export class Connection {
             .then(obj => obj?.native?.uuid);
 
         return this._promises.uuid;
+    }
+
+    /**
+     * Checks if a given feature is supported.
+     * @param {string} feature The feature to check.
+     * @param {boolean} [update] Force update.
+     * @returns {Promise<any>}
+     */
+    checkFeatureSupported(feature, update?) {
+        if (!update && this._promises['supportedFeatures_' + feature]) {
+            return this._promises['supportedFeatures_' + feature];
+        }
+
+        if (!this.connected) {
+            return Promise.reject(NOT_CONNECTED);
+        }
+
+        this._promises['supportedFeatures_' + feature] = new Promise((resolve, reject) =>
+            this._socket.emit('checkFeatureSupported', feature, (err, features) => {
+                err ? reject(err) : resolve(features)
+            }));
+
+        return this._promises['supportedFeatures_' + feature];
+    }
+
+    /**
+     * Get all adapter instances.
+     * @param {boolean} [update] Force update.
+     * @returns {Promise<ioBroker.Object[]>}
+     */
+    /**
+     * Get all instances of the given adapter.
+     * @param {string} adapter The name of the adapter.
+     * @param {boolean} [update] Force update.
+     * @returns {Promise<ioBroker.Object[]>}
+     */
+    getAdapterInstances(adapter?, update?) {
+        if (typeof adapter === 'boolean') {
+            update = adapter;
+            adapter = '';
+        }
+        adapter = adapter || '';
+
+        if (!update && this._promises['instances_' + adapter]) {
+            return this._promises['instances_' + adapter];
+        }
+
+        if (!this.connected) {
+            return Promise.reject(NOT_CONNECTED);
+        }
+
+        if (adapter) {
+            this._promises['instances_' + adapter] =
+                this.getObjectView('system.adapter.' + adapter + '.', 'system.group.' + adapter + '.\u9999', 'instance')
+        } else {
+            this._promises['instances_' + adapter] =
+                this.getObjectView('system.adapter.', 'system.group.\u9999', 'instance');
+        }
+
+        return this._promises['instances_' + adapter];
+    }
+
+    /**
+     * Get all adapters.
+     * @param {boolean} [update] Force update.
+     * @returns {Promise<ioBroker.Object[]>}
+     */
+    /**
+     * Get adapters with the given name.
+     * @param {string} adapter The name of the adapter.
+     * @param {boolean} [update] Force update.
+     * @returns {Promise<ioBroker.Object[]>}
+     */
+    getAdapters(adapter?, update?) {
+        if (typeof adapter === 'boolean') {
+            update = adapter;
+            adapter = '';
+        }
+
+        adapter = adapter || '';
+
+        if (!update && this._promises['adapter_' + adapter]) {
+            return this._promises['adapter_' + adapter];
+        }
+
+        if (!this.connected) {
+            return Promise.reject(NOT_CONNECTED);
+        }
+
+        if (adapter) {
+            this._promises['adapter_' + adapter] =
+                this.getObjectView('system.adapter.' + adapter, 'system.group.' + adapter, 'adapter')
+                    .then(adapters => {
+                        if (!adapters['system.adapter.' + adapter]) {
+                            return {};
+                        } else {
+                            return {['system.adapter.' + adapter]: adapters['system.adapter.' + adapter]};
+                        }
+                    })
+        } else {
+            this._promises['adapter_' + adapter] =
+                this.getObjectView('system.adapter.', 'system.group.\u9999', 'adapter');
+        }
+
+        return this._promises['adapter_' + adapter];
     }
 }

@@ -1,9 +1,7 @@
 import { ConnectionProps } from './ConnectionProps';
 import { Connection, NOT_CONNECTED, PERMISSION_ERROR } from './Connection';
 
-
 export class AdminConnection extends Connection {
-
     constructor(props: ConnectionProps) {
         super(props);
     }
@@ -289,13 +287,18 @@ export class AdminConnection extends Connection {
      * @param {string | { [lang in ioBroker.Languages]?: string; }} newName The new name.
      */
     renameGroup(id: string, newId: string, newName: string | { [lang in ioBroker.Languages]?: string }) {
+        if (Connection.isWeb()) {
+            return Promise.reject('Allowed only in admin');
+        }
+
         return this.getGroups(true)
             .then(groups => {
                 if (groups.length) {
                     // find all elements
                     const groupsToRename = groups
-                        .filter(group => group._id.startsWith(id + '.'))
-                        .forEach(group => (<any>group).newId = newId + group._id.substring(id.length));
+                        .filter(group => group._id.startsWith(id + '.'));
+
+                    groupsToRename.forEach(group => (<any>group).newId = newId + group._id.substring(id.length));
 
                     return new Promise<void>((resolve, reject) =>
                         this._renameGroups(<any>groupsToRename, err => err ? reject(err) : resolve()))
@@ -921,6 +924,133 @@ export class AdminConnection extends Connection {
         return new Promise((resolve, reject) =>
             this._socket.emit('getRatings', update, (err, ratings) =>
                 err ? reject(err) : resolve(ratings)));
+    }
+
+    getCurrentSession(cmdTimeout) {
+        if (!this.connected) {
+            return Promise.reject(NOT_CONNECTED);
+        }
+
+        return new Promise((resolve, reject) => {
+            const controller = new AbortController();
+
+            let timeout = setTimeout(() => {
+                if (timeout) {
+                    timeout = null;
+                    controller.abort();
+                    reject('getCurrentSession timeout');
+                }
+            }, cmdTimeout || 5000);
+
+            return fetch('./session', { signal: controller.signal })
+                .then(res => res.json())
+                .then(json => {
+                    if (timeout) {
+                        clearTimeout(timeout);
+                        timeout = null;
+                        resolve(json);
+                    }
+                })
+                .catch(e => {
+                    reject('getCurrentSession: ' + e);
+                });
+        });
+    }
+
+    /**
+     * Read current web, socketio or admin namespace, like admin.0
+     * @returns {Promise<string>}
+     */
+    getCurrentInstance() {
+        if (Connection.isWeb()) {
+            return Promise.reject('Allowed only in admin');
+        }
+
+        if (!this.connected) {
+            return Promise.reject(NOT_CONNECTED);
+        }
+
+        this._promises.currentInstance = this._promises.currentInstance ||
+            new Promise((resolve, reject) =>
+                this._socket.emit('getCurrentInstance', (err, namespace) =>
+                    err ? reject(err) : resolve(namespace)));
+
+        return this._promises.currentInstance;
+    }
+
+    /**
+     * Get all adapter instances.
+     * @param {boolean} [update] Force update.
+     * @returns {Promise<ioBroker.Object[]>}
+     */
+    /**
+     * Get all instances of the given adapter.
+     * @param {string} adapter The name of the adapter.
+     * @param {boolean} [update] Force update.
+     * @returns {Promise<ioBroker.Object[]>}
+     */
+    getAdapterInstances(adapter, update) {
+        if (Connection.isWeb()) {
+            return Promise.reject('Allowed only in admin');
+        }
+
+        if (typeof adapter === 'boolean') {
+            update = adapter;
+            adapter = '';
+        }
+        adapter = adapter || '';
+
+        if (!update && this._promises['instances_' + adapter]) {
+            return this._promises['instances_' + adapter];
+        }
+
+        if (!this.connected) {
+            return Promise.reject(NOT_CONNECTED);
+        }
+
+        this._promises['instances_' + adapter] = new Promise((resolve, reject) =>
+            this._socket.emit('getAdapterInstances', adapter, (err, instances) =>
+                err ? reject(err) : resolve(instances)));
+
+        return this._promises['instances_' + adapter];
+    }
+
+    /**
+     * Get all adapters.
+     * @param {boolean} [update] Force update.
+     * @returns {Promise<ioBroker.Object[]>}
+     */
+    /**
+     * Get adapters with the given name.
+     * @param {string} adapter The name of the adapter.
+     * @param {boolean} [update] Force update.
+     * @returns {Promise<ioBroker.Object[]>}
+     */
+    getAdapters(adapter, update) {
+        if (Connection.isWeb()) {
+            return Promise.reject('Allowed only in admin');
+        }
+
+        if (typeof adapter === 'boolean') {
+            update = adapter;
+            adapter = '';
+        }
+
+        adapter = adapter || '';
+
+        if (!update && this._promises['adapter_' + adapter]) {
+            return this._promises['adapter_' + adapter];
+        }
+
+        if (!this.connected) {
+            return Promise.reject(NOT_CONNECTED);
+        }
+
+        this._promises['adapter_' + adapter] = new Promise((resolve, reject) =>
+            this._socket.emit('getAdapters', adapter, (err, adapters) =>
+                err ? reject(err) : resolve(adapters)));
+
+        return this._promises['adapter_' + adapter];
     }
 
     // returns very optimized information for adapters to minimize connection load
