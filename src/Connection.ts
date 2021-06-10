@@ -1095,9 +1095,9 @@ export class Connection {
         if (!this.connected) {
             return Promise.reject(NOT_CONNECTED);
         }
-        return new Promise((resolve, reject) =>
+        return new Promise<void>((resolve, reject) =>
             this._socket.emit('deleteFile', adapter, fileName, err =>
-                err ? reject(err) : resolve(undefined)));
+                err ? reject(err) : resolve()));
     }
 
     /**
@@ -1110,9 +1110,9 @@ export class Connection {
         if (!this.connected) {
             return Promise.reject(NOT_CONNECTED);
         }
-        return new Promise((resolve, reject) =>
+        return new Promise<void>((resolve, reject) =>
             this._socket.emit('deleteFolder', adapter, folderName, err =>
-                err ? reject(err) : resolve(undefined)));
+                err ? reject(err) : resolve()));
     }
 
     /**
@@ -1132,7 +1132,7 @@ export class Connection {
             host += 'system.host.' + host;
         }
 
-        return new Promise((resolve, reject) => {
+        return new Promise<void>((resolve, reject) => {
             let timeout = cmdTimeout && setTimeout(() => {
                 if (timeout) {
                     timeout = null;
@@ -1147,7 +1147,7 @@ export class Connection {
                     if (err) {
                         reject(err);
                     } else {
-                        resolve(undefined);
+                        resolve();
                     }
                 }
             });

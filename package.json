@@ -1,7 +1,7 @@
 {
   "name": "@iobroker/socket-client",
   "version": "1.0.2",
-  "description": "client librarys for ioBroker using socket.io",
+  "description": "Client libraries for ioBroker using web sockets",
   "type": "module",
   "main": "/dist/index.js",
   "scripts": {
@@ -17,6 +17,9 @@
   "license": "MIT",
   "bugs": {
     "url": "https://github.com/ioBroker/socket-client/issues"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "homepage": "https://github.com/ioBroker/socket-client",
   "devDependencies": {
