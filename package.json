@@ -2,11 +2,11 @@
   "name": "@iobroker/socket-client",
   "version": "1.0.2",
   "description": "Client libraries for ioBroker using web sockets",
-  "type": "module",
   "main": "/dist/index.js",
   "scripts": {
-    "tsc": "tsc",
-    "prepare": "tsc",
+    "build": "tsc",
+    "watch": "npm run build -- --watch",
+    "prepare": "npm run build",
     "release": "release-script"
   },
   "repository": {
@@ -24,7 +24,15 @@
   "homepage": "https://github.com/ioBroker/socket-client",
   "devDependencies": {
     "@alcalzone/release-script": "^1.10.0",
+    "@tsconfig/node12": "^1.0.9",
     "@types/iobroker": "^3.3.0",
+    "@typescript-eslint/eslint-plugin": "^4.28.0",
+    "@typescript-eslint/parser": "^4.28.0",
+    "eslint": "^7.29.0",
+    "eslint-config-prettier": "^8.3.0",
+    "eslint-plugin-prettier": "^3.4.0",
+    "prettier": "^2.3.1",
+    "prettier-plugin-organize-imports": "^2.1.0",
     "socket.io": "^4.1.2",
     "typescript": "^4.3.2"
   }
