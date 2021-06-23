@@ -300,7 +300,7 @@ export class AdminConnection extends Connection {
 	 */
 	private _renameGroups(objs: any[], cb: (err?: any) => void) {
 		if (!objs || !objs.length) {
-			cb && cb();
+			cb?.();
 		} else {
 			const obj = objs.pop();
 			this.delObject(obj._id)
@@ -310,7 +310,7 @@ export class AdminConnection extends Connection {
 					return this.setObject(obj._id, obj);
 				})
 				.then(() => setTimeout(() => this._renameGroups(objs, cb), 0))
-				.catch((err) => cb && cb(err));
+				.catch((err) => cb?.(err));
 		}
 	}
 

@@ -1,5 +1,6 @@
-import type { Socket } from "socket.io";
 import type { ConnectionProps } from "./ConnectionProps";
+import type { EventHandlers, SocketClient } from "./SocketClient";
+import type { GetUserPermissionsCallback } from "./SocketEvents";
 
 /** Possible progress states. */
 export enum PROGRESS {
@@ -13,87 +14,28 @@ export enum PROGRESS {
 	READY = 3,
 }
 
-export const PERMISSION_ERROR = "permissionError";
-export const NOT_CONNECTED = "notConnectedError";
+export enum ERRORS {
+	PERMISSION_ERROR = "permissionError",
+	NOT_CONNECTED = "notConnectedError",
+}
 
-export const ERRORS = {
-	PERMISSION_ERROR,
-	NOT_CONNECTED,
-};
+/** @deprecated Use {@link ERRORS.PERMISSION_ERROR} instead */
+export const PERMISSION_ERROR = ERRORS.PERMISSION_ERROR;
+/** @deprecated Use {@link ERRORS.NOT_CONNECTED} instead */
+export const NOT_CONNECTED = ERRORS.NOT_CONNECTED;
 
-export class Connection {
-	public props: ConnectionProps;
-	public autoSubscribes: string[];
-	public doNotLoadAllObjects: boolean;
-	public doNotLoadACL: boolean;
-	public autoSubscribeLog: boolean;
-	public connected: boolean;
-	public waitForRestart: any;
-	public subscribed: boolean;
-	public loaded: boolean;
-	public statesSubscribes: Record<
-		string,
-		{ reg: RegExp; cbs: ioBroker.StateChangeHandler[] }
-	>;
-	public objectsSubscribes: Record<
-		string,
-		{ reg: RegExp; cbs: ioBroker.ObjectChangeHandler[] }
-	>;
-	public objects: any;
-	public states: { [index: string]: ioBroker.State };
-	public acl: any;
-	public firstConnect: boolean;
-	public systemLang: ioBroker.Languages;
-	public admin5only: any;
-	public loadCounter: number;
-	public loadTimer: any;
-	public scriptLoadCounter: number;
-	public isSecure: boolean;
+export class Connection<
+	CustomListenEvents extends EventHandlers = Record<never, never>,
+	CustomEmitEvents extends EventHandlers = Record<never, never>,
+> {
+	constructor(props: Partial<ConnectionProps>) {
+		this.props = this.applyDefaultProps(props);
 
-	public onConnectionHandlers: ((connected: boolean) => void)[];
-	public onLogHandlers: ((message: string) => void)[];
-	public onError: (error: any) => void;
-	public onProgress: (progress: number) => void;
-	public onCmdStdoutHandler: (id: string, text: string) => void;
-	public onCmdStderrHandler: (id: string, text: string) => void;
-	public onCmdExitHandler: (id: string, exitCode: number) => void;
+		this.autoSubscribes = this.props.autoSubscribes ?? [];
+		this.autoSubscribeLog = this.props.autoSubscribeLog ?? false;
 
-	protected _socket: Socket;
-	protected _promises: Record<string, Promise<any>>;
-	protected _authTimer: any;
-	protected systemConfig: any;
-
-	private _waitForFirstConnection: Promise<void>;
-	private _waitForFirstConnectionResolve: (
-		value: void | PromiseLike<void>,
-	) => void;
-
-	constructor(props: ConnectionProps) {
-		this.props = props || {
-			protocol: window.location.protocol,
-			host: window.location.hostname,
-		};
-
-		this.autoSubscribes = this.props.autoSubscribes || [];
-		this.autoSubscribeLog = this.props.autoSubscribeLog;
-
-		this.props.protocol = this.props.protocol || window.location.protocol;
-		this.props.host = this.props.host || window.location.hostname;
-		this.props.port =
-			this.props.port ||
-			(window.location.port === "3000" ? 8081 : window.location.port);
-		this.props.ioTimeout = Math.max(this.props.ioTimeout || 20000, 20000);
-		this.props.cmdTimeout = Math.max(this.props.cmdTimeout || 5000, 5000);
-
-		// breaking change. Do not load all objects by default is true
-		this.doNotLoadAllObjects =
-			this.props.doNotLoadAllObjects === undefined
-				? true
-				: this.props.doNotLoadAllObjects;
-		this.doNotLoadACL =
-			this.props.doNotLoadACL === undefined
-				? true
-				: this.props.doNotLoadACL;
+		this.doNotLoadAllObjects = this.props.doNotLoadAllObjects ?? true;
+		this.doNotLoadACL = this.props.doNotLoadACL ?? true;
 
 		this.states = {};
 		this.objects = null;
@@ -107,14 +49,8 @@ export class Connection {
 		});
 
 		this.statesSubscribes = {}; // subscribe for states
-
 		this.objectsSubscribes = {}; // subscribe for objects
-		this.onProgress = this.props.onProgress || function () {};
-		this.onError =
-			this.props.onError ||
-			function (err) {
-				console.error(err);
-			};
+
 		this.loaded = false;
 		this.loadTimer = null;
 		this.loadCounter = 0;
@@ -126,6 +62,72 @@ export class Connection {
 		this._promises = {};
 		this.startSocket();
 	}
+
+	private applyDefaultProps(
+		props: Partial<ConnectionProps>,
+	): ConnectionProps {
+		return {
+			...props,
+			// Define default props that always need to be set
+			protocol: props.protocol || window.location.protocol,
+			host: props.host || window.location.hostname,
+			port:
+				props.port ||
+				(window.location.port === "3000" ? 8081 : window.location.port),
+			ioTimeout: Math.max(props.ioTimeout || 20000, 20000),
+			cmdTimeout: Math.max(props.cmdTimeout || 5000, 5000),
+		};
+	}
+
+	private readonly props: ConnectionProps;
+	private readonly autoSubscribes: string[];
+	private readonly autoSubscribeLog: boolean;
+
+	public doNotLoadAllObjects: boolean;
+	public doNotLoadACL: boolean;
+	public connected: boolean;
+	public waitForRestart: any;
+	public subscribed: boolean;
+	public loaded: boolean;
+	public statesSubscribes: Record<
+		string,
+		{ reg: RegExp; cbs: ioBroker.StateChangeHandler[] }
+	>;
+	public objectsSubscribes: Record<
+		string,
+		{ reg: RegExp; cbs: ioBroker.ObjectChangeHandler[] }
+	>;
+	public objects: any;
+	public states: Record<string, ioBroker.State>;
+	public acl: any;
+	public firstConnect: boolean;
+	public systemLang: ioBroker.Languages;
+	public admin5only: any;
+	public loadCounter: number;
+	public loadTimer: any;
+	public scriptLoadCounter: number;
+	public isSecure: boolean;
+
+	public onConnectionHandlers: ((connected: boolean) => void)[];
+	public onLogHandlers: ((message: string) => void)[];
+
+	private onError(error: any): void {
+		(this.props.onError ?? console.error)(error);
+	}
+
+	private onCmdStdoutHandler?: (id: string, text: string) => void;
+	private onCmdStderrHandler?: (id: string, text: string) => void;
+	private onCmdExitHandler?: (id: string, exitCode: number) => void;
+
+	protected _socket: SocketClient<CustomListenEvents, CustomEmitEvents>;
+	protected _promises: Record<string, Promise<any>>;
+	protected _authTimer: any;
+	protected systemConfig: any;
+
+	private _waitForFirstConnection: Promise<void>;
+	private _waitForFirstConnectionResolve: (
+		value: void | PromiseLike<void>,
+	) => void;
 
 	/**
 	 * Checks if this connection is running in a web adapter and not in an admin.
@@ -218,14 +220,14 @@ export class Connection {
 				);
 			} else {
 				// iobroker websocket waits, till all handlers are installed
-				this._socket.emit("authenticate", (isOk, isSecure) =>
-					this.onPreConnect(isOk, isSecure),
-				);
+				this._socket.emit("authenticate", (isOk, isSecure) => {
+					this.onPreConnect(isOk, isSecure);
+				});
 			}
 		});
 
 		this._socket.on("reconnect", () => {
-			this.onProgress(PROGRESS.READY);
+			this.props.onProgress?.(PROGRESS.READY);
 			this.connected = true;
 
 			if (this.waitForRestart) {
@@ -239,14 +241,14 @@ export class Connection {
 		this._socket.on("disconnect", () => {
 			this.connected = false;
 			this.subscribed = false;
-			this.onProgress(PROGRESS.CONNECTING);
+			this.props.onProgress?.(PROGRESS.CONNECTING);
 			this.onConnectionHandlers.forEach((cb) => cb(false));
 		});
 
 		this._socket.on("reauthenticate", () => this.authenticate());
 
 		this._socket.on("log", (message) => {
-			this.props.onLog && this.props.onLog(message);
+			this.props.onLog?.(message);
 			this.onLogHandlers.forEach((cb) => cb(message));
 		});
 
@@ -277,31 +279,25 @@ export class Connection {
 			}),
 		);
 
-		this._socket.on("objectChange", (id, obj) =>
-			setTimeout(() => this.objectChange(id, obj), 0),
-		);
+		this._socket.on("objectChange", (id, obj) => {
+			setTimeout(() => this.objectChange(id, obj), 0);
+		});
 
-		this._socket.on("stateChange", (id, state) =>
-			setTimeout(() => this.stateChange(id, state), 0),
-		);
+		this._socket.on("stateChange", (id, state) => {
+			setTimeout(() => this.stateChange(id, state), 0);
+		});
 
-		this._socket.on(
-			"cmdStdout",
-			(id, text) =>
-				this.onCmdStdoutHandler && this.onCmdStdoutHandler(id, text),
-		);
+		this._socket.on("cmdStdout", (id, text) => {
+			this.onCmdStdoutHandler?.(id, text);
+		});
 
-		this._socket.on(
-			"cmdStderr",
-			(id, text) =>
-				this.onCmdStderrHandler && this.onCmdStderrHandler(id, text),
-		);
+		this._socket.on("cmdStderr", (id, text) => {
+			this.onCmdStderrHandler?.(id, text);
+		});
 
-		this._socket.on(
-			"cmdExit",
-			(id, exitCode) =>
-				this.onCmdExitHandler && this.onCmdExitHandler(id, exitCode),
-		);
+		this._socket.on("cmdExit", (id, exitCode) => {
+			this.onCmdExitHandler?.(id, exitCode);
+		});
 	}
 
 	/**
@@ -335,7 +331,7 @@ export class Connection {
 					this.onConnect();
 				}
 			} else {
-				this.onProgress(PROGRESS.READY);
+				this.props.onProgress?.(PROGRESS.READY);
 			}
 
 			this._subscribe(true);
@@ -367,7 +363,7 @@ export class Connection {
 	/**
 	 * Called internally.
 	 */
-	private _getUserPermissions(cb?: () => void) {
+	private _getUserPermissions(cb?: GetUserPermissionsCallback) {
 		if (this.doNotLoadACL) {
 			cb?.();
 		} else {
@@ -390,7 +386,7 @@ export class Connection {
 				clearTimeout(this.loadTimer);
 				this.loadTimer = null;
 
-				this.onProgress(PROGRESS.CONNECTED);
+				this.props.onProgress?.(PROGRESS.CONNECTED);
 				this.firstConnect = false;
 
 				this.acl = acl;
@@ -411,7 +407,7 @@ export class Connection {
 						clearTimeout(this.loadTimer);
 						this.loadTimer = null;
 
-						this.onProgress(PROGRESS.CONNECTED);
+						this.props.onProgress?.(PROGRESS.CONNECTED);
 						this.firstConnect = false;
 					}
 
@@ -438,7 +434,7 @@ export class Connection {
 
 					if (!this.doNotLoadAllObjects) {
 						return this.getObjects().then(() => {
-							this.onProgress(PROGRESS.READY);
+							this.props.onProgress?.(PROGRESS.READY);
 							this.props.onReady &&
 								this.props.onReady(this.objects);
 						});
@@ -446,8 +442,8 @@ export class Connection {
 						this.objects = this.admin5only
 							? {}
 							: { "system.config": data };
-						this.onProgress(PROGRESS.READY);
-						this.props.onReady && this.props.onReady(this.objects);
+						this.props.onProgress?.(PROGRESS.READY);
+						this.props.onReady?.(this.objects);
 					}
 					return undefined;
 				})
@@ -705,7 +701,7 @@ export class Connection {
 				this.states = res;
 
 				!disableProgressUpdate &&
-					this.onProgress(PROGRESS.STATES_LOADED);
+					this.props.onProgress?.(PROGRESS.STATES_LOADED);
 				return err ? reject(err) : resolve(this.states);
 			}),
 		);
@@ -728,10 +724,10 @@ export class Connection {
 	}
 
 	/**
-	 * Gets the given binary state.
+	 * Gets the given binary state Base64 encoded.
 	 * @param id The state ID.
 	 */
-	getBinaryState(id: string): Promise<Buffer | undefined> {
+	getBinaryState(id: string): Promise<string | undefined> {
 		if (!this.connected) {
 			return Promise.reject(NOT_CONNECTED);
 		}
@@ -769,13 +765,7 @@ export class Connection {
 	 */
 	setState(
 		id: string,
-		val:
-			| string
-			| number
-			| boolean
-			| ioBroker.State
-			| ioBroker.SettableState
-			| null,
+		val: ioBroker.State | ioBroker.StateValue | ioBroker.SettableState,
 	): Promise<void> {
 		if (!this.connected) {
 			return Promise.reject(NOT_CONNECTED);
@@ -814,7 +804,7 @@ export class Connection {
 					(err, res) => {
 						this.objects = res;
 						disableProgressUpdate &&
-							this.onProgress(PROGRESS.OBJECTS_LOADED);
+							this.props.onProgress?.(PROGRESS.OBJECTS_LOADED);
 						err ? reject(err) : resolve(this.objects);
 					},
 				);
@@ -1447,10 +1437,10 @@ export class Connection {
 	 * @param pattern
 	 * @param type
 	 */
-	getForeignObjects(
+	getForeignObjects<T extends ioBroker.ObjectType>(
 		pattern: string,
-		type: string,
-	): ioBroker.GetObjectsPromise {
+		type: T,
+	): Promise<Record<string, ioBroker.AnyObject & { type: T }>> {
 		if (!this.connected) {
 			return Promise.reject(NOT_CONNECTED);
 		}
@@ -1459,7 +1449,7 @@ export class Connection {
 				"getForeignObjects",
 				pattern || "*",
 				type,
-				(err, states) => (err ? reject(err) : resolve(states)),
+				(err, states) => (err ? reject(err) : resolve(states as any)),
 			),
 		);
 	}

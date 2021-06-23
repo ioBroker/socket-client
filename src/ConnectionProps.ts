@@ -6,15 +6,15 @@ export interface ConnectionProps {
 	/** Automatically subscribe to logging. */
 	autoSubscribeLog?: boolean;
 	/** The protocol to use for the socket.io connection. */
-	protocol?: string;
+	protocol: string;
 	/** The host name to use for the socket.io connection. */
-	host?: string;
+	host: string;
 	/** The port to use for the socket.io connection. */
-	port?: string | number;
+	port: string | number;
 	/** The socket.io connection timeout. */
-	ioTimeout?: number;
+	ioTimeout: number;
 	/** The socket.io command timeout. */
-	cmdTimeout?: number;
+	cmdTimeout: number;
 	/** Flag to indicate if all objects should be loaded or not. Default true (not loaded) */
 	doNotLoadAllObjects?: boolean;
 	/** Flag to indicate if AccessControlList for current user will be loaded or not. Default true (not loaded) */

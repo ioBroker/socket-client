@@ -1,8 +1,8 @@
-import type { Socket } from "socket.io";
+import type { SocketClient } from "./SocketClient";
 
 declare global {
 	interface Window {
-		io: { connect: (name: string, par: any) => Socket };
+		io: { connect: (name: string, par: any) => SocketClient };
 		socketUrl: string;
 		registerSocketOnLoad: (callback: () => void) => void;
 	}
