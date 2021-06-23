@@ -8,11 +8,10 @@ export class AdminConnection extends Connection {
 
 	/**
 	 * Get the stored certificates.
-	 * @param {boolean} [update] Force update.
-	 * @returns {Promise<{name: string; type: 'public' | 'private' | 'chained'}[]>}
+	 * @param update Force update.
 	 */
 	getCertificates(
-		update,
+		update: boolean,
 	): Promise<{ name: string; type: "public" | "private" | "chained" }[]> {
 		if (Connection.isWeb()) {
 			return Promise.reject("Allowed only in admin");
@@ -94,9 +93,8 @@ export class AdminConnection extends Connection {
 
 	/**
 	 * Get the logs from a host (only for admin connection).
-	 * @param {string} host
-	 * @param {number} [linesNumber]
-	 * @returns {Promise<string[]>}
+	 * @param host
+	 * @param linesNumber
 	 */
 	getLogs(host: string, linesNumber: number): Promise<string[]> {
 		if (Connection.isWeb()) {
@@ -120,7 +118,6 @@ export class AdminConnection extends Connection {
 
 	/**
 	 * Get the log files (only for admin connection).
-	 * @returns {Promise<string[]>}
 	 */
 	getLogsFiles(host): Promise<string[]> {
 		if (Connection.isWeb()) {
@@ -138,8 +135,7 @@ export class AdminConnection extends Connection {
 
 	/**
 	 * Delete the logs from a host (only for admin connection).
-	 * @param {string} host
-	 * @returns {Promise<void>}
+	 * @param host
 	 */
 	delLogs(host: string): Promise<void> {
 		if (Connection.isWeb()) {
@@ -157,9 +153,8 @@ export class AdminConnection extends Connection {
 
 	/**
 	 * Delete a file of an adapter.
-	 * @param {string} adapter The adapter name.
-	 * @param {string} fileName The file name.
-	 * @returns {Promise<void>}
+	 * @param adapter The adapter name.
+	 * @param fileName The file name.
 	 */
 	deleteFile(adapter: string, fileName: string): Promise<void> {
 		if (Connection.isWeb()) {
@@ -177,9 +172,8 @@ export class AdminConnection extends Connection {
 
 	/**
 	 * Delete a folder of an adapter.
-	 * @param {string} adapter The adapter name.
-	 * @param {string} folderName The folder name.
-	 * @returns {Promise<void>}
+	 * @param adapter The adapter name.
+	 * @param folderName The folder name.
 	 */
 	deleteFolder(adapter: string, folderName: string): Promise<void> {
 		if (Connection.isWeb()) {
@@ -197,8 +191,7 @@ export class AdminConnection extends Connection {
 
 	/**
 	 * Get the list of all hosts.
-	 * @param {boolean} [update] Force update.
-	 * @returns {Promise<ioBroker.Object[]>}
+	 * @param update Force update.
 	 */
 	getHosts(update: boolean): Promise<ioBroker.Object[]> {
 		if (Connection.isWeb()) {
@@ -233,8 +226,7 @@ export class AdminConnection extends Connection {
 
 	/**
 	 * Get the list of all users.
-	 * @param {boolean} [update] Force update.
-	 * @returns {Promise<ioBroker.Object[]>}
+	 * @param update Force update.
 	 */
 	getUsers(update: boolean): Promise<ioBroker.Object[]> {
 		if (Connection.isWeb()) {
@@ -268,8 +260,7 @@ export class AdminConnection extends Connection {
 
 	/**
 	 * Get the list of all groups.
-	 * @param {boolean} [update] Force update.
-	 * @returns {Promise<ioBroker.Object[]>}
+	 * @param update Force update.
 	 */
 	getGroups(update: boolean): Promise<ioBroker.Object[]> {
 		if (Connection.isWeb()) {
@@ -304,8 +295,8 @@ export class AdminConnection extends Connection {
 	/**
 	 * Called internally.
 	 * @private
-	 * @param {any[]} objs
-	 * @param {(err?: any) => void} cb
+	 * @param objs
+	 * @param cb
 	 */
 	private _renameGroups(objs: any[], cb: (err?: any) => void) {
 		if (!objs || !objs.length) {
@@ -325,9 +316,9 @@ export class AdminConnection extends Connection {
 
 	/**
 	 * Rename a group.
-	 * @param {string} id The id.
-	 * @param {string} newId The new id.
-	 * @param {string | { [lang in ioBroker.Languages]?: string; }} newName The new name.
+	 * @param id The id.
+	 * @param newId The new id.
+	 * @param newName The new name.
 	 */
 	renameGroup(
 		id: string,
@@ -377,12 +368,11 @@ export class AdminConnection extends Connection {
 
 	/**
 	 * Get the host information.
-	 * @param {string} host
-	 * @param {boolean} [update] Force update.
-	 * @param {number} [timeoutMs] optional read timeout.
-	 * @returns {Promise<any>}
+	 * @param host
+	 * @param update Force update.
+	 * @param timeoutMs optional read timeout.
 	 */
-	getHostInfo(host, update, timeoutMs) {
+	getHostInfo(host: string, update: boolean, timeoutMs: number): Promise<any> {
 		if (Connection.isWeb()) {
 			return Promise.reject("Allowed only in admin");
 		}
@@ -432,12 +422,11 @@ export class AdminConnection extends Connection {
 
 	/**
 	 * Get the host information (short version).
-	 * @param {string} host
-	 * @param {boolean} [update] Force update.
-	 * @param {number} [timeoutMs] optional read timeout.
-	 * @returns {Promise<any>}
+	 * @param host
+	 * @param update Force update.
+	 * @param timeoutMs optional read timeout.
 	 */
-	getHostInfoShort(host, update, timeoutMs) {
+	getHostInfoShort(host: string, update: boolean, timeoutMs: number): Promise<any> {
 		if (Connection.isWeb()) {
 			return Promise.reject("Allowed only in admin");
 		}
@@ -489,13 +478,12 @@ export class AdminConnection extends Connection {
 
 	/**
 	 * Get the repository.
-	 * @param {string} host
-	 * @param {any} [args]
-	 * @param {boolean} [update] Force update.
-	 * @param {number} [timeoutMs] timeout in ms.
-	 * @returns {Promise<any>}
+	 * @param host
+	 * @param args
+	 * @param update Force update.
+	 * @param timeoutMs timeout in ms.
 	 */
-	getRepository(host, args, update, timeoutMs) {
+	getRepository(host: string, args: any, update: boolean, timeoutMs: number): Promise<any> {
 		if (Connection.isWeb()) {
 			return Promise.reject("Allowed only in admin");
 		}
@@ -545,17 +533,15 @@ export class AdminConnection extends Connection {
 
 	/**
 	 * Get the installed.
-	 * @param {string} host
-	 * @param {boolean} [update] Force update.
-	 * @param {number} [cmdTimeout] timeout in ms (optional)
-	 * @returns {Promise<any>}
+	 * @param host
+	 * @param update Force update.
+	 * @param cmdTimeout timeout in ms (optional)
 	 */
-	getInstalled(host, update, cmdTimeout) {
+	getInstalled(host: string, update: boolean, cmdTimeout: number): Promise<any> {
 		if (Connection.isWeb()) {
 			return Promise.reject("Allowed only in admin");
 		}
 
-		//@ts-ignore
 		this._promises.installed = this._promises.installed || {};
 
 		if (!update && this._promises.installed[host]) {
@@ -604,13 +590,12 @@ export class AdminConnection extends Connection {
 
 	/**
 	 * Execute a command on a host.
-	 * @param {string} host The host name.
-	 * @param {string} cmd The command.
-	 * @param {string} cmdId The command ID.
-	 * @param {number} cmdTimeout Timeout of command in ms
-	 * @returns {Promise<void>}
+	 * @param host The host name.
+	 * @param cmd The command.
+	 * @param cmdId The command ID.
+	 * @param cmdTimeout Timeout of command in ms
 	 */
-	cmdExec(host, cmd, cmdId, cmdTimeout) {
+	cmdExec(host: string, cmd: string, cmdId: string, cmdTimeout: number): Promise<void> {
 		if (Connection.isWeb()) {
 			return Promise.reject("Allowed only in admin");
 		}
@@ -648,10 +633,9 @@ export class AdminConnection extends Connection {
 
 	/**
 	 * Read the base settings of a given host.
-	 * @param {string} host
-	 * @returns {Promise<any>}
+	 * @param host
 	 */
-	readBaseSettings(host) {
+	readBaseSettings(host: string): Promise<any> {
 		if (Connection.isWeb()) {
 			return Promise.reject("Allowed only in admin");
 		}
@@ -703,11 +687,10 @@ export class AdminConnection extends Connection {
 
 	/**
 	 * Write the base settings of a given host.
-	 * @param {string} host
-	 * @param {any} config
-	 * @returns {Promise<any>}
+	 * @param host
+	 * @param config
 	 */
-	writeBaseSettings(host, config) {
+	writeBaseSettings(host: string, config: any): Promise<any> {
 		if (Connection.isWeb()) {
 			return Promise.reject("Allowed only in admin");
 		}
@@ -755,10 +738,9 @@ export class AdminConnection extends Connection {
 
 	/**
 	 * Send command to restart the iobroker on host
-	 * @param {string} host
-	 * @returns {Promise<any>}
+	 * @param host
 	 */
-	restartController(host) {
+	restartController(host: string): Promise<any> {
 		if (Connection.isWeb()) {
 			return Promise.reject("Allowed only in admin");
 		}
@@ -777,11 +759,10 @@ export class AdminConnection extends Connection {
 
 	/**
 	 * Read statistics information from host
-	 * @param {string} host
-	 * @param {string} typeOfDiag one of none, normal, no-city, extended
-	 * @returns {Promise<any>}
+	 * @param host
+	 * @param typeOfDiag one of none, normal, no-city, extended
 	 */
-	getDiagData(host, typeOfDiag) {
+	getDiagData(host: string, typeOfDiag: string): Promise<any> {
 		if (Connection.isWeb()) {
 			return Promise.reject("Allowed only in admin");
 		}
@@ -798,11 +779,10 @@ export class AdminConnection extends Connection {
 
 	/**
 	 * Change the password of the given user.
-	 * @param {string} user
-	 * @param {string} password
-	 * @returns {Promise<void>}
+	 * @param user
+	 * @param password
 	 */
-	changePassword(user, password) {
+	changePassword(user: string, password: string): Promise<void> {
 		if (Connection.isWeb()) {
 			return Promise.reject("Allowed only in admin");
 		}
@@ -815,11 +795,10 @@ export class AdminConnection extends Connection {
 
 	/**
 	 * Get the IP addresses of the given host.
-	 * @param {string} host
-	 * @param {boolean} [update] Force update.
-	 * @returns {Promise<string[]>}
+	 * @param host
+	 * @param update Force update.
 	 */
-	getIpAddresses(host, update) {
+	getIpAddresses(host: string, update: boolean): Promise<string[]> {
 		if (Connection.isWeb()) {
 			return Promise.reject("Allowed only in admin");
 		}
@@ -839,11 +818,10 @@ export class AdminConnection extends Connection {
 
 	/**
 	 * Get the IP addresses with interface names of the given host or find host by IP.
-	 * @param {string} ipOrHostName
-	 * @param {boolean} [update] Force update.
-	 * @returns {Promise<any[<name, address, family>]>}
+	 * @param ipOrHostName
+	 * @param update Force update.
 	 */
-	getHostByIp(ipOrHostName, update) {
+	getHostByIp(ipOrHostName: string, update: boolean): Promise<any[<name, address, family>() => ]> {
 		if (Connection.isWeb()) {
 			return Promise.reject("Allowed only in admin");
 		}
@@ -922,10 +900,9 @@ export class AdminConnection extends Connection {
 
 	/**
 	 * Encrypt a text
-	 * @param {string} text
-	 * @returns {Promise<string>}
+	 * @param text
 	 */
-	encrypt(text) {
+	encrypt(text: string): Promise<string> {
 		if (Connection.isWeb()) {
 			return Promise.reject("Allowed only in admin");
 		}
@@ -938,10 +915,9 @@ export class AdminConnection extends Connection {
 
 	/**
 	 * Decrypt a text
-	 * @param {string} encryptedText
-	 * @returns {Promise<string>}
+	 * @param encryptedText
 	 */
-	decrypt(encryptedText) {
+	decrypt(encryptedText: string): Promise<string> {
 		if (Connection.isWeb()) {
 			return Promise.reject("Allowed only in admin");
 		}
@@ -954,12 +930,11 @@ export class AdminConnection extends Connection {
 
 	/**
 	 * Change access rights for file
-	 * @param {string} [adapter] adapter name
-	 * @param {string} [filename] file name with full path. it could be like vis.0/*
-	 * @param {object} [options] like {mode: 0x644}
-	 * @returns {Promise<{entries: array}>}
+	 * @param adapter adapter name
+	 * @param filename file name with full path. it could be like vis.0/*
+	 * @param options like {mode: 0x644}
 	 */
-	chmodFile(adapter, filename, options) {
+	chmodFile(adapter: string, filename: string, options: object): Promise<{ entries: Array<any>; }> {
 		if (Connection.isWeb()) {
 			return Promise.reject("Allowed only in admin");
 		}
@@ -981,12 +956,11 @@ export class AdminConnection extends Connection {
 
 	/**
 	 * Change owner or/and owner group for file
-	 * @param {string} [adapter] adapter name
-	 * @param {string} [filename] file name with full path. it could be like vis.0/*
-	 * @param {object} [options] like {owner: 'newOwner', ownerGroup: 'newGroup'}
-	 * @returns {Promise<{entries: array}>}
+	 * @param adapter adapter name
+	 * @param filename file name with full path. it could be like vis.0/*
+	 * @param options like {owner: 'newOwner', ownerGroup: 'newGroup'}
 	 */
-	chownFile(adapter, filename, options) {
+	chownFile(adapter: string, filename: string, options: object): Promise<{ entries: Array<any>; }> {
 		if (Connection.isWeb()) {
 			return Promise.reject("Allowed only in admin");
 		}
@@ -1008,11 +982,10 @@ export class AdminConnection extends Connection {
 
 	/**
 	 * Get the alarm notifications from a host (only for admin connection).
-	 * @param {string} host
-	 * @param {string} [category] - optional
-	 * @returns {Promise<any>}
+	 * @param host
+	 * @param category - optional
 	 */
-	getNotifications(host, category) {
+	getNotifications(host: string, category: string): Promise<any> {
 		if (Connection.isWeb()) {
 			return Promise.reject("Allowed only in admin");
 		}
@@ -1033,11 +1006,10 @@ export class AdminConnection extends Connection {
 
 	/**
 	 * Clear the alarm notifications on a host (only for admin connection).
-	 * @param {string} host
-	 * @param {string} [category] - optional
-	 * @returns {Promise<any>}
+	 * @param host
+	 * @param category - optional
 	 */
-	clearNotifications(host, category) {
+	clearNotifications(host: string, category: string): Promise<any> {
 		if (Connection.isWeb()) {
 			return Promise.reject("Allowed only in admin");
 		}
@@ -1058,9 +1030,8 @@ export class AdminConnection extends Connection {
 
 	/**
 	 * Read if only easy mode is allowed  (only for admin connection).
-	 * @returns {Promise<boolean>}
 	 */
-	getIsEasyModeStrict() {
+	getIsEasyModeStrict(): Promise<boolean> {
 		if (Connection.isWeb()) {
 			return Promise.reject("Allowed only in admin");
 		}
@@ -1076,7 +1047,6 @@ export class AdminConnection extends Connection {
 
 	/**
 	 * Read easy mode configuration (only for admin connection).
-	 * @returns {Promise<any>}
 	 */
 	getEasyMode(): Promise<any> {
 		if (Connection.isWeb()) {
@@ -1094,7 +1064,6 @@ export class AdminConnection extends Connection {
 
 	/**
 	 * Read adapter ratings
-	 * @returns {Promise<any>}
 	 */
 	getRatings(update): Promise<any> {
 		if (Connection.isWeb()) {
@@ -1143,9 +1112,8 @@ export class AdminConnection extends Connection {
 
 	/**
 	 * Read current web, socketio or admin namespace, like admin.0
-	 * @returns {Promise<string>}
 	 */
-	getCurrentInstance() {
+	getCurrentInstance(): Promise<string> {
 		if (Connection.isWeb()) {
 			return Promise.reject("Allowed only in admin");
 		}
@@ -1167,16 +1135,14 @@ export class AdminConnection extends Connection {
 
 	/**
 	 * Get all adapter instances.
-	 * @param {boolean} [update] Force update.
-	 * @returns {Promise<ioBroker.Object[]>}
+	 * @param update Force update.
 	 */
 	/**
 	 * Get all instances of the given adapter.
-	 * @param {string} adapter The name of the adapter.
-	 * @param {boolean} [update] Force update.
-	 * @returns {Promise<ioBroker.Object[]>}
+	 * @param adapter The name of the adapter.
+	 * @param update Force update.
 	 */
-	getAdapterInstances(adapter, update) {
+	getAdapterInstances(adapter: string, update: boolean): Promise<ioBroker.Object[]> {
 		if (Connection.isWeb()) {
 			return Promise.reject("Allowed only in admin");
 		}
@@ -1210,16 +1176,14 @@ export class AdminConnection extends Connection {
 
 	/**
 	 * Get all adapters.
-	 * @param {boolean} [update] Force update.
-	 * @returns {Promise<ioBroker.Object[]>}
+	 * @param update Force update.
 	 */
 	/**
 	 * Get adapters with the given name.
-	 * @param {string} adapter The name of the adapter.
-	 * @param {boolean} [update] Force update.
-	 * @returns {Promise<ioBroker.Object[]>}
+	 * @param adapter The name of the adapter.
+	 * @param update Force update.
 	 */
-	getAdapters(adapter, update) {
+	getAdapters(adapter: string, update: boolean): Promise<ioBroker.Object[]> {
 		if (Connection.isWeb()) {
 			return Promise.reject("Allowed only in admin");
 		}
@@ -1296,7 +1260,6 @@ export class AdminConnection extends Connection {
 			return Promise.reject("Allowed only in admin");
 		}
 
-		//@ts-ignore
 		this._promises.installedCompact = this._promises.installedCompact || {};
 
 		if (!update && this._promises.installedCompact[host]) {
@@ -1341,10 +1304,9 @@ export class AdminConnection extends Connection {
 
 	/**
 	 * Get the repository in compact form (only version and icon).
-	 * @param {string} host
-	 * @param {boolean} [update] Force update.
-	 * @param {number} [timeoutMs] timeout in ms.
-	 * @returns {Promise<any>}
+	 * @param host
+	 * @param update Force update.
+	 * @param timeoutMs timeout in ms.
 	 */
 	getCompactRepository(
 		host: string,
@@ -1394,8 +1356,7 @@ export class AdminConnection extends Connection {
 
 	/**
 	 * Get the list of all hosts in compact form (only _id, common.name, common.icon, common.color, native.hardware.networkInterfaces)
-	 * @param {boolean} [update] Force update.
-	 * @returns {Promise<ioBroker.Object[]>}
+	 * @param update Force update.
 	 */
 	getCompactHosts(update: boolean): Promise<ioBroker.Object[]> {
 		if (Connection.isWeb()) {

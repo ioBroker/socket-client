@@ -2,16 +2,16 @@ import type { Socket } from "socket.io";
 import type { ConnectionProps } from "./ConnectionProps";
 
 /** Possible progress states. */
-export const PROGRESS = {
+export enum PROGRESS {
 	/** The socket is connecting. */
-	CONNECTING: 0,
+	CONNECTING = 0,
 	/** The socket is successfully connected. */
-	CONNECTED: 1,
+	CONNECTED = 1,
 	/** All objects are loaded. */
-	OBJECTS_LOADED: 2,
+	OBJECTS_LOADED = 2,
 	/** The socket is ready for use. */
-	READY: 3,
-};
+	READY = 3,
+}
 
 export const PERMISSION_ERROR = "permissionError";
 export const NOT_CONNECTED = "notConnectedError";
@@ -131,15 +131,14 @@ export class Connection {
 	 * Checks if this connection is running in a web adapter and not in an admin.
 	 * @returns {boolean} True if running in a web adapter or in a socketio adapter.
 	 */
-	static isWeb() {
+	static isWeb(): boolean {
 		return window.socketUrl !== undefined;
 	}
 
 	/**
 	 * Starts the socket.io connection.
-	 * @returns {void}
 	 */
-	startSocket() {
+	startSocket(): void {
 		// if socket io is not yet loaded
 		if (typeof window.io === "undefined") {
 			// if in index.html the onLoad function not defined
@@ -307,9 +306,8 @@ export class Connection {
 
 	/**
 	 * Called internally.
-	 * @private
-	 * @param {boolean} isOk
-	 * @param {boolean} isSecure
+	 * @param isOk
+	 * @param isSecure
 	 */
 	private onPreConnect(isOk: boolean, isSecure: boolean) {
 		if (this._authTimer) {
@@ -368,11 +366,10 @@ export class Connection {
 
 	/**
 	 * Called internally.
-	 * @private
 	 */
-	private _getUserPermissions(cb) {
+	private _getUserPermissions(cb?: () => void) {
 		if (this.doNotLoadACL) {
-			return cb && cb();
+			cb?.();
 		} else {
 			this._socket.emit("getUserPermissions", cb);
 		}
@@ -380,7 +377,6 @@ export class Connection {
 
 	/**
 	 * Called internally.
-	 * @private
 	 */
 	private onConnect() {
 		this._getUserPermissions((err, acl) => {
@@ -461,7 +457,6 @@ export class Connection {
 
 	/**
 	 * Called internally.
-	 * @private
 	 */
 	private authenticate() {
 		if (window.location.search.includes("&href=")) {
@@ -477,20 +472,20 @@ export class Connection {
 
 	/**
 	 * Subscribe to changes of the given state.
-	 * @param {string} id The ioBroker state ID.
-	 * @param {ioBroker.StateChangeHandler} cb The callback.
+	 * @param id The ioBroker state ID.
+	 * @param cb The callback.
 	 */
 	/**
 	 * Subscribe to changes of the given state.
-	 * @param {string} id The ioBroker state ID.
-	 * @param {boolean} binary Set to true if the given state is binary and requires Base64 decoding.
-	 * @param {ioBroker.StateChangeHandler} cb The callback.
+	 * @param id The ioBroker state ID.
+	 * @param binary Set to true if the given state is binary and requires Base64 decoding.
+	 * @param cb The callback.
 	 */
 	subscribeState(
 		id: string,
 		binary: ioBroker.StateChangeHandler | boolean,
 		cb: ioBroker.StateChangeHandler,
-	) {
+	): void {
 		if (typeof binary === "function") {
 			cb = binary;
 			binary = false;
@@ -545,14 +540,14 @@ export class Connection {
 
 	/**
 	 * Unsubscribes all callbacks from changes of the given state.
-	 * @param {string} id The ioBroker state ID.
+	 * @param id The ioBroker state ID.
 	 */
 	/**
 	 * Unsubscribes the given callback from changes of the given state.
-	 * @param {string} id The ioBroker state ID.
-	 * @param {ioBroker.StateChangeHandler} cb The callback.
+	 * @param id The ioBroker state ID.
+	 * @param cb The callback.
 	 */
-	unsubscribeState(id: string, cb?: ioBroker.StateChangeHandler) {
+	unsubscribeState(id: string, cb?: ioBroker.StateChangeHandler): void {
 		if (this.statesSubscribes[id]) {
 			if (cb) {
 				const pos = this.statesSubscribes[id].cbs.indexOf(cb);
@@ -573,9 +568,8 @@ export class Connection {
 
 	/**
 	 * Subscribe to changes of the given object.
-	 * @param {string} id The ioBroker object ID.
-	 * @param {ioBroker.ObjectChangeHandler} cb The callback.
-	 * @returns {Promise<void>}
+	 * @param id The ioBroker object ID.
+	 * @param cb The callback.
 	 */
 	subscribeObject(
 		id: string,
@@ -598,14 +592,12 @@ export class Connection {
 
 	/**
 	 * Unsubscribes all callbacks from changes of the given object.
-	 * @param {string} id The ioBroker object ID.
-	 * @returns {Promise<void>}
+	 * @param id The ioBroker object ID.
 	 */
 	/**
 	 * Unsubscribes the given callback from changes of the given object.
-	 * @param {string} id The ioBroker object ID.
-	 * @param {ioBroker.ObjectChangeHandler} cb The callback.
-	 * @returns {Promise<void>}
+	 * @param id The ioBroker object ID.
+	 * @param cb The callback.
 	 */
 	unsubscribeObject(
 		id: string,
@@ -633,18 +625,17 @@ export class Connection {
 
 	/**
 	 * Called internally.
-	 * @private
-	 * @param {string} id
-	 * @param {ioBroker.Object | null | undefined} obj
+	 * @param id
+	 * @param obj
 	 */
-	private objectChange(id, obj) {
+	private objectChange(id: string, obj: ioBroker.Object | null | undefined) {
 		// update main.objects cache
 		if (!this.objects) {
 			return;
 		}
 
 		/** @type {import("./types").OldObject} */
-		let oldObj;
+		let oldObj: import("./types").OldObject;
 
 		let changed = false;
 		if (obj) {
@@ -671,7 +662,6 @@ export class Connection {
 
 		Object.keys(this.objectsSubscribes).forEach((_id) => {
 			if (_id === id || this.objectsSubscribes[_id].reg.test(id)) {
-				//@ts-ignore
 				this.objectsSubscribes[_id].cbs.forEach((cb) =>
 					cb(id, obj, oldObj),
 				);
@@ -685,11 +675,10 @@ export class Connection {
 
 	/**
 	 * Called internally.
-	 * @private
-	 * @param {string} id
-	 * @param {ioBroker.State | null | undefined} state
+	 * @param id
+	 * @param state
 	 */
-	private stateChange(id, state) {
+	private stateChange(id: string, state: ioBroker.State | null | undefined) {
 		for (const task in this.statesSubscribes) {
 			if (
 				this.statesSubscribes.hasOwnProperty(task) &&
@@ -702,8 +691,7 @@ export class Connection {
 
 	/**
 	 * Gets all states.
-	 * @param {boolean} disableProgressUpdate don't call onProgress() when done
-	 * @returns {Promise<Record<string, ioBroker.State>>}
+	 * @param disableProgressUpdate don't call onProgress() when done
 	 */
 	getStates(
 		disableProgressUpdate?: boolean,
@@ -715,7 +703,7 @@ export class Connection {
 		return new Promise((resolve, reject) =>
 			this._socket.emit("getStates", (err, res) => {
 				this.states = res;
-				//@ts-ignore
+
 				!disableProgressUpdate &&
 					this.onProgress(PROGRESS.STATES_LOADED);
 				return err ? reject(err) : resolve(this.states);
@@ -725,8 +713,7 @@ export class Connection {
 
 	/**
 	 * Gets the given state.
-	 * @param {string} id The state ID.
-	 * @returns {Promise<ioBroker.State | null | undefined>}
+	 * @param id The state ID.
 	 */
 	getState(id: string): Promise<ioBroker.State | null | undefined> {
 		if (!this.connected) {
@@ -742,8 +729,7 @@ export class Connection {
 
 	/**
 	 * Gets the given binary state.
-	 * @param {string} id The state ID.
-	 * @returns {Promise<Buffer | undefined>}
+	 * @param id The state ID.
 	 */
 	getBinaryState(id: string): Promise<Buffer | undefined> {
 		if (!this.connected) {
@@ -760,9 +746,8 @@ export class Connection {
 
 	/**
 	 * Sets the given binary state.
-	 * @param {string} id The state ID.
-	 * @param {string} base64 The Base64 encoded binary data.
-	 * @returns {Promise<void>}
+	 * @param id The state ID.
+	 * @param base64 The Base64 encoded binary data.
 	 */
 	setBinaryState(id: string, base64: string): Promise<void> {
 		if (!this.connected) {
@@ -779,9 +764,8 @@ export class Connection {
 
 	/**
 	 * Sets the given state value.
-	 * @param {string} id The state ID.
-	 * @param {string | number | boolean | ioBroker.State | ioBroker.SettableState | null} val The state value.
-	 * @returns {Promise<void>}
+	 * @param id The state ID.
+	 * @param val The state value.
 	 */
 	setState(
 		id: string,
@@ -806,14 +790,12 @@ export class Connection {
 
 	/**
 	 * Gets all objects.
-	 * @param {(objects?: Record<string, ioBroker.Object>) => void} update Callback that is executed when all objects are retrieved.
-	 * @returns {void}
+	 * @param update Callback that is executed when all objects are retrieved.
 	 */
 	/**
 	 * Gets all objects.
-	 * @param {boolean} update Set to true to retrieve all objects from the server (instead of using the local cache).
-	 * @param {boolean} disableProgressUpdate don't call onProgress() when done
-	 * @returns {Promise<Record<string, ioBroker.Object>> | undefined}
+	 * @param update Set to true to retrieve all objects from the server (instead of using the local cache).
+	 * @param disableProgressUpdate don't call onProgress() when done
 	 */
 	getObjects(
 		update?: ((par?: any) => void) | boolean,
@@ -842,10 +824,9 @@ export class Connection {
 
 	/**
 	 * Called internally.
-	 * @private
-	 * @param {boolean} isEnable
+	 * @param isEnable
 	 */
-	private _subscribe(isEnable) {
+	private _subscribe(isEnable: boolean) {
 		if (isEnable && !this.subscribed) {
 			this.subscribed = true;
 			this.autoSubscribes.forEach((id) =>
@@ -882,10 +863,9 @@ export class Connection {
 
 	/**
 	 * Requests log updates.
-	 * @param {boolean} isEnabled Set to true to get logs.
-	 * @returns {Promise<void>}
+	 * @param isEnabled Set to true to get logs.
 	 */
-	requireLog(isEnabled) {
+	requireLog(isEnabled: boolean): Promise<void> {
 		if (!this.connected) {
 			return Promise.reject(NOT_CONNECTED);
 		}
@@ -898,9 +878,8 @@ export class Connection {
 
 	/**
 	 * Deletes the given object.
-	 * @param {string} id The object ID.
-	 * @param {boolean} maintenance Force deletion of non conform IDs.
-	 * @returns {Promise<void>}
+	 * @param id The object ID.
+	 * @param maintenance Force deletion of non conform IDs.
 	 */
 	delObject(id: string, maintenance?: boolean): Promise<void> {
 		if (!this.connected) {
@@ -918,9 +897,8 @@ export class Connection {
 
 	/**
 	 * Deletes the given object and all its children.
-	 * @param {string} id The object ID.
-	 * @param {boolean} maintenance Force deletion of non conform IDs.
-	 * @returns {Promise<void>}
+	 * @param id The object ID.
+	 * @param maintenance Force deletion of non conform IDs.
 	 */
 	delObjects(id: string, maintenance: boolean): Promise<void> {
 		if (!this.connected) {
@@ -938,9 +916,8 @@ export class Connection {
 
 	/**
 	 * Sets the object.
-	 * @param {string} id The object ID.
-	 * @param {ioBroker.SettableObject} obj The object.
-	 * @returns {Promise<void>}
+	 * @param id The object ID.
+	 * @param obj The object.
 	 */
 	setObject(id: string, obj: ioBroker.SettableObject): Promise<void> {
 		if (!this.connected) {
@@ -972,7 +949,7 @@ export class Connection {
 
 	/**
 	 * Gets the object with the given id from the server.
-	 * @param {string} id The object ID.
+	 * @param id The object ID.
 	 * @returns {ioBroker.GetObjectPromise} The object.
 	 */
 	getObject(id: string): ioBroker.GetObjectPromise {
@@ -988,12 +965,15 @@ export class Connection {
 
 	/**
 	 * Sends a message to a specific instance or all instances of some specific adapter.
-	 * @param {string} instance The instance to send this message to.
-	 * @param {string} [command] Command name of the target instance.
-	 * @param {ioBroker.MessagePayload} [data] The message data to send.
-	 * @returns {Promise<ioBroker.Message | undefined>}
+	 * @param instance The instance to send this message to.
+	 * @param command Command name of the target instance.
+	 * @param data The message data to send.
 	 */
-	sendTo(instance, command, data) {
+	sendTo(
+		instance: string,
+		command: string,
+		data: ioBroker.MessagePayload,
+	): Promise<ioBroker.Message | undefined> {
 		if (!this.connected) {
 			return Promise.reject(NOT_CONNECTED);
 		}
@@ -1006,10 +986,10 @@ export class Connection {
 
 	/**
 	 * Extend an object and create it if it might not exist.
-	 * @param {string} id The id.
-	 * @param {ioBroker.PartialObject} obj The object.
+	 * @param id The id.
+	 * @param obj The object.
 	 */
-	extendObject(id, obj) {
+	extendObject(id: string, obj: ioBroker.PartialObject): Promise<void> {
 		if (!this.connected) {
 			return Promise.reject(NOT_CONNECTED);
 		}
@@ -1035,95 +1015,100 @@ export class Connection {
 
 	/**
 	 * Register a handler for log messages.
-	 * @param {(message: string) => void} handler The handler.
+	 * @param handler The handler.
 	 */
-	registerLogHandler(handler) {
+	registerLogHandler(handler: (message: string) => void): void {
 		!this.onLogHandlers.includes(handler) &&
 			this.onLogHandlers.push(handler);
 	}
 
 	/**
 	 * Unregister a handler for log messages.
-	 * @param {(message: string) => void} handler The handler.
+	 * @param handler The handler.
 	 */
-	unregisterLogHandler(handler) {
+	unregisterLogHandler(handler: (message: string) => void): void {
 		const pos = this.onLogHandlers.indexOf(handler);
 		pos !== -1 && this.onLogHandlers.splice(pos, 1);
 	}
 
 	/**
 	 * Register a handler for the connection state.
-	 * @param {(connected: boolean) => void} handler The handler.
+	 * @param handler The handler.
 	 */
-	registerConnectionHandler(handler) {
+	registerConnectionHandler(handler: (connected: boolean) => void): void {
 		!this.onConnectionHandlers.includes(handler) &&
 			this.onConnectionHandlers.push(handler);
 	}
 
 	/**
 	 * Unregister a handler for the connection state.
-	 * @param {(connected: boolean) => void} handler The handler.
+	 * @param handler The handler.
 	 */
-	unregisterConnectionHandler(handler) {
+	unregisterConnectionHandler(handler: (connected: boolean) => void): void {
 		const pos = this.onConnectionHandlers.indexOf(handler);
 		pos !== -1 && this.onConnectionHandlers.splice(pos, 1);
 	}
 
 	/**
 	 * Set the handler for standard output of a command.
-	 * @param {(id: string, text: string) => void} handler The handler.
+	 * @param handler The handler.
 	 */
-	registerCmdStdoutHandler(handler: (id: string, text: string) => void) {
+	registerCmdStdoutHandler(
+		handler: (id: string, text: string) => void,
+	): void {
 		this.onCmdStdoutHandler = handler;
 	}
 
 	/**
 	 * Unset the handler for standard output of a command.
-	 * @param {(id: string, text: string) => void} handler The handler.
 	 */
-	unregisterCmdStdoutHandler(handler) {
+	unregisterCmdStdoutHandler(): void {
 		this.onCmdStdoutHandler = null;
 	}
 
 	/**
 	 * Set the handler for standard error of a command.
-	 * @param {(id: string, text: string) => void} handler The handler.
+	 * @param handler The handler.
 	 */
-	registerCmdStderrHandler(handler: (id: string, text: string) => void) {
+	registerCmdStderrHandler(
+		handler: (id: string, text: string) => void,
+	): void {
 		this.onCmdStderrHandler = handler;
 	}
 
 	/**
 	 * Unset the handler for standard error of a command.
-	 * @param {(id: string, text: string) => void} handler The handler.
 	 */
-	unregisterCmdStderrHandler(handler) {
+	unregisterCmdStderrHandler(): void {
 		this.onCmdStderrHandler = null;
 	}
 
 	/**
 	 * Set the handler for exit of a command.
-	 * @param {(id: string, exitCode: number) => void} handler The handler.
+	 * @param handler The handler.
 	 */
-	registerCmdExitHandler(handler: (id: string, exitCode: number) => void) {
+	registerCmdExitHandler(
+		handler: (id: string, exitCode: number) => void,
+	): void {
 		this.onCmdExitHandler = handler;
 	}
 
 	/**
 	 * Unset the handler for exit of a command.
-	 * @param {(id: string, exitCode: number) => void} handler The handler.
 	 */
-	unregisterCmdExitHandler(handler) {
+	unregisterCmdExitHandler(): void {
 		this.onCmdExitHandler = null;
 	}
 
 	/**
 	 * Get all enums with the given name.
-	 * @param {string} [_enum] The name of the enum
-	 * @param {boolean} [update] Force update.
-	 * @returns {Promise<Record<string, ioBroker.Object>>}
+	 * @param _enum The name of the enum
+	 * @param update Force update.
 	 */
-	getEnums(_enum, update) {
+	getEnums(
+		_enum: string,
+		update: boolean,
+	): Promise<Record<string, ioBroker.Object>> {
 		if (!update && this._promises["enums_" + (_enum || "all")]) {
 			return this._promises["enums_" + (_enum || "all")];
 		}
@@ -1168,12 +1153,15 @@ export class Connection {
 
 	/**
 	 * Query a predefined object view.
-	 * @param {string} start The start ID.
-	 * @param {string} end The end ID.
-	 * @param {string} type The type of object.
-	 * @returns {Promise<Record<string, ioBroker.Object>>}
+	 * @param start The start ID.
+	 * @param end The end ID.
+	 * @param type The type of object.
 	 */
-	getObjectView(start, end, type) {
+	getObjectView(
+		start: string,
+		end: string,
+		type: string,
+	): Promise<Record<string, ioBroker.Object>> {
 		if (!this.connected) {
 			return Promise.reject(NOT_CONNECTED);
 		}
@@ -1206,9 +1194,8 @@ export class Connection {
 
 	/**
 	 * Read the meta items.
-	 * @returns {Promise<ioBroker.Object[]>}
 	 */
-	readMetaItems() {
+	readMetaItems(): Promise<ioBroker.Object[]> {
 		if (!this.connected) {
 			return Promise.reject(NOT_CONNECTED);
 		}
@@ -1230,11 +1217,13 @@ export class Connection {
 
 	/**
 	 * Read the directory of an adapter.
-	 * @param {string} adapter The adapter name.
-	 * @param {string} fileName The directory name.
-	 * @returns {Promise<ioBroker.ReadDirResult[]>}
+	 * @param adapter The adapter name.
+	 * @param fileName The directory name.
 	 */
-	readDir(adapter, fileName) {
+	readDir(
+		adapter: string,
+		fileName: string,
+	): Promise<ioBroker.ReadDirResult[]> {
 		if (!this.connected) {
 			return Promise.reject(NOT_CONNECTED);
 		}
@@ -1245,7 +1234,7 @@ export class Connection {
 		);
 	}
 
-	readFile(adapter, fileName, base64) {
+	readFile(adapter, fileName, base64): Promise<unknown> {
 		if (!this.connected) {
 			return Promise.reject(NOT_CONNECTED);
 		}
@@ -1256,7 +1245,6 @@ export class Connection {
 					adapter,
 					fileName,
 					(err, data, type) => {
-						//@ts-ignore
 						err ? reject(err) : resolve(data, type);
 					},
 				);
@@ -1274,12 +1262,15 @@ export class Connection {
 
 	/**
 	 * Write a file of an adapter.
-	 * @param {string} adapter The adapter name.
-	 * @param {string} fileName The file name.
-	 * @param {Buffer | string} data The data (if it's a Buffer, it will be converted to Base64).
-	 * @returns {Promise<void>}
+	 * @param adapter The adapter name.
+	 * @param fileName The file name.
+	 * @param data The data (if it's a Buffer, it will be converted to Base64).
 	 */
-	writeFile64(adapter, fileName, data) {
+	writeFile64(
+		adapter: string,
+		fileName: string,
+		data: Buffer | string,
+	): Promise<void> {
 		if (!this.connected) {
 			return Promise.reject(NOT_CONNECTED);
 		}
@@ -1309,11 +1300,10 @@ export class Connection {
 
 	/**
 	 * Delete a file of an adapter.
-	 * @param {string} adapter The adapter name.
-	 * @param {string} fileName The file name.
-	 * @returns {Promise<void>}
+	 * @param adapter The adapter name.
+	 * @param fileName The file name.
 	 */
-	deleteFile(adapter, fileName) {
+	deleteFile(adapter: string, fileName: string): Promise<void> {
 		if (!this.connected) {
 			return Promise.reject(NOT_CONNECTED);
 		}
@@ -1326,11 +1316,10 @@ export class Connection {
 
 	/**
 	 * Delete a folder of an adapter.
-	 * @param {string} adapter The adapter name.
-	 * @param {string} folderName The folder name.
-	 * @returns {Promise<void>}
+	 * @param adapter The adapter name.
+	 * @param folderName The folder name.
 	 */
-	deleteFolder(adapter, folderName) {
+	deleteFolder(adapter: string, folderName: string): Promise<void> {
 		if (!this.connected) {
 			return Promise.reject(NOT_CONNECTED);
 		}
@@ -1343,13 +1332,17 @@ export class Connection {
 
 	/**
 	 * Execute a command on a host.
-	 * @param {string} host The host name.
-	 * @param {string} cmd The command.
-	 * @param {string} cmdId The command ID.
-	 * @param {number} cmdTimeout Timeout of command in ms
-	 * @returns {Promise<void>}
+	 * @param host The host name.
+	 * @param cmd The command.
+	 * @param cmdId The command ID.
+	 * @param cmdTimeout Timeout of command in ms
 	 */
-	cmdExec(host, cmd, cmdId, cmdTimeout?) {
+	cmdExec(
+		host: string,
+		cmd: string,
+		cmdId: string,
+		cmdTimeout?: number,
+	): Promise<void> {
 		if (!this.connected) {
 			return Promise.reject(NOT_CONNECTED);
 		}
@@ -1384,10 +1377,9 @@ export class Connection {
 
 	/**
 	 * Gets the system configuration.
-	 * @param {boolean} [update] Force update.
-	 * @returns {Promise<ioBroker.OtherObject>}
+	 * @param update Force update.
 	 */
-	getSystemConfig(update?) {
+	getSystemConfig(update?: boolean): Promise<ioBroker.OtherObject> {
 		if (!update && this._promises.systemConfig) {
 			return this._promises.systemConfig;
 		}
@@ -1398,11 +1390,10 @@ export class Connection {
 
 		this._promises.systemConfig = this.getObject("system.config").then(
 			(systemConfig) => {
-				//@ts-ignore
 				systemConfig = systemConfig || {};
-				//@ts-ignore
+
 				systemConfig.common = systemConfig.common || {};
-				//@ts-ignore
+
 				systemConfig.native = systemConfig.native || {};
 				return systemConfig;
 			},
@@ -1412,7 +1403,7 @@ export class Connection {
 	}
 
 	// returns very optimized information for adapters to minimize connection load
-	getCompactSystemConfig(update?) {
+	getCompactSystemConfig(update?): Promise<any> {
 		if (Connection.isWeb()) {
 			return Promise.reject("Allowed only in admin");
 		}
@@ -1436,10 +1427,9 @@ export class Connection {
 
 	/**
 	 * Read all states (which might not belong to this adapter) which match the given pattern.
-	 * @param {string} pattern
-	 * @returns {ioBroker.GetStatesPromise}
+	 * @param pattern
 	 */
-	getForeignStates(pattern) {
+	getForeignStates(pattern: string): ioBroker.GetStatesPromise {
 		if (!this.connected) {
 			return Promise.reject(NOT_CONNECTED);
 		}
@@ -1454,11 +1444,13 @@ export class Connection {
 
 	/**
 	 * Get foreign objects by pattern, by specific type and resolve their enums.
-	 * @param {string} pattern
-	 * @param {string} [type]
-	 * @returns {ioBroker.GetObjectsPromise}
+	 * @param pattern
+	 * @param type
 	 */
-	getForeignObjects(pattern, type) {
+	getForeignObjects(
+		pattern: string,
+		type: string,
+	): ioBroker.GetObjectsPromise {
 		if (!this.connected) {
 			return Promise.reject(NOT_CONNECTED);
 		}
@@ -1474,10 +1466,11 @@ export class Connection {
 
 	/**
 	 * Sets the system configuration.
-	 * @param {ioBroker.SettableObjectWorker<ioBroker.OtherObject>} obj
-	 * @returns {Promise<ioBroker.SettableObjectWorker<ioBroker.OtherObject>>}
+	 * @param obj
 	 */
-	setSystemConfig(obj) {
+	setSystemConfig(
+		obj: ioBroker.SettableObjectWorker<ioBroker.OtherObject>,
+	): Promise<ioBroker.SettableObjectWorker<ioBroker.OtherObject>> {
 		return this.setObject("system.config", obj).then(
 			() => (this._promises.systemConfig = Promise.resolve(obj)),
 		);
@@ -1485,19 +1478,20 @@ export class Connection {
 
 	/**
 	 * Get the raw socket.io socket.
-	 * @returns {any}
 	 */
-	getRawSocket() {
+	getRawSocket(): any {
 		return this._socket;
 	}
 
 	/**
 	 * Get the history of a given state.
-	 * @param {string} id
-	 * @param {ioBroker.GetHistoryOptions} options
-	 * @returns {Promise<ioBroker.GetHistoryResult>}
+	 * @param id
+	 * @param options
 	 */
-	getHistory(id, options) {
+	getHistory(
+		id: string,
+		options: ioBroker.GetHistoryOptions,
+	): Promise<ioBroker.GetHistoryResult> {
 		if (!this.connected) {
 			return Promise.reject(NOT_CONNECTED);
 		}
@@ -1511,11 +1505,17 @@ export class Connection {
 
 	/**
 	 * Get the history of a given state.
-	 * @param {string} id
-	 * @param {ioBroker.GetHistoryOptions} options
-	 * @returns {Promise<{values: ioBroker.GetHistoryResult; sesionId: string; stepIgnore: number}>}
+	 * @param id
+	 * @param options
 	 */
-	getHistoryEx(id, options) {
+	getHistoryEx(
+		id: string,
+		options: ioBroker.GetHistoryOptions,
+	): Promise<{
+		values: ioBroker.GetHistoryResult;
+		sesionId: string;
+		stepIgnore: number;
+	}> {
 		if (!this.connected) {
 			return Promise.reject(NOT_CONNECTED);
 		}
@@ -1535,11 +1535,10 @@ export class Connection {
 
 	/**
 	 * Get the IP addresses of the given host.
-	 * @param {string} host
-	 * @param {boolean} [update] Force update.
-	 * @returns {Promise<string[]>}
+	 * @param host
+	 * @param update Force update.
 	 */
-	getIpAddresses(host, update) {
+	getIpAddresses(host: string, update: boolean): Promise<string[]> {
 		if (!host.startsWith("system.host.")) {
 			host = "system.host." + host;
 		}
@@ -1556,9 +1555,8 @@ export class Connection {
 
 	/**
 	 * Gets the version.
-	 * @returns {Promise<{version: string; serverName: string}>}
 	 */
-	getVersion() {
+	getVersion(): Promise<{ version: string; serverName: string }> {
 		this._promises.version =
 			this._promises.version ||
 			new Promise((resolve, reject) =>
@@ -1584,9 +1582,8 @@ export class Connection {
 
 	/**
 	 * Gets the web server name.
-	 * @returns {Promise<string>}
 	 */
-	getWebServerName() {
+	getWebServerName(): Promise<string> {
 		this._promises.webName =
 			this._promises.webName ||
 			new Promise((resolve, reject) =>
@@ -1600,11 +1597,10 @@ export class Connection {
 
 	/**
 	 * Check if the file exists
-	 * @param {string} [adapter] adapter name
-	 * @param {string} [filename] file name with full path. it could be like vis.0/*
-	 * @returns {Promise<boolean>}
+	 * @param adapter adapter name
+	 * @param filename file name with full path. it could be like vis.0/*
 	 */
-	fileExists(adapter, filename): Promise<boolean> {
+	fileExists(adapter: string, filename: string): Promise<boolean> {
 		if (!this.connected) {
 			return Promise.reject(NOT_CONNECTED);
 		}
@@ -1618,7 +1614,6 @@ export class Connection {
 
 	/**
 	 * Read current user
-	 * @returns {Promise<string>}
 	 */
 	getCurrentUser(): Promise<string> {
 		if (!this.connected) {
@@ -1631,7 +1626,6 @@ export class Connection {
 
 	/**
 	 * Get uuid
-	 * @returns {Promise<ioBroker.Object[]>}
 	 */
 	getUuid(): Promise<ioBroker.Object[]> {
 		if (this._promises.uuid) {
@@ -1642,20 +1636,19 @@ export class Connection {
 			return Promise.reject(NOT_CONNECTED);
 		}
 
-		this._promises.uuid = this.getObject("system.meta.uuid")
-			//@ts-ignore
-			.then((obj) => obj?.native?.uuid);
+		this._promises.uuid = this.getObject("system.meta.uuid").then(
+			(obj) => obj?.native?.uuid,
+		);
 
 		return this._promises.uuid;
 	}
 
 	/**
 	 * Checks if a given feature is supported.
-	 * @param {string} feature The feature to check.
-	 * @param {boolean} [update] Force update.
-	 * @returns {Promise<any>}
+	 * @param feature The feature to check.
+	 * @param update Force update.
 	 */
-	checkFeatureSupported(feature, update?) {
+	checkFeatureSupported(feature: string, update?: boolean): Promise<any> {
 		if (!update && this._promises["supportedFeatures_" + feature]) {
 			return this._promises["supportedFeatures_" + feature];
 		}
@@ -1680,16 +1673,17 @@ export class Connection {
 
 	/**
 	 * Get all adapter instances.
-	 * @param {boolean} [update] Force update.
-	 * @returns {Promise<ioBroker.Object[]>}
+	 * @param update Force update.
 	 */
 	/**
 	 * Get all instances of the given adapter.
-	 * @param {string} adapter The name of the adapter.
-	 * @param {boolean} [update] Force update.
-	 * @returns {Promise<ioBroker.Object[]>}
+	 * @param adapter The name of the adapter.
+	 * @param update Force update.
 	 */
-	getAdapterInstances(adapter?, update?) {
+	getAdapterInstances(
+		adapter?: string,
+		update?: boolean,
+	): Promise<ioBroker.Object[]> {
 		if (typeof adapter === "boolean") {
 			update = adapter;
 			adapter = "";
@@ -1723,16 +1717,17 @@ export class Connection {
 
 	/**
 	 * Get all adapters.
-	 * @param {boolean} [update] Force update.
-	 * @returns {Promise<ioBroker.Object[]>}
+	 * @param update Force update.
 	 */
 	/**
 	 * Get adapters with the given name.
-	 * @param {string} adapter The name of the adapter.
-	 * @param {boolean} [update] Force update.
-	 * @returns {Promise<ioBroker.Object[]>}
+	 * @param adapter The name of the adapter.
+	 * @param update Force update.
 	 */
-	getAdapters(adapter?, update?) {
+	getAdapters(
+		adapter?: string,
+		update?: boolean,
+	): Promise<ioBroker.Object[]> {
 		if (typeof adapter === "boolean") {
 			update = adapter;
 			adapter = "";
