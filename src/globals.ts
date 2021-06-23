@@ -1,15 +1,13 @@
-import type { Socket } from 'socket.io'
-
-export { };
+import type { Socket } from "socket.io";
 
 declare global {
-  interface Window {
-    io: { connect: (name: string, par: any) => Socket };
-    socketUrl: string;
-    registerSocketOnLoad: Function;
-  }
+	interface Window {
+		io: { connect: (name: string, par: any) => Socket };
+		socketUrl: string;
+		registerSocketOnLoad: (callback: () => void) => void;
+	}
 
-  interface Navigator {
-    userLanguage: string;
-  }
+	interface Navigator {
+		userLanguage: string;
+	}
 }
