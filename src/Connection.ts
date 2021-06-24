@@ -252,7 +252,7 @@ export class Connection<
 			this.onLogHandlers.forEach((cb) => cb(message));
 		});
 
-		this._socket.on("error", (err) => {
+		this._socket.on("error", (err: unknown) => {
 			let _err = err || "";
 			if (typeof _err.toString !== "function") {
 				_err = JSON.stringify(_err);
@@ -790,7 +790,7 @@ export class Connection<
 	getObjects(
 		update?: ((par?: any) => void) | boolean,
 		disableProgressUpdate?: boolean,
-	): Promise<Record<string, ioBroker.Object>> | undefined {
+	): Promise<Record<string, ioBroker.Object>> {
 		if (!this.connected) {
 			return Promise.reject(NOT_CONNECTED);
 		} else {
@@ -1207,46 +1207,42 @@ export class Connection<
 
 	/**
 	 * Read the directory of an adapter.
-	 * @param adapter The adapter name.
-	 * @param fileName The directory name.
+	 * @param adapterName The adapter name.
+	 * @param path The directory name.
 	 */
 	readDir(
-		adapter: string,
-		fileName: string,
+		adapterName: string | null,
+		path: string,
 	): Promise<ioBroker.ReadDirResult[]> {
 		if (!this.connected) {
 			return Promise.reject(NOT_CONNECTED);
 		}
 		return new Promise((resolve, reject) =>
-			this._socket.emit("readDir", adapter, fileName, (err, files) =>
-				err ? reject(err) : resolve(files),
+			this._socket.emit("readDir", adapterName, path, (err, files) =>
+				err ? reject(err) : resolve(files!),
 			),
 		);
 	}
 
-	readFile(adapter, fileName, base64): Promise<unknown> {
+	readFile(
+		adapterName: string | null,
+		fileName: string,
+		base64?: boolean,
+	): Promise<{ file: string; mimeType: string }> {
 		if (!this.connected) {
 			return Promise.reject(NOT_CONNECTED);
 		}
 		return new Promise((resolve, reject) => {
-			if (!base64) {
-				this._socket.emit(
-					"readFile",
-					adapter,
-					fileName,
-					(err, data, type) => {
-						err ? reject(err) : resolve(data, type);
-					},
-				);
-			} else {
-				this._socket.emit(
-					"readFile64",
-					adapter,
-					fileName,
-					base64,
-					(err, data) => (err ? reject(err) : resolve(data)),
-				);
-			}
+			this._socket.emit(
+				base64 ? "readFile64" : "readFile",
+				adapterName,
+				fileName,
+				(err, data, type) => {
+					err
+						? reject(err)
+						: resolve({ file: data as string, mimeType: type! });
+				},
+			);
 		});
 	}
 
@@ -1266,8 +1262,14 @@ export class Connection<
 		}
 		return new Promise<void>((resolve, reject) => {
 			if (typeof data === "string") {
-				this._socket.emit("writeFile", adapter, fileName, data, (err) =>
-					err ? reject(err) : resolve(),
+				this._socket.emit(
+					"writeFile",
+					adapter,
+					fileName,
+					data,
+					(err) => {
+						err ? reject(err) : resolve();
+					},
 				);
 			} else {
 				const base64 = btoa(
@@ -1282,7 +1284,9 @@ export class Connection<
 					adapter,
 					fileName,
 					base64,
-					(err) => (err ? reject(err) : resolve()),
+					(err) => {
+						err ? reject(err) : resolve();
+					},
 				);
 			}
 		});
@@ -1351,7 +1355,7 @@ export class Connection<
 					}
 				}, cmdTimeout);
 
-			this._socket.emit("cmdExec", host, cmdId, cmd, null, (err) => {
+			this._socket.emit("cmdExec", host, cmdId, cmd, (err) => {
 				if (!cmdTimeout || timeout) {
 					timeout && clearTimeout(timeout);
 					timeout = null;
@@ -1393,7 +1397,9 @@ export class Connection<
 	}
 
 	// returns very optimized information for adapters to minimize connection load
-	getCompactSystemConfig(update?): Promise<any> {
+	getCompactSystemConfig(
+		update?: boolean,
+	): Promise<ioBroker.ObjectIdToObjectType<"system.config", "read">> {
 		if (Connection.isWeb()) {
 			return Promise.reject("Allowed only in admin");
 		}
@@ -1408,7 +1414,7 @@ export class Connection<
 
 		this._promises.systemConfigCommon = new Promise((resolve, reject) =>
 			this._socket.emit("getCompactSystemConfig", (err, systemConfig) =>
-				err ? reject(err) : resolve(systemConfig),
+				err ? reject(err) : resolve(systemConfig!),
 			),
 		);
 
@@ -1488,7 +1494,7 @@ export class Connection<
 
 		return new Promise((resolve, reject) =>
 			this._socket.emit("getHistory", id, options, (err, values) =>
-				err ? reject(err) : resolve(values),
+				err ? reject(err) : resolve(values!),
 			),
 		);
 	}
@@ -1503,7 +1509,7 @@ export class Connection<
 		options: ioBroker.GetHistoryOptions,
 	): Promise<{
 		values: ioBroker.GetHistoryResult;
-		sesionId: string;
+		sessionId: string;
 		stepIgnore: number;
 	}> {
 		if (!this.connected) {
@@ -1518,7 +1524,12 @@ export class Connection<
 				(err, values, stepIgnore, sessionId) =>
 					err
 						? reject(err)
-						: resolve({ values, sessionId, stepIgnore }),
+						: resolve({
+								values: values!,
+								sessionId: sessionId!,
+								// TODO: WTF is up with the ignore thing?
+								stepIgnore: stepIgnore!,
+						  }),
 			),
 		);
 	}
@@ -1597,7 +1608,7 @@ export class Connection<
 
 		return new Promise((resolve, reject) =>
 			this._socket.emit("fileExists", adapter, filename, (err, exists) =>
-				err ? reject(err) : resolve(exists),
+				err ? reject(err) : resolve(!!exists),
 			),
 		);
 	}

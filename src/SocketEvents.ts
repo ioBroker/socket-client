@@ -18,8 +18,13 @@ export interface IOListenEvents {
 	permissionError: (error: any) => void; // TODO: check ioBroker.admin/lib/socket.js for the shape of this
 }
 
+type GenericCallback<T> = ErrorAsString<ioBroker.GenericCallback<T>>;
+type ErrorCallback = ErrorAsString<ioBroker.ErrorCallback>;
+
+type AuthenticateCallback = (isOk: boolean, isSecure: boolean) => void;
+type AuthEnabledCallback = (isSecure: boolean, user: string) => void;
 export type GetUserPermissionsCallback = (err?: string, acl?: any) => void;
-export type ErrorAsString<T extends (...args: any[]) => void> = T extends (
+type ErrorAsString<T extends (...args: any[]) => void> = T extends (
 	err: Error | null,
 	...args: infer U
 ) => void
@@ -32,7 +37,18 @@ type GetBinaryStateCallback = (
 	err?: string | null,
 	stateBase64?: string,
 ) => void;
-type ErrorCallback = ErrorAsString<ioBroker.ErrorCallback>;
+type ReadFile64Callback = (err?: string | null, file?: string) => void;
+
+type GetVersionCallback = (
+	err?: string | null,
+	version?: string,
+	serverName?: string,
+) => void;
+
+type GetAdapterNameCallback = (
+	err?: string | null,
+	serverName?: string,
+) => void;
 
 export interface DelObjectOptions {
 	maintenance?: boolean;
@@ -45,7 +61,8 @@ export interface DelObjectsOptions extends DelObjectOptions {
 
 /** Defines which events are emitted by the client and can be listened on the server */
 export interface IOEmitEvents {
-	authenticate(callback: (isOk: boolean, isSecure: boolean) => void): void;
+	authenticate(callback: AuthenticateCallback): void;
+	authEnabled(callback: AuthEnabledCallback): void;
 	getUserPermissions(callback?: GetUserPermissionsCallback): void;
 
 	requireLog(enabled: boolean, callback?: ErrorCallback): void;
@@ -128,10 +145,76 @@ export interface IOEmitEvents {
 	): void;
 	setBinaryState(id: string, base64: string, callback?: ErrorCallback): void;
 
+	readDir(
+		adapterName: string | null,
+		path: string,
+		callback: ErrorAsString<ioBroker.ReadDirCallback>,
+	): void;
+	readFile(
+		adapterName: string | null,
+		path: string,
+		callback: ErrorAsString<ioBroker.ReadFileCallback>,
+	): void;
+	readFile64(
+		adapterName: string | null,
+		path: string,
+		callback: ReadFile64Callback,
+	): void;
+	writeFile(
+		adapterName: string | null,
+		path: string,
+		data: string,
+		callback: ErrorCallback,
+	): void;
+	writeFile64(
+		adapterName: string | null,
+		path: string,
+		dataBase64: string,
+		callback: ErrorCallback,
+	): void;
+	deleteFile(
+		adapterName: string | null,
+		path: string,
+		callback: ErrorCallback,
+	): void;
+	deleteFolder(
+		adapterName: string | null,
+		path: string,
+		callback: ErrorCallback,
+	): void;
+	fileExists(
+		adapterName: string | null,
+		path: string,
+		callback: GenericCallback<boolean>,
+	): void;
+
+	getHistory(
+		id: string,
+		options: ioBroker.GetHistoryOptions,
+		callback: ErrorAsString<ioBroker.GetHistoryCallback>,
+	): void;
+
+	getVersion(callback: GetVersionCallback): void;
+	getAdapterName(callback: GetAdapterNameCallback): void;
+
+	getCompactSystemConfig(
+		callback: ErrorAsString<ioBroker.GetObjectCallback<"system.config">>,
+	): void;
+	checkFeatureSupported(
+		featureName: string,
+		callback: GenericCallback<boolean>,
+	): void;
+
 	sendTo(
 		instance: string,
 		command: string,
 		data: ioBroker.MessagePayload,
 		callback?: (result: ioBroker.Message) => void,
+	): void;
+	cmdExec(
+		hostName: string,
+		commandId: string,
+		command: string,
+		callback?: ErrorCallback,
 	): void;
 }
