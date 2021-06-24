@@ -21,12 +21,33 @@ export enum PROGRESS {
 export enum ERRORS {
 	PERMISSION_ERROR = "permissionError",
 	NOT_CONNECTED = "notConnectedError",
+	TIMEOUT = "timeout",
+	NOT_ADMIN = "Allowed only in admin",
 }
 
 /** @deprecated Use {@link ERRORS.PERMISSION_ERROR} instead */
 export const PERMISSION_ERROR = ERRORS.PERMISSION_ERROR;
 /** @deprecated Use {@link ERRORS.NOT_CONNECTED} instead */
 export const NOT_CONNECTED = ERRORS.NOT_CONNECTED;
+
+/** Options to use for the backend request wrapper */
+interface RequestOptions<T> {
+	cacheKey?: string;
+	forceUpdate?: boolean;
+	/**
+	 * The timeout in milliseconds after which the call will reject with a timeout error.
+	 * If no timeout is given, the default is used. Set this to `false` to explicitly disable the timeout.
+	 */
+	commandTimeout?: number | false;
+	/** Whether the call should only be allowed in the admin adapter */
+	requireAdmin?: boolean;
+	executor: (
+		resolve: (value: T | PromiseLike<T> | Promise<T>) => void,
+		reject: (reason?: any) => void,
+		/** Can be used to check in the executor whether the request has timed out and/or stop it from timing out */
+		timeout: Readonly<{ elapsed: boolean; clearTimeout: () => void }>,
+	) => void | Promise<void>;
+}
 
 export class Connection<
 	CustomListenEvents extends Record<
@@ -701,26 +722,81 @@ export class Connection<
 		}
 	}
 
-	/**
-	 * Gets all states.
-	 * @param disableProgressUpdate don't call onProgress() when done
-	 */
-	getStates(
-		disableProgressUpdate?: boolean,
-	): Promise<Record<string, ioBroker.State>> {
+	/** Requests data from the server or reads it from the cache */
+	protected request<T>({
+		cacheKey,
+		forceUpdate,
+		commandTimeout,
+		requireAdmin,
+		executor,
+	}: RequestOptions<T>): Promise<T> {
+		// If the command requires the admin adapter, enforce it
+		if (requireAdmin && Connection.isWeb()) {
+			return Promise.reject(ERRORS.NOT_ADMIN);
+		}
+
+		// Return the cached value if allowed
+		if (cacheKey && !forceUpdate && cacheKey in this._promises) {
+			return this._promises[cacheKey];
+		}
+
+		// Require the socket to be connected
 		if (!this.connected) {
 			return Promise.reject(ERRORS.NOT_CONNECTED);
 		}
 
-		return new Promise((resolve, reject) =>
-			this._socket.emit("getStates", (err, res) => {
-				this.states = res ?? {};
+		const promise = new Promise<T>(async (resolve, reject) => {
+			const timeoutControl = {
+				elapsed: false,
+				clearTimeout: () => {
+					// no-op unless there is a timeout
+				},
+			};
+			let timeout: NodeJS.Timeout | undefined;
+			if (commandTimeout !== false) {
+				timeout = setTimeout(() => {
+					timeoutControl.elapsed = true;
+					reject(ERRORS.TIMEOUT);
+				}, commandTimeout ?? this.props.cmdTimeout);
+				timeoutControl.clearTimeout = () => {
+					clearTimeout(timeout!);
+				};
+			}
+			// Call the actual function - awaiting it allows us to catch sync and async errors
+			// no matter if the executor is async or not
+			try {
+				await executor(resolve, reject, timeoutControl);
+			} catch (e) {
+				reject(e);
+			}
+		});
+		if (cacheKey) {
+			this._promises[cacheKey] = promise;
+		}
+		return promise;
+	}
 
-				!disableProgressUpdate &&
-					this.props.onProgress?.(PROGRESS.STATES_LOADED);
-				return err ? reject(err) : resolve(this.states);
-			}),
-		);
+	/**
+	 * Gets all states.
+	 * @param disableProgressUpdate don't call onProgress() when done
+	 */
+	getStates(): // disableProgressUpdate?: boolean,
+	Promise<Record<string, ioBroker.State>> {
+		return this.request({
+			// TODO: check if this should time out
+			commandTimeout: false,
+			executor: (resolve, reject) => {
+				this._socket.emit("getStates", (err, res) => {
+					this.states = res ?? {};
+
+					// if (!disableProgressUpdate) {
+					// 	this.props.onProgress?.(PROGRESS.STATES_LOADED);
+					// }
+					if (err) reject(err);
+					resolve(this.states);
+				});
+			},
+		});
 	}
 
 	/**
@@ -728,15 +804,16 @@ export class Connection<
 	 * @param id The state ID.
 	 */
 	getState(id: string): Promise<ioBroker.State | null | undefined> {
-		if (!this.connected) {
-			return Promise.reject(ERRORS.NOT_CONNECTED);
-		}
-
-		return new Promise((resolve, reject) =>
-			this._socket.emit("getState", id, (err, state) =>
-				err ? reject(err) : resolve(state),
-			),
-		);
+		return this.request({
+			// TODO: check if this should time out
+			commandTimeout: false,
+			executor: (resolve, reject) => {
+				this._socket.emit("getState", id, (err, state) => {
+					if (err) reject(err);
+					resolve(state);
+				});
+			},
+		});
 	}
 
 	/**
@@ -744,16 +821,16 @@ export class Connection<
 	 * @param id The state ID.
 	 */
 	getBinaryState(id: string): Promise<string | undefined> {
-		if (!this.connected) {
-			return Promise.reject(ERRORS.NOT_CONNECTED);
-		}
-
-		// the data will come in base64
-		return new Promise((resolve, reject) =>
-			this._socket.emit("getBinaryState", id, (err, state) =>
-				err ? reject(err) : resolve(state),
-			),
-		);
+		return this.request({
+			// TODO: check if this should time out
+			commandTimeout: false,
+			executor: (resolve, reject) => {
+				this._socket.emit("getBinaryState", id, (err, state) => {
+					if (err) reject(err);
+					resolve(state);
+				});
+			},
+		});
 	}
 
 	/**
@@ -762,16 +839,16 @@ export class Connection<
 	 * @param base64 The Base64 encoded binary data.
 	 */
 	setBinaryState(id: string, base64: string): Promise<void> {
-		if (!this.connected) {
-			return Promise.reject(ERRORS.NOT_CONNECTED);
-		}
-
-		// the data will come in base64
-		return new Promise<void>((resolve, reject) =>
-			this._socket.emit("setBinaryState", id, base64, (err) =>
-				err ? reject(err) : resolve(),
-			),
-		);
+		return this.request({
+			// TODO: check if this should time out
+			commandTimeout: false,
+			executor: (resolve, reject) => {
+				this._socket.emit("setBinaryState", id, base64, (err) => {
+					if (err) reject(err);
+					resolve();
+				});
+			},
+		});
 	}
 
 	/**
@@ -783,15 +860,16 @@ export class Connection<
 		id: string,
 		val: ioBroker.State | ioBroker.StateValue | ioBroker.SettableState,
 	): Promise<void> {
-		if (!this.connected) {
-			return Promise.reject(ERRORS.NOT_CONNECTED);
-		}
-
-		return new Promise<void>((resolve, reject) =>
-			this._socket.emit("setState", id, val, (err) =>
-				err ? reject(err) : resolve(),
-			),
-		);
+		return this.request({
+			// TODO: check if this should time out
+			commandTimeout: false,
+			executor: (resolve, reject) => {
+				this._socket.emit("setState", id, val, (err) => {
+					if (err) reject(err);
+					resolve();
+				});
+			},
+		});
 	}
 
 	/**
@@ -804,29 +882,30 @@ export class Connection<
 	 * @param disableProgressUpdate don't call onProgress() when done
 	 */
 	getObjects(
-		update?: ((par?: any) => void) | boolean,
+		update?: boolean,
 		disableProgressUpdate?: boolean,
 	): Promise<Record<string, ioBroker.Object>> {
-		if (!this.connected) {
-			return Promise.reject(ERRORS.NOT_CONNECTED);
-		} else {
-			return new Promise((resolve, reject) => {
+		return this.request({
+			// TODO: check if this should time out
+			commandTimeout: false,
+			executor: (resolve, reject) => {
 				if (!update && this.objects) {
-					return resolve(this.objects);
+					resolve(this.objects);
+					return;
 				}
 
 				this._socket.emit(
 					Connection.isWeb() ? "getObjects" : "getAllObjects",
 					(err, res) => {
 						this.objects = res;
-						disableProgressUpdate &&
+						if (!disableProgressUpdate)
 							this.props.onProgress?.(PROGRESS.OBJECTS_LOADED);
 						if (err) reject(err);
 						resolve(this.objects);
 					},
 				);
-			});
-		}
+			},
+		});
 	}
 
 	/**
@@ -873,14 +952,16 @@ export class Connection<
 	 * @param isEnabled Set to true to get logs.
 	 */
 	requireLog(isEnabled: boolean): Promise<void> {
-		if (!this.connected) {
-			return Promise.reject(ERRORS.NOT_CONNECTED);
-		}
-		return new Promise<void>((resolve, reject) =>
-			this._socket.emit("requireLog", isEnabled, (err) =>
-				err ? reject(err) : resolve(),
-			),
-		);
+		return this.request({
+			// TODO: check if this should time out
+			commandTimeout: false,
+			executor: (resolve, reject) => {
+				this._socket.emit("requireLog", isEnabled, (err) => {
+					if (err) reject(err);
+					resolve();
+				});
+			},
+		});
 	}
 
 	/**
@@ -888,18 +969,17 @@ export class Connection<
 	 * @param id The object ID.
 	 * @param maintenance Force deletion of non conform IDs.
 	 */
-	delObject(id: string, maintenance?: boolean): Promise<void> {
-		if (!this.connected) {
-			return Promise.reject(ERRORS.NOT_CONNECTED);
-		}
-		return new Promise<void>((resolve, reject) =>
-			this._socket.emit(
-				"delObject",
-				id,
-				{ maintenance: !!maintenance },
-				(err) => (err ? reject(err) : resolve()),
-			),
-		);
+	delObject(id: string, maintenance: boolean = false): Promise<void> {
+		return this.request({
+			// TODO: check if this should time out
+			commandTimeout: false,
+			executor: (resolve, reject) => {
+				this._socket.emit("delObject", id, { maintenance }, (err) => {
+					if (err) reject(err);
+					resolve();
+				});
+			},
+		});
 	}
 
 	/**
@@ -908,17 +988,16 @@ export class Connection<
 	 * @param maintenance Force deletion of non conform IDs.
 	 */
 	delObjects(id: string, maintenance: boolean): Promise<void> {
-		if (!this.connected) {
-			return Promise.reject(ERRORS.NOT_CONNECTED);
-		}
-		return new Promise<void>((resolve, reject) =>
-			this._socket.emit(
-				"delObjects",
-				id,
-				{ maintenance: !!maintenance },
-				(err) => (err ? reject(err) : resolve()),
-			),
-		);
+		return this.request({
+			// TODO: check if this should time out
+			commandTimeout: false,
+			executor: (resolve, reject) => {
+				this._socket.emit("delObjects", id, { maintenance }, (err) => {
+					if (err) reject(err);
+					resolve();
+				});
+			},
+		});
 	}
 
 	/**
@@ -927,31 +1006,25 @@ export class Connection<
 	 * @param obj The object.
 	 */
 	setObject(id: string, obj: ioBroker.SettableObject): Promise<void> {
-		if (!this.connected) {
-			return Promise.reject(ERRORS.NOT_CONNECTED);
-		}
-
 		if (!obj) {
 			return Promise.reject("Null object is not allowed");
 		}
 
 		obj = JSON.parse(JSON.stringify(obj));
+		delete obj.from;
+		delete obj.user;
+		delete obj.ts;
 
-		if (obj.hasOwnProperty("from")) {
-			delete obj.from;
-		}
-		if (obj.hasOwnProperty("user")) {
-			delete obj.user;
-		}
-		if (obj.hasOwnProperty("ts")) {
-			delete obj.ts;
-		}
-
-		return new Promise<void>((resolve, reject) =>
-			this._socket.emit("setObject", id, obj, (err) =>
-				err ? reject(err) : resolve(),
-			),
-		);
+		return this.request({
+			// TODO: check if this should time out
+			commandTimeout: false,
+			executor: (resolve, reject) => {
+				this._socket.emit("setObject", id, obj, (err) => {
+					if (err) reject(err);
+					resolve();
+				});
+			},
+		});
 	}
 
 	/**
@@ -959,15 +1032,17 @@ export class Connection<
 	 * @param id The object ID.
 	 * @returns {ioBroker.GetObjectPromise} The object.
 	 */
-	getObject(id: string): ioBroker.GetObjectPromise {
-		if (!this.connected) {
-			return Promise.reject(ERRORS.NOT_CONNECTED);
-		}
-		return new Promise((resolve, reject) =>
-			this._socket.emit("getObject", id, (err, obj) =>
-				err ? reject(err) : resolve(obj),
-			),
-		);
+	getObject<T extends string>(id: T): ioBroker.GetObjectPromise<T> {
+		return this.request({
+			// TODO: check if this should time out
+			commandTimeout: false,
+			executor: (resolve, reject) => {
+				this._socket.emit("getObject", id, (err, obj) => {
+					if (err) reject(err);
+					resolve(obj as any);
+				});
+			},
+		});
 	}
 
 	/**
@@ -981,14 +1056,21 @@ export class Connection<
 		command: string,
 		data: ioBroker.MessagePayload,
 	): Promise<ioBroker.Message | undefined> {
-		if (!this.connected) {
-			return Promise.reject(ERRORS.NOT_CONNECTED);
-		}
-		return new Promise((resolve) =>
-			this._socket.emit("sendTo", instance, command, data, (result) =>
-				resolve(result),
-			),
-		);
+		return this.request({
+			// TODO: check if this should time out
+			commandTimeout: false,
+			executor: (resolve) => {
+				this._socket.emit(
+					"sendTo",
+					instance,
+					command,
+					data,
+					(result) => {
+						resolve(result);
+					},
+				);
+			},
+		});
 	}
 
 	/**
@@ -997,27 +1079,25 @@ export class Connection<
 	 * @param obj The object.
 	 */
 	extendObject(id: string, obj: ioBroker.PartialObject): Promise<void> {
-		if (!this.connected) {
-			return Promise.reject(ERRORS.NOT_CONNECTED);
+		if (!obj) {
+			return Promise.reject("Null object is not allowed");
 		}
 
 		obj = JSON.parse(JSON.stringify(obj));
+		delete obj.from;
+		delete obj.user;
+		delete obj.ts;
 
-		if (obj.hasOwnProperty("from")) {
-			delete obj.from;
-		}
-		if (obj.hasOwnProperty("user")) {
-			delete obj.user;
-		}
-		if (obj.hasOwnProperty("ts")) {
-			delete obj.ts;
-		}
-
-		return new Promise<void>((resolve, reject) =>
-			this._socket.emit("extendObject", id, obj, (err) =>
-				err ? reject(err) : resolve(),
-			),
-		);
+		return this.request({
+			// TODO: check if this should time out
+			commandTimeout: false,
+			executor: (resolve, reject) => {
+				this._socket.emit("extendObject", id, obj, (err) => {
+					if (err) reject(err);
+					resolve();
+				});
+			},
+		});
 	}
 
 	/**
@@ -1025,8 +1105,9 @@ export class Connection<
 	 * @param handler The handler.
 	 */
 	registerLogHandler(handler: (message: string) => void): void {
-		!this.onLogHandlers.includes(handler) &&
+		if (!this.onLogHandlers.includes(handler)) {
 			this.onLogHandlers.push(handler);
+		}
 	}
 
 	/**
@@ -1043,8 +1124,9 @@ export class Connection<
 	 * @param handler The handler.
 	 */
 	registerConnectionHandler(handler: (connected: boolean) => void): void {
-		!this.onConnectionHandlers.includes(handler) &&
+		if (!this.onConnectionHandlers.includes(handler)) {
 			this.onConnectionHandlers.push(handler);
+		}
 	}
 
 	/**
@@ -1115,43 +1197,41 @@ export class Connection<
 	getEnums(
 		_enum?: string,
 		update?: boolean,
-	): Promise<Record<string, ioBroker.Object>> {
-		const key = `enums_${_enum || "all"}`;
-		if (!update && key in this._promises) {
-			return this._promises[key];
-		}
-
-		if (!this.connected) {
-			return Promise.reject(ERRORS.NOT_CONNECTED);
-		}
-
-		this._promises[key] = new Promise((resolve, reject) => {
-			this._socket.emit(
-				"getObjectView",
-				"system",
-				"enum",
-				{
-					startkey: `enum.${_enum || ""}`,
-					endkey: _enum ? `enum.${_enum}.\u9999` : `enum.\u9999`,
-				},
-				(err, res) => {
-					if (!err && res) {
-						const _res = {};
-						for (let i = 0; i < res.rows.length; i++) {
-							if (_enum && res.rows[i].id === `enum.${_enum}`) {
-								continue;
+	): Promise<Record<string, ioBroker.EnumObject>> {
+		return this.request({
+			cacheKey: `enums_${_enum || "all"}`,
+			forceUpdate: update,
+			// TODO: check if this should time out
+			commandTimeout: false,
+			executor: (resolve, reject) => {
+				this._socket.emit(
+					"getObjectView",
+					"system",
+					"enum",
+					{
+						startkey: `enum.${_enum || ""}`,
+						endkey: _enum ? `enum.${_enum}.\u9999` : `enum.\u9999`,
+					},
+					(err, res) => {
+						if (err) reject(err);
+						const _res: Record<string, ioBroker.EnumObject> = {};
+						if (res) {
+							for (let i = 0; i < res.rows.length; i++) {
+								if (
+									_enum &&
+									res.rows[i].id === `enum.${_enum}`
+								) {
+									continue;
+								}
+								_res[res.rows[i].id] = res.rows[i]
+									.value as ioBroker.EnumObject;
 							}
-							_res[res.rows[i].id] = res.rows[i].value;
 						}
 						resolve(_res);
-					} else {
-						reject(err);
-					}
-				},
-			);
+					},
+				);
+			},
 		});
-
-		return this._promises[key];
 	}
 
 	/**
@@ -1160,38 +1240,39 @@ export class Connection<
 	 * @param end The end ID.
 	 * @param type The type of object.
 	 */
-	getObjectView(
+	getObjectView<T extends ioBroker.ObjectType>(
 		start: string,
 		end: string,
-		type: string,
-	): Promise<Record<string, ioBroker.Object>> {
-		if (!this.connected) {
-			return Promise.reject(ERRORS.NOT_CONNECTED);
-		}
+		type: T,
+	): Promise<Record<string, ioBroker.AnyObject & { type: T }>> {
+		return this.request({
+			// TODO: check if this should time out
+			commandTimeout: false,
+			executor: (resolve, reject) => {
+				start = start || "";
+				end = end || "\u9999";
 
-		start = start || "";
-		end = end || "\u9999";
+				this._socket.emit(
+					"getObjectView",
+					"system",
+					type,
+					{ startkey: start, endkey: end },
+					(err, res) => {
+						if (err) reject(err);
 
-		return new Promise((resolve, reject) => {
-			this._socket.emit(
-				"getObjectView",
-				"system",
-				type,
-				{ startkey: start, endkey: end },
-				(err, res) => {
-					if (!err) {
-						const _res = {};
+						const _res: Record<
+							string,
+							ioBroker.AnyObject & { type: T }
+						> = {};
 						if (res && res.rows) {
 							for (let i = 0; i < res.rows.length; i++) {
-								_res[res.rows[i].id] = res.rows[i].value;
+								_res[res.rows[i].id] = res.rows[i].value as any;
 							}
 						}
 						resolve(_res);
-					} else {
-						reject(err);
-					}
-				},
-			);
+					},
+				);
+			},
 		});
 	}
 
@@ -1199,25 +1280,26 @@ export class Connection<
 	 * Read the meta items.
 	 */
 	readMetaItems(): Promise<ioBroker.Object[]> {
-		if (!this.connected) {
-			return Promise.reject(ERRORS.NOT_CONNECTED);
-		}
-		return new Promise((resolve, reject) =>
-			this._socket.emit(
-				"getObjectView",
-				"system",
-				"meta",
-				{ startkey: "", endkey: "\u9999" },
-				(err, objs) => {
-					if (err) reject(err);
-					resolve(
-						objs!.rows
-							?.map((obj) => obj.value)
-							.filter((val): val is ioBroker.Object => !!val),
-					);
-				},
-			),
-		);
+		return this.request({
+			// TODO: check if this should time out
+			commandTimeout: false,
+			executor: (resolve, reject) => {
+				this._socket.emit(
+					"getObjectView",
+					"system",
+					"meta",
+					{ startkey: "", endkey: "\u9999" },
+					(err, objs) => {
+						if (err) reject(err);
+						resolve(
+							objs!.rows
+								?.map((obj) => obj.value)
+								.filter((val): val is ioBroker.Object => !!val),
+						);
+					},
+				);
+			},
+		});
 	}
 
 	/**
@@ -1229,14 +1311,21 @@ export class Connection<
 		adapterName: string | null,
 		path: string,
 	): Promise<ioBroker.ReadDirResult[]> {
-		if (!this.connected) {
-			return Promise.reject(ERRORS.NOT_CONNECTED);
-		}
-		return new Promise((resolve, reject) =>
-			this._socket.emit("readDir", adapterName, path, (err, files) =>
-				err ? reject(err) : resolve(files!),
-			),
-		);
+		return this.request({
+			// TODO: check if this should time out
+			commandTimeout: false,
+			executor: (resolve, reject) => {
+				this._socket.emit(
+					"readDir",
+					adapterName,
+					path,
+					(err, files) => {
+						if (err) reject(err);
+						resolve(files!);
+					},
+				);
+			},
+		});
 	}
 
 	readFile(
@@ -1244,19 +1333,20 @@ export class Connection<
 		fileName: string,
 		base64?: boolean,
 	): Promise<{ file: string; mimeType: string }> {
-		if (!this.connected) {
-			return Promise.reject(ERRORS.NOT_CONNECTED);
-		}
-		return new Promise((resolve, reject) => {
-			this._socket.emit(
-				base64 ? "readFile64" : "readFile",
-				adapterName,
-				fileName,
-				(err, data, type) => {
-					if (err) reject(err);
-					resolve({ file: data as string, mimeType: type! });
-				},
-			);
+		return this.request({
+			// TODO: check if this should time out
+			commandTimeout: false,
+			executor: (resolve, reject) => {
+				this._socket.emit(
+					base64 ? "readFile64" : "readFile",
+					adapterName,
+					fileName,
+					(err, data, type) => {
+						if (err) reject(err);
+						resolve({ file: data as string, mimeType: type! });
+					},
+				);
+			},
 		});
 	}
 
@@ -1271,40 +1361,41 @@ export class Connection<
 		fileName: string,
 		data: Buffer | string,
 	): Promise<void> {
-		if (!this.connected) {
-			return Promise.reject(ERRORS.NOT_CONNECTED);
-		}
-		return new Promise<void>((resolve, reject) => {
-			if (typeof data === "string") {
-				this._socket.emit(
-					"writeFile",
-					adapter,
-					fileName,
-					data,
-					(err) => {
-						if (err) reject(err);
-						resolve();
-					},
-				);
-			} else {
-				const base64 = btoa(
-					new Uint8Array(data).reduce(
-						(data, byte) => data + String.fromCharCode(byte),
-						"",
-					),
-				);
+		return this.request({
+			// TODO: check if this should time out
+			commandTimeout: false,
+			executor: (resolve, reject) => {
+				if (typeof data === "string") {
+					this._socket.emit(
+						"writeFile",
+						adapter,
+						fileName,
+						data,
+						(err) => {
+							if (err) reject(err);
+							resolve();
+						},
+					);
+				} else {
+					const base64 = btoa(
+						new Uint8Array(data).reduce(
+							(data, byte) => data + String.fromCharCode(byte),
+							"",
+						),
+					);
 
-				this._socket.emit(
-					"writeFile64",
-					adapter,
-					fileName,
-					base64,
-					(err) => {
-						if (err) reject(err);
-						resolve();
-					},
-				);
-			}
+					this._socket.emit(
+						"writeFile64",
+						adapter,
+						fileName,
+						base64,
+						(err) => {
+							if (err) reject(err);
+							resolve();
+						},
+					);
+				}
+			},
 		});
 	}
 
@@ -1314,14 +1405,16 @@ export class Connection<
 	 * @param fileName The file name.
 	 */
 	deleteFile(adapter: string, fileName: string): Promise<void> {
-		if (!this.connected) {
-			return Promise.reject(ERRORS.NOT_CONNECTED);
-		}
-		return new Promise<void>((resolve, reject) =>
-			this._socket.emit("deleteFile", adapter, fileName, (err) =>
-				err ? reject(err) : resolve(),
-			),
-		);
+		return this.request({
+			// TODO: check if this should time out
+			commandTimeout: false,
+			executor: (resolve, reject) => {
+				this._socket.emit("deleteFile", adapter, fileName, (err) => {
+					if (err) reject(err);
+					resolve();
+				});
+			},
+		});
 	}
 
 	/**
@@ -1330,14 +1423,21 @@ export class Connection<
 	 * @param folderName The folder name.
 	 */
 	deleteFolder(adapter: string, folderName: string): Promise<void> {
-		if (!this.connected) {
-			return Promise.reject(ERRORS.NOT_CONNECTED);
-		}
-		return new Promise<void>((resolve, reject) =>
-			this._socket.emit("deleteFolder", adapter, folderName, (err) =>
-				err ? reject(err) : resolve(),
-			),
-		);
+		return this.request({
+			// TODO: check if this should time out
+			commandTimeout: false,
+			executor: (resolve, reject) => {
+				this._socket.emit(
+					"deleteFolder",
+					adapter,
+					folderName,
+					(err) => {
+						if (err) reject(err);
+						resolve();
+					},
+				);
+			},
+		});
 	}
 
 	/**
@@ -1353,35 +1453,21 @@ export class Connection<
 		cmdId: string,
 		cmdTimeout?: number,
 	): Promise<void> {
-		if (!this.connected) {
-			return Promise.reject(ERRORS.NOT_CONNECTED);
-		}
-
-		if (!host.startsWith(host)) {
-			host += `system.host.${host}`;
-		}
-
-		return new Promise<void>((resolve, reject) => {
-			let timeout: NodeJS.Timeout | undefined;
-			if (cmdTimeout) {
-				timeout = setTimeout(() => {
-					if (timeout) {
-						timeout = undefined;
-						reject("cmdExec timeout");
-					}
-				}, cmdTimeout);
-			}
-
-			this._socket.emit("cmdExec", host, cmdId, cmd, (err) => {
-				if (timeout) clearTimeout(timeout);
-				timeout = undefined;
-
-				if (err) {
-					reject(err);
-				} else {
-					resolve();
+		return this.request({
+			commandTimeout: cmdTimeout,
+			executor: (resolve, reject, timeout) => {
+				if (!host.startsWith("system.host.")) {
+					host = `system.host.${host}`;
 				}
-			});
+
+				this._socket.emit("cmdExec", host, cmdId, cmd, (err) => {
+					if (timeout.elapsed) return;
+					timeout.clearTimeout();
+
+					if (err) reject(err);
+					resolve();
+				});
+			},
 		});
 	}
 
@@ -1389,69 +1475,68 @@ export class Connection<
 	 * Gets the system configuration.
 	 * @param update Force update.
 	 */
-	getSystemConfig(update?: boolean): Promise<ioBroker.OtherObject> {
-		if (!update && "systemConfig" in this._promises) {
-			return this._promises.systemConfig;
-		}
+	getSystemConfig(
+		update?: boolean,
+	): ioBroker.GetObjectPromise<"system.config"> {
+		return this.request({
+			cacheKey: "systemConfig",
+			forceUpdate: update,
+			// TODO: check if this should time out
+			commandTimeout: false,
+			executor: async (resolve) => {
+				let systemConfig = await this.getObject("system.config");
+				(systemConfig as any) ??= {};
+				(systemConfig as any).common ??= {};
+				(systemConfig as any).native ??= {};
 
-		if (!this.connected) {
-			return Promise.reject(ERRORS.NOT_CONNECTED);
-		}
-
-		this._promises.systemConfig = this.getObject("system.config").then(
-			(systemConfig) => {
-				systemConfig = systemConfig || {};
-
-				systemConfig.common = systemConfig.common || {};
-
-				systemConfig.native = systemConfig.native || {};
-				return systemConfig;
+				resolve(systemConfig!);
 			},
-		);
-
-		return this._promises.systemConfig;
+		});
 	}
 
 	// returns very optimized information for adapters to minimize connection load
 	getCompactSystemConfig(
 		update?: boolean,
-	): Promise<ioBroker.ObjectIdToObjectType<"system.config", "read">> {
-		if (Connection.isWeb()) {
-			return Promise.reject("Allowed only in admin");
-		}
-
-		if (!update && "systemConfigCommon" in this._promises) {
-			return this._promises.systemConfigCommon;
-		}
-
-		if (!this.connected) {
-			return Promise.reject(ERRORS.NOT_CONNECTED);
-		}
-
-		this._promises.systemConfigCommon = new Promise((resolve, reject) =>
-			this._socket.emit("getCompactSystemConfig", (err, systemConfig) =>
-				err ? reject(err) : resolve(systemConfig!),
-			),
-		);
-
-		return this._promises.systemConfigCommon;
+	): Promise<ioBroker.ObjectIdToObjectType<"system.config">> {
+		return this.request({
+			cacheKey: "systemConfigCommon",
+			forceUpdate: update,
+			// TODO: check if this should time out
+			commandTimeout: false,
+			requireAdmin: true,
+			executor: (resolve, reject) => {
+				this._socket.emit(
+					"getCompactSystemConfig",
+					(err, systemConfig) => {
+						if (err) reject(err);
+						resolve(systemConfig!);
+					},
+				);
+			},
+		});
 	}
 
 	/**
 	 * Read all states (which might not belong to this adapter) which match the given pattern.
 	 * @param pattern
 	 */
-	getForeignStates(pattern: string): ioBroker.GetStatesPromise {
-		if (!this.connected) {
-			return Promise.reject(ERRORS.NOT_CONNECTED);
-		}
-		return new Promise((resolve, reject) =>
-			this._socket.emit(
-				"getForeignStates",
-				pattern || "*",
-				(err, states) => (err ? reject(err) : resolve(states)),
-			),
-		);
+	getForeignStates(
+		pattern?: string | null | undefined,
+	): ioBroker.GetStatesPromise {
+		return this.request({
+			// TODO: check if this should time out
+			commandTimeout: false,
+			executor: (resolve, reject) => {
+				this._socket.emit(
+					"getForeignStates",
+					pattern || "*",
+					(err, states) => {
+						if (err) reject(err);
+						resolve(states);
+					},
+				);
+			},
+		});
 	}
 
 	/**
@@ -1460,20 +1545,24 @@ export class Connection<
 	 * @param type
 	 */
 	getForeignObjects<T extends ioBroker.ObjectType>(
-		pattern: string,
+		pattern: string | null | undefined,
 		type: T,
 	): Promise<Record<string, ioBroker.AnyObject & { type: T }>> {
-		if (!this.connected) {
-			return Promise.reject(ERRORS.NOT_CONNECTED);
-		}
-		return new Promise((resolve, reject) =>
-			this._socket.emit(
-				"getForeignObjects",
-				pattern || "*",
-				type,
-				(err, states) => (err ? reject(err) : resolve(states as any)),
-			),
-		);
+		return this.request({
+			// TODO: check if this should time out
+			commandTimeout: false,
+			executor: (resolve, reject) => {
+				this._socket.emit(
+					"getForeignObjects",
+					pattern || "*",
+					type,
+					(err, objects) => {
+						if (err) reject(err);
+						resolve(objects as any);
+					},
+				);
+			},
+		});
 	}
 
 	/**
@@ -1483,9 +1572,15 @@ export class Connection<
 	setSystemConfig(
 		obj: ioBroker.SettableObjectWorker<ioBroker.OtherObject>,
 	): Promise<ioBroker.SettableObjectWorker<ioBroker.OtherObject>> {
-		return this.setObject("system.config", obj).then(
-			() => (this._promises.systemConfig = Promise.resolve(obj)),
-		);
+		return this.request({
+			cacheKey: "systemConfig",
+			// TODO: check if this should time out
+			commandTimeout: false,
+			executor: async (resolve) => {
+				await this.setObject("system.config", obj);
+				resolve(obj);
+			},
+		});
 	}
 
 	/**
@@ -1504,15 +1599,16 @@ export class Connection<
 		id: string,
 		options: ioBroker.GetHistoryOptions,
 	): Promise<ioBroker.GetHistoryResult> {
-		if (!this.connected) {
-			return Promise.reject(ERRORS.NOT_CONNECTED);
-		}
-
-		return new Promise((resolve, reject) =>
-			this._socket.emit("getHistory", id, options, (err, values) =>
-				err ? reject(err) : resolve(values!),
-			),
-		);
+		return this.request({
+			// TODO: check if this should time out
+			commandTimeout: false,
+			executor: (resolve, reject) => {
+				this._socket.emit("getHistory", id, options, (err, values) => {
+					if (err) reject(err);
+					resolve(values!);
+				});
+			},
+		});
 	}
 
 	/**
@@ -1528,26 +1624,26 @@ export class Connection<
 		sessionId: string;
 		stepIgnore: number;
 	}> {
-		if (!this.connected) {
-			return Promise.reject(ERRORS.NOT_CONNECTED);
-		}
-
-		return new Promise((resolve, reject) =>
-			this._socket.emit(
-				"getHistory",
-				id,
-				options,
-				(err, values, stepIgnore, sessionId) =>
-					err
-						? reject(err)
-						: resolve({
-								values: values!,
-								sessionId: sessionId!,
-								// TODO: WTF is up with the ignore thing?
-								stepIgnore: stepIgnore!,
-						  }),
-			),
-		);
+		return this.request({
+			// TODO: check if this should time out
+			commandTimeout: false,
+			executor: (resolve, reject) => {
+				this._socket.emit(
+					"getHistory",
+					id,
+					options,
+					(err, values, stepIgnore, sessionId) => {
+						if (err) reject(err);
+						resolve({
+							values: values!,
+							sessionId: sessionId!,
+							// TODO: WTF is up with the ignore thing?
+							stepIgnore: stepIgnore!,
+						});
+					},
+				);
+			},
+		});
 	}
 
 	/**
@@ -1555,30 +1651,34 @@ export class Connection<
 	 * @param host
 	 * @param update Force update.
 	 */
-	getIpAddresses(host: string, update: boolean): Promise<string[]> {
+	getIpAddresses(host: string, update?: boolean): Promise<string[]> {
 		if (!host.startsWith("system.host.")) {
 			host = `system.host.${host}`;
 		}
 
-		const cacheKey = `IPs_${host}`;
-		if (!update && cacheKey in this._promises) {
-			return this._promises[cacheKey];
-		}
-		this._promises[cacheKey] = this.getObject(host).then((obj) =>
-			obj && obj.common ? obj.common.address || [] : [],
-		);
-
-		return this._promises[cacheKey];
+		return this.request({
+			cacheKey: `IPs_${host}`,
+			forceUpdate: update,
+			// TODO: check if this should time out
+			commandTimeout: false,
+			executor: async (resolve) => {
+				const obj = await this.getObject(host);
+				resolve(obj?.common.address ?? []);
+			},
+		});
 	}
 
 	/**
 	 * Gets the version.
 	 */
 	getVersion(): Promise<{ version: string; serverName: string }> {
-		if (!("version" in this._promises)) {
-			this._promises.version = new Promise((resolve, reject) => {
+		return this.request({
+			cacheKey: "version",
+			// TODO: check if this should time out
+			commandTimeout: false,
+			executor: (resolve, reject) => {
 				this._socket.emit("getVersion", (err, version, serverName) => {
-					// support of old socket.io
+					// Old socket.io had no error parameter
 					if (
 						err &&
 						!version &&
@@ -1587,29 +1687,29 @@ export class Connection<
 					) {
 						resolve({ version: err, serverName: "socketio" });
 					} else {
-						return err
-							? reject(err)
-							: resolve({ version, serverName });
+						if (err) reject(err);
+						resolve({ version: version!, serverName: serverName! });
 					}
 				});
-			});
-		}
-
-		return this._promises.version;
+			},
+		});
 	}
 
 	/**
 	 * Gets the web server name.
 	 */
 	getWebServerName(): Promise<string> {
-		if (!("webName" in this._promises)) {
-			this._promises.webName = new Promise((resolve, reject) => {
-				this._socket.emit("getAdapterName", (err, name) =>
-					err ? reject(err) : resolve(name),
-				);
-			});
-		}
-		return this._promises.webName;
+		return this.request({
+			cacheKey: "webName",
+			// TODO: check if this should time out
+			commandTimeout: false,
+			executor: (resolve, reject) => {
+				this._socket.emit("getAdapterName", (err, name) => {
+					if (err) reject(err);
+					resolve(name!);
+				});
+			},
+		});
 	}
 
 	/**
@@ -1618,46 +1718,51 @@ export class Connection<
 	 * @param filename file name with full path. it could be like vis.0/*
 	 */
 	fileExists(adapter: string, filename: string): Promise<boolean> {
-		if (!this.connected) {
-			return Promise.reject(ERRORS.NOT_CONNECTED);
-		}
-
-		return new Promise((resolve, reject) =>
-			this._socket.emit("fileExists", adapter, filename, (err, exists) =>
-				err ? reject(err) : resolve(!!exists),
-			),
-		);
+		return this.request({
+			// TODO: check if this should time out
+			commandTimeout: false,
+			executor: (resolve, reject) => {
+				this._socket.emit(
+					"fileExists",
+					adapter,
+					filename,
+					(err, exists) => {
+						if (err) reject(err);
+						resolve(!!exists);
+					},
+				);
+			},
+		});
 	}
 
 	/**
 	 * Read current user
 	 */
 	getCurrentUser(): Promise<string> {
-		if (!this.connected) {
-			return Promise.reject(ERRORS.NOT_CONNECTED);
-		}
-		return new Promise((resolve) =>
-			this._socket.emit("authEnabled", (isSecure, user) => resolve(user)),
-		);
+		return this.request({
+			// TODO: check if this should time out
+			commandTimeout: false,
+			executor: (resolve) => {
+				this._socket.emit("authEnabled", (_isSecure, user) => {
+					resolve(user);
+				});
+			},
+		});
 	}
 
 	/**
 	 * Get uuid
 	 */
 	getUuid(): Promise<ioBroker.Object[]> {
-		if ("uuid" in this._promises) {
-			return this._promises.uuid;
-		}
-
-		if (!this.connected) {
-			return Promise.reject(ERRORS.NOT_CONNECTED);
-		}
-
-		this._promises.uuid = this.getObject("system.meta.uuid").then(
-			(obj) => obj?.native?.uuid,
-		);
-
-		return this._promises.uuid;
+		return this.request({
+			cacheKey: "uuid",
+			// TODO: check if this should time out
+			commandTimeout: false,
+			executor: async (resolve) => {
+				const obj = await this.getObject("system.meta.uuid");
+				resolve(obj?.native?.uuid);
+			},
+		});
 	}
 
 	/**
@@ -1666,27 +1771,22 @@ export class Connection<
 	 * @param update Force update.
 	 */
 	checkFeatureSupported(feature: string, update?: boolean): Promise<any> {
-		const cacheKey = `supportedFeatures_${feature}`;
-		if (!update && cacheKey in this._promises) {
-			return this._promises[cacheKey];
-		}
-
-		if (!this.connected) {
-			return Promise.reject(ERRORS.NOT_CONNECTED);
-		}
-
-		this._promises[cacheKey] = new Promise((resolve, reject) =>
-			this._socket.emit(
-				"checkFeatureSupported",
-				feature,
-				(err, features) => {
-					if (err) reject(err);
-					resolve(features);
-				},
-			),
-		);
-
-		return this._promises[cacheKey];
+		return this.request({
+			cacheKey: `supportedFeatures_${feature}`,
+			forceUpdate: update,
+			// TODO: check if this should time out
+			commandTimeout: false,
+			executor: (resolve, reject) => {
+				this._socket.emit(
+					"checkFeatureSupported",
+					feature,
+					(err, features) => {
+						if (err) reject(err);
+						resolve(features);
+					},
+				);
+			},
+		});
 	}
 
 	/**
@@ -1701,43 +1801,40 @@ export class Connection<
 	getAdapterInstances(
 		adapter?: string,
 		update?: boolean,
-	): Promise<ioBroker.Object[]> {
+	): Promise<Record<string, ioBroker.InstanceObject>> {
 		if (typeof adapter === "boolean") {
 			update = adapter;
 			adapter = "";
 		}
 		adapter = adapter || "";
 
-		const cacheKey = `instances_${adapter}`;
-		if (!update && cacheKey in this._promises) {
-			return this._promises[cacheKey];
-		}
-
-		if (!this.connected) {
-			return Promise.reject(ERRORS.NOT_CONNECTED);
-		}
-
-		if (adapter) {
-			this._promises[cacheKey] = this.getObjectView(
-				`system.adapter.${adapter}.`,
-				`system.group.${adapter}.\u9999`,
-				"instance",
-			);
-		} else {
-			this._promises[cacheKey] = this.getObjectView(
-				"system.adapter.",
-				"system.group.\u9999",
-				"instance",
-			);
-		}
-
-		return this._promises[cacheKey];
+		return this.request({
+			cacheKey: `instances_${adapter}`,
+			forceUpdate: update,
+			// TODO: check if this should time out
+			commandTimeout: false,
+			executor: (resolve) => {
+				if (adapter) {
+					resolve(
+						this.getObjectView(
+							`system.adapter.${adapter}.`,
+							`system.adapter.${adapter}.\u9999`,
+							"instance",
+						),
+					);
+				} else {
+					resolve(
+						this.getObjectView(
+							"system.adapter.",
+							"system.adapter.\u9999",
+							"instance",
+						),
+					);
+				}
+			},
+		});
 	}
 
-	/**
-	 * Get all adapters.
-	 * @param update Force update.
-	 */
 	/**
 	 * Get adapters with the given name.
 	 * @param adapter The name of the adapter.
@@ -1746,7 +1843,7 @@ export class Connection<
 	getAdapters(
 		adapter?: string,
 		update?: boolean,
-	): Promise<ioBroker.Object[]> {
+	): Promise<Record<string, ioBroker.AdapterObject>> {
 		if (typeof adapter === "boolean") {
 			update = adapter;
 			adapter = "";
@@ -1755,37 +1852,29 @@ export class Connection<
 		adapter = adapter || "";
 
 		const cacheKey = `adapter_${adapter}`;
-		if (!update && cacheKey in this._promises) {
-			return this._promises[cacheKey];
-		}
 
-		if (!this.connected) {
-			return Promise.reject(ERRORS.NOT_CONNECTED);
-		}
-
-		if (adapter) {
-			this._promises[cacheKey] = this.getObjectView(
-				`system.adapter.${adapter}`,
-				`system.group.${adapter}`,
-				"adapter",
-			).then((adapters) => {
-				if (!adapters[`system.adapter.${adapter}`]) {
-					return {};
+		return this.request({
+			cacheKey: `adapter_${adapter}`,
+			forceUpdate: update,
+			// TODO: check if this should time out
+			commandTimeout: false,
+			executor: async (resolve) => {
+				const adapters = await this.getObjectView(
+					`system.adapter.${adapter}`,
+					`system.adapter.\u9999`,
+					"adapter",
+				);
+				if (adapter) {
+					const ret: Record<string, ioBroker.AdapterObject> = {};
+					const id = `system.adapter.${adapter}`;
+					if (id in adapters) {
+						ret[id] = adapters[id];
+					}
+					resolve(ret);
 				} else {
-					return {
-						[`system.adapter.${adapter}`]:
-							adapters[`system.adapter.${adapter}`],
-					};
+					resolve(adapters);
 				}
-			});
-		} else {
-			this._promises[cacheKey] = this.getObjectView(
-				"system.adapter.",
-				"system.group.\u9999",
-				"adapter",
-			);
-		}
-
-		return this._promises[cacheKey];
+			},
+		});
 	}
 }
