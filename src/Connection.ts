@@ -5,6 +5,7 @@ import type {
 	SocketClient,
 } from "./SocketClient";
 import type { GetUserPermissionsCallback } from "./SocketEvents";
+import { normalizeHostId } from "./tools";
 
 /** Possible progress states. */
 export enum PROGRESS {
@@ -23,6 +24,7 @@ export enum ERRORS {
 	NOT_CONNECTED = "notConnectedError",
 	TIMEOUT = "timeout",
 	NOT_ADMIN = "Allowed only in admin",
+	NOT_SUPPORTED = "Not supported",
 }
 
 /** @deprecated Use {@link ERRORS.PERMISSION_ERROR} instead */
@@ -32,8 +34,12 @@ export const NOT_CONNECTED = ERRORS.NOT_CONNECTED;
 
 /** Options to use for the backend request wrapper */
 interface RequestOptions<T> {
+	/** The key that is used to cache the results for later requests of the same kind */
 	cacheKey?: string;
+	/** Used to bypass the cache */
 	forceUpdate?: boolean;
+	/** Can be used to identify the request method in error messages */
+	requestName?: string;
 	/**
 	 * The timeout in milliseconds after which the call will reject with a timeout error.
 	 * If no timeout is given, the default is used. Set this to `false` to explicitly disable the timeout.
@@ -41,6 +47,9 @@ interface RequestOptions<T> {
 	commandTimeout?: number | false;
 	/** Whether the call should only be allowed in the admin adapter */
 	requireAdmin?: boolean;
+	/** Require certain features to be supported for this call */
+	requireFeatures?: string[];
+	/** The function that does the actual work */
 	executor: (
 		resolve: (value: T | PromiseLike<T> | Promise<T>) => void,
 		reject: (reason?: any) => void,
@@ -723,13 +732,17 @@ export class Connection<
 	}
 
 	/** Requests data from the server or reads it from the cache */
-	protected request<T>({
+	protected async request<T>({
 		cacheKey,
 		forceUpdate,
 		commandTimeout,
 		requireAdmin,
+		requireFeatures,
+		requestName,
 		executor,
 	}: RequestOptions<T>): Promise<T> {
+		// TODO: mention requestName in errors
+
 		// If the command requires the admin adapter, enforce it
 		if (requireAdmin && Connection.isWeb()) {
 			return Promise.reject(ERRORS.NOT_ADMIN);
@@ -743,6 +756,15 @@ export class Connection<
 		// Require the socket to be connected
 		if (!this.connected) {
 			return Promise.reject(ERRORS.NOT_CONNECTED);
+		}
+
+		// Check if all required features are supported
+		if (requireFeatures?.length) {
+			for (const feature of requireFeatures) {
+				if (!(await this.checkFeatureSupported(feature))) {
+					throw ERRORS.NOT_SUPPORTED;
+				}
+			}
 		}
 
 		const promise = new Promise<T>(async (resolve, reject) => {
@@ -1456,9 +1478,7 @@ export class Connection<
 		return this.request({
 			commandTimeout: cmdTimeout,
 			executor: (resolve, reject, timeout) => {
-				if (!host.startsWith("system.host.")) {
-					host = `system.host.${host}`;
-				}
+				host = normalizeHostId(host);
 
 				this._socket.emit("cmdExec", host, cmdId, cmd, (err) => {
 					if (timeout.elapsed) return;
@@ -1652,10 +1672,7 @@ export class Connection<
 	 * @param update Force update.
 	 */
 	getIpAddresses(host: string, update?: boolean): Promise<string[]> {
-		if (!host.startsWith("system.host.")) {
-			host = `system.host.${host}`;
-		}
-
+		host = normalizeHostId(host);
 		return this.request({
 			cacheKey: `IPs_${host}`,
 			forceUpdate: update,
@@ -1851,7 +1868,7 @@ export class Connection<
 
 		adapter = adapter || "";
 
-		const cacheKey = `adapter_${adapter}`;
+		// TODO: Why is this method marked as only admin in AdminConnection.ts, but allowed here?
 
 		return this.request({
 			cacheKey: `adapter_${adapter}`,

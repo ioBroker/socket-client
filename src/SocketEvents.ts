@@ -1,3 +1,5 @@
+import type { ERRORS } from "./Connection";
+
 /** Defines which events are emitted by the server and can be listened on the client */
 export interface IOListenEvents {
 	objectChange: (id: string, obj: ioBroker.Object) => void;
@@ -51,6 +53,13 @@ type GetAdapterNameCallback = (
 ) => void;
 
 type GetHostByIPCallback = (ip: string, host: ioBroker.HostObject) => void;
+
+type GenericCallbackNoExtraError<T> = (
+	result?: ERRORS.PERMISSION_ERROR | T,
+) => void;
+
+type GetCompactInstalledCallback = (installed: CompactInstalledInfo) => void;
+type GetCompactRepositoryCallback = (repo: CompactRepository) => void;
 
 export interface DelObjectOptions {
 	maintenance?: boolean;
@@ -334,11 +343,11 @@ export interface AdminEmitEvents {
 	): void;
 	getCompactInstalled(
 		host: string,
-		callback: GenericCallback<CompactInstalledInfo>,
+		callback: GenericCallbackNoExtraError<CompactInstalledInfo>,
 	): void;
 	getCompactRepository(
 		host: string,
-		callback: GenericCallback<CompactRepository>,
+		callback: GenericCallbackNoExtraError<CompactRepository>,
 	): void;
 	getCompactHosts(callback: GenericCallback<CompactHost[]>): void;
 
