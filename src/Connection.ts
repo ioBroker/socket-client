@@ -693,12 +693,12 @@ export class Connection<
 		disableProgressUpdate?: boolean,
 	): Promise<Record<string, ioBroker.State>> {
 		if (!this.connected) {
-			return Promise.reject(NOT_CONNECTED);
+			return Promise.reject(ERRORS.NOT_CONNECTED);
 		}
 
 		return new Promise((resolve, reject) =>
 			this._socket.emit("getStates", (err, res) => {
-				this.states = res;
+				this.states = res ?? {};
 
 				!disableProgressUpdate &&
 					this.props.onProgress?.(PROGRESS.STATES_LOADED);
@@ -713,7 +713,7 @@ export class Connection<
 	 */
 	getState(id: string): Promise<ioBroker.State | null | undefined> {
 		if (!this.connected) {
-			return Promise.reject(NOT_CONNECTED);
+			return Promise.reject(ERRORS.NOT_CONNECTED);
 		}
 
 		return new Promise((resolve, reject) =>
@@ -729,7 +729,7 @@ export class Connection<
 	 */
 	getBinaryState(id: string): Promise<string | undefined> {
 		if (!this.connected) {
-			return Promise.reject(NOT_CONNECTED);
+			return Promise.reject(ERRORS.NOT_CONNECTED);
 		}
 
 		// the data will come in base64
@@ -747,7 +747,7 @@ export class Connection<
 	 */
 	setBinaryState(id: string, base64: string): Promise<void> {
 		if (!this.connected) {
-			return Promise.reject(NOT_CONNECTED);
+			return Promise.reject(ERRORS.NOT_CONNECTED);
 		}
 
 		// the data will come in base64
@@ -768,7 +768,7 @@ export class Connection<
 		val: ioBroker.State | ioBroker.StateValue | ioBroker.SettableState,
 	): Promise<void> {
 		if (!this.connected) {
-			return Promise.reject(NOT_CONNECTED);
+			return Promise.reject(ERRORS.NOT_CONNECTED);
 		}
 
 		return new Promise<void>((resolve, reject) =>
@@ -792,7 +792,7 @@ export class Connection<
 		disableProgressUpdate?: boolean,
 	): Promise<Record<string, ioBroker.Object>> {
 		if (!this.connected) {
-			return Promise.reject(NOT_CONNECTED);
+			return Promise.reject(ERRORS.NOT_CONNECTED);
 		} else {
 			return new Promise((resolve, reject) => {
 				if (!update && this.objects) {
@@ -857,7 +857,7 @@ export class Connection<
 	 */
 	requireLog(isEnabled: boolean): Promise<void> {
 		if (!this.connected) {
-			return Promise.reject(NOT_CONNECTED);
+			return Promise.reject(ERRORS.NOT_CONNECTED);
 		}
 		return new Promise<void>((resolve, reject) =>
 			this._socket.emit("requireLog", isEnabled, (err) =>
@@ -873,7 +873,7 @@ export class Connection<
 	 */
 	delObject(id: string, maintenance?: boolean): Promise<void> {
 		if (!this.connected) {
-			return Promise.reject(NOT_CONNECTED);
+			return Promise.reject(ERRORS.NOT_CONNECTED);
 		}
 		return new Promise<void>((resolve, reject) =>
 			this._socket.emit(
@@ -892,7 +892,7 @@ export class Connection<
 	 */
 	delObjects(id: string, maintenance: boolean): Promise<void> {
 		if (!this.connected) {
-			return Promise.reject(NOT_CONNECTED);
+			return Promise.reject(ERRORS.NOT_CONNECTED);
 		}
 		return new Promise<void>((resolve, reject) =>
 			this._socket.emit(
@@ -911,7 +911,7 @@ export class Connection<
 	 */
 	setObject(id: string, obj: ioBroker.SettableObject): Promise<void> {
 		if (!this.connected) {
-			return Promise.reject(NOT_CONNECTED);
+			return Promise.reject(ERRORS.NOT_CONNECTED);
 		}
 
 		if (!obj) {
@@ -944,7 +944,7 @@ export class Connection<
 	 */
 	getObject(id: string): ioBroker.GetObjectPromise {
 		if (!this.connected) {
-			return Promise.reject(NOT_CONNECTED);
+			return Promise.reject(ERRORS.NOT_CONNECTED);
 		}
 		return new Promise((resolve, reject) =>
 			this._socket.emit("getObject", id, (err, obj) =>
@@ -965,7 +965,7 @@ export class Connection<
 		data: ioBroker.MessagePayload,
 	): Promise<ioBroker.Message | undefined> {
 		if (!this.connected) {
-			return Promise.reject(NOT_CONNECTED);
+			return Promise.reject(ERRORS.NOT_CONNECTED);
 		}
 		return new Promise((resolve) =>
 			this._socket.emit("sendTo", instance, command, data, (result) =>
@@ -981,7 +981,7 @@ export class Connection<
 	 */
 	extendObject(id: string, obj: ioBroker.PartialObject): Promise<void> {
 		if (!this.connected) {
-			return Promise.reject(NOT_CONNECTED);
+			return Promise.reject(ERRORS.NOT_CONNECTED);
 		}
 
 		obj = JSON.parse(JSON.stringify(obj));
@@ -1104,7 +1104,7 @@ export class Connection<
 		}
 
 		if (!this.connected) {
-			return Promise.reject(NOT_CONNECTED);
+			return Promise.reject(ERRORS.NOT_CONNECTED);
 		}
 
 		this._promises["enums_" + (_enum || "all")] = new Promise(
@@ -1153,7 +1153,7 @@ export class Connection<
 		type: string,
 	): Promise<Record<string, ioBroker.Object>> {
 		if (!this.connected) {
-			return Promise.reject(NOT_CONNECTED);
+			return Promise.reject(ERRORS.NOT_CONNECTED);
 		}
 
 		start = start || "";
@@ -1187,7 +1187,7 @@ export class Connection<
 	 */
 	readMetaItems(): Promise<ioBroker.Object[]> {
 		if (!this.connected) {
-			return Promise.reject(NOT_CONNECTED);
+			return Promise.reject(ERRORS.NOT_CONNECTED);
 		}
 		return new Promise((resolve, reject) =>
 			this._socket.emit(
@@ -1215,7 +1215,7 @@ export class Connection<
 		path: string,
 	): Promise<ioBroker.ReadDirResult[]> {
 		if (!this.connected) {
-			return Promise.reject(NOT_CONNECTED);
+			return Promise.reject(ERRORS.NOT_CONNECTED);
 		}
 		return new Promise((resolve, reject) =>
 			this._socket.emit("readDir", adapterName, path, (err, files) =>
@@ -1230,7 +1230,7 @@ export class Connection<
 		base64?: boolean,
 	): Promise<{ file: string; mimeType: string }> {
 		if (!this.connected) {
-			return Promise.reject(NOT_CONNECTED);
+			return Promise.reject(ERRORS.NOT_CONNECTED);
 		}
 		return new Promise((resolve, reject) => {
 			this._socket.emit(
@@ -1258,7 +1258,7 @@ export class Connection<
 		data: Buffer | string,
 	): Promise<void> {
 		if (!this.connected) {
-			return Promise.reject(NOT_CONNECTED);
+			return Promise.reject(ERRORS.NOT_CONNECTED);
 		}
 		return new Promise<void>((resolve, reject) => {
 			if (typeof data === "string") {
@@ -1299,7 +1299,7 @@ export class Connection<
 	 */
 	deleteFile(adapter: string, fileName: string): Promise<void> {
 		if (!this.connected) {
-			return Promise.reject(NOT_CONNECTED);
+			return Promise.reject(ERRORS.NOT_CONNECTED);
 		}
 		return new Promise<void>((resolve, reject) =>
 			this._socket.emit("deleteFile", adapter, fileName, (err) =>
@@ -1315,7 +1315,7 @@ export class Connection<
 	 */
 	deleteFolder(adapter: string, folderName: string): Promise<void> {
 		if (!this.connected) {
-			return Promise.reject(NOT_CONNECTED);
+			return Promise.reject(ERRORS.NOT_CONNECTED);
 		}
 		return new Promise<void>((resolve, reject) =>
 			this._socket.emit("deleteFolder", adapter, folderName, (err) =>
@@ -1338,7 +1338,7 @@ export class Connection<
 		cmdTimeout?: number,
 	): Promise<void> {
 		if (!this.connected) {
-			return Promise.reject(NOT_CONNECTED);
+			return Promise.reject(ERRORS.NOT_CONNECTED);
 		}
 
 		if (!host.startsWith(host)) {
@@ -1379,7 +1379,7 @@ export class Connection<
 		}
 
 		if (!this.connected) {
-			return Promise.reject(NOT_CONNECTED);
+			return Promise.reject(ERRORS.NOT_CONNECTED);
 		}
 
 		this._promises.systemConfig = this.getObject("system.config").then(
@@ -1409,7 +1409,7 @@ export class Connection<
 		}
 
 		if (!this.connected) {
-			return Promise.reject(NOT_CONNECTED);
+			return Promise.reject(ERRORS.NOT_CONNECTED);
 		}
 
 		this._promises.systemConfigCommon = new Promise((resolve, reject) =>
@@ -1427,7 +1427,7 @@ export class Connection<
 	 */
 	getForeignStates(pattern: string): ioBroker.GetStatesPromise {
 		if (!this.connected) {
-			return Promise.reject(NOT_CONNECTED);
+			return Promise.reject(ERRORS.NOT_CONNECTED);
 		}
 		return new Promise((resolve, reject) =>
 			this._socket.emit(
@@ -1448,7 +1448,7 @@ export class Connection<
 		type: T,
 	): Promise<Record<string, ioBroker.AnyObject & { type: T }>> {
 		if (!this.connected) {
-			return Promise.reject(NOT_CONNECTED);
+			return Promise.reject(ERRORS.NOT_CONNECTED);
 		}
 		return new Promise((resolve, reject) =>
 			this._socket.emit(
@@ -1489,7 +1489,7 @@ export class Connection<
 		options: ioBroker.GetHistoryOptions,
 	): Promise<ioBroker.GetHistoryResult> {
 		if (!this.connected) {
-			return Promise.reject(NOT_CONNECTED);
+			return Promise.reject(ERRORS.NOT_CONNECTED);
 		}
 
 		return new Promise((resolve, reject) =>
@@ -1513,7 +1513,7 @@ export class Connection<
 		stepIgnore: number;
 	}> {
 		if (!this.connected) {
-			return Promise.reject(NOT_CONNECTED);
+			return Promise.reject(ERRORS.NOT_CONNECTED);
 		}
 
 		return new Promise((resolve, reject) =>
@@ -1603,7 +1603,7 @@ export class Connection<
 	 */
 	fileExists(adapter: string, filename: string): Promise<boolean> {
 		if (!this.connected) {
-			return Promise.reject(NOT_CONNECTED);
+			return Promise.reject(ERRORS.NOT_CONNECTED);
 		}
 
 		return new Promise((resolve, reject) =>
@@ -1618,7 +1618,7 @@ export class Connection<
 	 */
 	getCurrentUser(): Promise<string> {
 		if (!this.connected) {
-			return Promise.reject(NOT_CONNECTED);
+			return Promise.reject(ERRORS.NOT_CONNECTED);
 		}
 		return new Promise((resolve) =>
 			this._socket.emit("authEnabled", (isSecure, user) => resolve(user)),
@@ -1634,7 +1634,7 @@ export class Connection<
 		}
 
 		if (!this.connected) {
-			return Promise.reject(NOT_CONNECTED);
+			return Promise.reject(ERRORS.NOT_CONNECTED);
 		}
 
 		this._promises.uuid = this.getObject("system.meta.uuid").then(
@@ -1655,7 +1655,7 @@ export class Connection<
 		}
 
 		if (!this.connected) {
-			return Promise.reject(NOT_CONNECTED);
+			return Promise.reject(ERRORS.NOT_CONNECTED);
 		}
 
 		this._promises["supportedFeatures_" + feature] = new Promise(
@@ -1696,7 +1696,7 @@ export class Connection<
 		}
 
 		if (!this.connected) {
-			return Promise.reject(NOT_CONNECTED);
+			return Promise.reject(ERRORS.NOT_CONNECTED);
 		}
 
 		if (adapter) {
@@ -1736,12 +1736,12 @@ export class Connection<
 
 		adapter = adapter || "";
 
-		if (!update && this._promises["adapter_" + adapter]) {
+		if (!update && this._promises[`adapter_${adapter}`]) {
 			return this._promises["adapter_" + adapter];
 		}
 
 		if (!this.connected) {
-			return Promise.reject(NOT_CONNECTED);
+			return Promise.reject(ERRORS.NOT_CONNECTED);
 		}
 
 		if (adapter) {
