@@ -1,5 +1,9 @@
 import type { ConnectionProps } from "./ConnectionProps";
-import type { EventHandlers, SocketClient } from "./SocketClient";
+import type {
+	EmitEventHandler,
+	ListenEventHandler,
+	SocketClient,
+} from "./SocketClient";
 import type { GetUserPermissionsCallback } from "./SocketEvents";
 
 /** Possible progress states. */
@@ -25,8 +29,14 @@ export const PERMISSION_ERROR = ERRORS.PERMISSION_ERROR;
 export const NOT_CONNECTED = ERRORS.NOT_CONNECTED;
 
 export class Connection<
-	CustomListenEvents extends EventHandlers = Record<never, never>,
-	CustomEmitEvents extends EventHandlers = Record<never, never>,
+	CustomListenEvents extends Record<
+		keyof CustomListenEvents,
+		ListenEventHandler
+	> = Record<string, never>,
+	CustomEmitEvents extends Record<
+		keyof CustomEmitEvents,
+		EmitEventHandler
+	> = Record<string, never>,
 > {
 	constructor(props: Partial<ConnectionProps>) {
 		this.props = this.applyDefaultProps(props);

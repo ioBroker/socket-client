@@ -1,7 +1,17 @@
 import { Connection, ERRORS } from "./Connection";
 import type { ConnectionProps } from "./ConnectionProps";
+import type {
+	AdminEmitEvents,
+	AdminListenEvents,
+	CompactAdapterInfo,
+	CompactInstanceInfo,
+	Logfile,
+} from "./SocketEvents";
 
-export class AdminConnection extends Connection {
+export class AdminConnection extends Connection<
+	AdminListenEvents,
+	AdminEmitEvents
+> {
 	constructor(props: ConnectionProps) {
 		super(props);
 	}
@@ -111,7 +121,9 @@ export class AdminConnection extends Connection {
 				host,
 				"getLogs",
 				linesNumber || 200,
-				(lines) => resolve(lines),
+				(lines: any) => {
+					resolve(lines);
+				},
 			),
 		);
 	}
@@ -119,7 +131,7 @@ export class AdminConnection extends Connection {
 	/**
 	 * Get the log files (only for admin connection).
 	 */
-	getLogsFiles(host): Promise<string[]> {
+	getLogsFiles(host: string): Promise<Logfile[]> {
 		if (Connection.isWeb()) {
 			return Promise.reject("Allowed only in admin");
 		}
@@ -129,14 +141,13 @@ export class AdminConnection extends Connection {
 		return new Promise((resolve, reject) =>
 			this._socket.emit("readLogs", host, (err, files) => {
 				if (err) reject(err);
-				resolve(files);
+				resolve(files!);
 			}),
 		);
 	}
 
 	/**
 	 * Delete the logs from a host (only for admin connection).
-	 * @param host
 	 */
 	delLogs(host: string): Promise<void> {
 		if (Connection.isWeb()) {
@@ -642,7 +653,7 @@ export class AdminConnection extends Connection {
 					}
 				}, cmdTimeout);
 
-			this._socket.emit("cmdExec", host, cmdId, cmd, null, (err) => {
+			this._socket.emit("cmdExec", host, cmdId, cmd, (err) => {
 				if (!cmdTimeout || timeout) {
 					timeout && clearTimeout(timeout);
 					timeout = null;
@@ -937,7 +948,7 @@ export class AdminConnection extends Connection {
 		return new Promise((resolve, reject) =>
 			this._socket.emit("encrypt", text, (err, text) => {
 				if (err) reject(err);
-				resolve(text);
+				resolve(text!);
 			}),
 		);
 	}
@@ -953,7 +964,7 @@ export class AdminConnection extends Connection {
 		return new Promise((resolve, reject) =>
 			this._socket.emit("decrypt", encryptedText, (err, text) => {
 				if (err) reject(err);
-				resolve(text);
+				resolve(text!);
 			}),
 		);
 	}
@@ -965,10 +976,10 @@ export class AdminConnection extends Connection {
 	 * @param options like {mode: 0x644}
 	 */
 	chmodFile(
-		adapter: string,
-		filename: string,
-		options: object,
-	): Promise<{ entries: Array<any> }> {
+		adapter: string | null,
+		path: string,
+		options?: { mode: number | string },
+	): Promise<ioBroker.ChownFileResult[]> {
 		if (Connection.isWeb()) {
 			return Promise.reject("Allowed only in admin");
 		}
@@ -980,11 +991,11 @@ export class AdminConnection extends Connection {
 			this._socket.emit(
 				"chmodFile",
 				adapter,
-				filename,
+				path,
 				options,
-				(err, entries, id) => {
+				(err, processed) => {
 					if (err) reject(err);
-					resolve({ entries, id });
+					resolve(processed!);
 				},
 			),
 		);
@@ -999,8 +1010,8 @@ export class AdminConnection extends Connection {
 	chownFile(
 		adapter: string,
 		filename: string,
-		options: object,
-	): Promise<{ entries: Array<any> }> {
+		options?: { owner: string; ownerGroup: string },
+	): Promise<ioBroker.ChownFileResult[]> {
 		if (Connection.isWeb()) {
 			return Promise.reject("Allowed only in admin");
 		}
@@ -1014,9 +1025,9 @@ export class AdminConnection extends Connection {
 				adapter,
 				filename,
 				options,
-				(err, entries, id) => {
+				(err, processed) => {
 					if (err) reject(err);
-					resolve({ entries, id });
+					resolve(processed!);
 				},
 			),
 		);
@@ -1083,7 +1094,7 @@ export class AdminConnection extends Connection {
 		return new Promise((resolve, reject) =>
 			this._socket.emit("getIsEasyModeStrict", (err, isStrict) => {
 				if (err) reject(err);
-				resolve(isStrict);
+				resolve(!!isStrict);
 			}),
 		);
 	}
@@ -1099,7 +1110,7 @@ export class AdminConnection extends Connection {
 			return Promise.reject(ERRORS.NOT_CONNECTED);
 		}
 		return new Promise((resolve, reject) =>
-			this._socket.emit("getEasyMode", (error, config) => {
+			this._socket.emit("getEasyMode", (err, config) => {
 				if (err) reject(err);
 				resolve(config);
 			}),
@@ -1117,7 +1128,7 @@ export class AdminConnection extends Connection {
 			return Promise.reject(ERRORS.NOT_CONNECTED);
 		}
 		return new Promise((resolve, reject) =>
-			this._socket.emit("getRatings", update, (err, ratings) => {
+			this._socket.emit("getRatings", !!update, (err, ratings) => {
 				if (err) reject(err);
 				resolve(ratings);
 			}),
@@ -1191,7 +1202,7 @@ export class AdminConnection extends Connection {
 	getAdapterInstances(
 		adapter?: string,
 		update?: boolean,
-	): Promise<ioBroker.Object[]> {
+	): Promise<ioBroker.InstanceObject[]> {
 		if (Connection.isWeb()) {
 			return Promise.reject("Allowed only in admin");
 		}
@@ -1200,7 +1211,7 @@ export class AdminConnection extends Connection {
 			update = adapter;
 			adapter = "";
 		}
-		adapter = adapter || "";
+		adapter = adapter ?? "";
 
 		const cacheKey = `instances_${adapter}`;
 		if (!update && cacheKey in this._promises) {
@@ -1237,7 +1248,7 @@ export class AdminConnection extends Connection {
 	getAdapters(
 		adapter?: string,
 		update?: boolean,
-	): Promise<ioBroker.Object[]> {
+	): Promise<ioBroker.AdapterObject[]> {
 		if (Connection.isWeb()) {
 			return Promise.reject("Allowed only in admin");
 		}
@@ -1269,7 +1280,9 @@ export class AdminConnection extends Connection {
 	}
 
 	// returns very optimized information for adapters to minimize connection load
-	getCompactAdapters(update?: boolean) {
+	getCompactAdapters(
+		update?: boolean,
+	): Promise<Record<string, CompactAdapterInfo>> {
 		if (Connection.isWeb()) {
 			return Promise.reject("Allowed only in admin");
 		}
@@ -1290,7 +1303,9 @@ export class AdminConnection extends Connection {
 	}
 
 	// returns very optimized information for adapters to minimize connection load
-	getCompactInstances(update?: boolean): Promise<any> {
+	getCompactInstances(
+		update?: boolean,
+	): Promise<Record<string, CompactInstanceInfo>> {
 		if (Connection.isWeb()) {
 			return Promise.reject("Allowed only in admin");
 		}
@@ -1313,7 +1328,11 @@ export class AdminConnection extends Connection {
 
 	// returns very optimized information for adapters to minimize connection load
 	// reads only version of installed adapter
-	getCompactInstalled(host, update?: boolean, cmdTimeout) {
+	getCompactInstalled(
+		host: string,
+		update?: boolean,
+		cmdTimeout?: number,
+	): Promise<CompactInstalledInfo> {
 		if (Connection.isWeb()) {
 			return Promise.reject("Allowed only in admin");
 		}
@@ -1369,8 +1388,8 @@ export class AdminConnection extends Connection {
 	getCompactRepository(
 		host: string,
 		update?: boolean,
-		timeoutMs: number,
-	): Promise<any> {
+		timeoutMs?: number,
+	): Promise<CompactRepository> {
 		if (Connection.isWeb()) {
 			return Promise.reject("Allowed only in admin");
 		}

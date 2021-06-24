@@ -1,14 +1,49 @@
-// export type ListenEventHandler =
-// 	// Add more overloads as necessary
-// 	| ((arg1: any, arg2: any, arg3: any, arg4: any, arg5: any) => void)
-// 	| ((arg1: any, arg2: any, arg3: any, arg4: any) => void)
-// 	| ((arg1: any, arg2: any, arg3: any) => void)
-// 	| ((arg1: any, arg2: any) => void)
-// 	| ((arg1: any) => void)
-// 	| ((...args: any[]) => void);
-
 import type { IOEmitEvents, IOListenEvents } from "./SocketEvents";
 
+export type ListenEventHandler =
+	// Add more overloads as necessary
+	| ((arg1: any, arg2: any, arg3: any, arg4: any, arg5: any) => void)
+	| ((arg1: any, arg2: any, arg3: any, arg4: any) => void)
+	| ((arg1: any, arg2: any, arg3: any) => void)
+	| ((arg1: any, arg2: any) => void)
+	| ((arg1: any) => void)
+	| ((...args: any[]) => void);
+
+export type EmitEventHandler =
+	// Add more overloads as necessary
+	| ((
+			arg1: any,
+			arg2: any,
+			arg3: any,
+			arg4: any,
+			arg5: any,
+			callback?: (...args: any[]) => void,
+	  ) => void)
+	| ((
+			arg1: any,
+			arg2: any,
+			arg3: any,
+			arg4: any,
+			callback?: (...args: any[]) => void,
+	  ) => void)
+	| ((
+			arg1: any,
+			arg2: any,
+			arg3: any,
+			callback?: (...args: any[]) => void,
+	  ) => void)
+	| ((arg1: any, arg2: any, callback?: (...args: any[]) => void) => void)
+	| ((arg1: any, callback?: (...args: any[]) => void) => void)
+	| ((...args: any[], callback?: (...args: any[]) => void) => void);
+
+// export type ListenEventHandler = (...args: any[]) => void;
+
+// export type EmitEventHandler = (
+// 	...args: any[],
+// 	callback?: (...args: any[]) => void,
+// ) => void;
+
+// ^ not sure why we cannot type these with tuple-typed arguments, but whatever...
 export interface ConnectOptions {
 	/** Timeout for answer for ping (pong) */
 	pongTimeout?: number;
@@ -23,15 +58,6 @@ export interface ConnectOptions {
 	/** Every connection attempt the interval increasing at options.connectInterval till max this number */
 	connectMaxAttempt?: number;
 }
-
-export type EventHandlers = Record<string, (...args: any[]) => void>;
-
-export type ListenEventHandler<T extends any[] = any[]> = (...args: T) => void;
-
-export type EmitEventHandler<
-	TSent extends any[] = any[],
-	TCallback extends any[] = any[],
-> = (...args: TSent[], callback?: (...args: TCallback[]) => void) => void;
 
 export interface SocketClient<
 	TListenEvents extends Record<

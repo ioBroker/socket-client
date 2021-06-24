@@ -50,6 +50,8 @@ type GetAdapterNameCallback = (
 	serverName?: string,
 ) => void;
 
+type GetHostByIPCallback = (ip: string, host: ioBroker.HostObject) => void;
+
 export interface DelObjectOptions {
 	maintenance?: boolean;
 	user?: string;
@@ -57,6 +59,54 @@ export interface DelObjectOptions {
 
 export interface DelObjectsOptions extends DelObjectOptions {
 	recursive?: boolean;
+}
+
+export interface CompactInstanceInfo {
+	adminTab: ioBroker.AdapterCommon["adminTab"];
+	name: ioBroker.InstanceCommon["name"];
+	icon: ioBroker.InstanceCommon["icon"];
+	enabled: ioBroker.InstanceCommon["enabled"];
+}
+
+export interface CompactAdapterInfo {
+	icon: ioBroker.AdapterCommon["icon"];
+	v: ioBroker.AdapterCommon["version"];
+	iv?: boolean;
+}
+
+export type CompactInstalledInfo = Record<
+	string,
+	{
+		version: string;
+	}
+>;
+
+export type CompactRepository = Record<
+	string,
+	{
+		icon: ioBroker.AdapterCommon["icon"];
+		version: string;
+	}
+>;
+
+export type CompactHost = {
+	_id: ioBroker.HostObject["_id"];
+	common: {
+		name: ioBroker.HostCommon["name"];
+		icon: ioBroker.HostCommon["icon"];
+		color: any; // TODO: what's the type of this?
+		installedVersion: ioBroker.HostCommon["installedVersion"];
+	};
+	native: {
+		hardware: {
+			networkInterfaces?: ioBroker.HostNative["hardware"]["networkInterfaces"];
+		};
+	};
+};
+
+export interface Logfile {
+	fileName: string;
+	size: number;
 }
 
 /** Defines which events are emitted by the client and can be listened on the server */
@@ -209,7 +259,8 @@ export interface IOEmitEvents {
 		instance: string,
 		command: string,
 		data: ioBroker.MessagePayload,
-		callback?: (result: ioBroker.Message) => void,
+		// TODO: What is the actual type of the returned value here?
+		callback?: (result: any) => void,
 	): void;
 	cmdExec(
 		hostName: string,
@@ -217,4 +268,79 @@ export interface IOEmitEvents {
 		command: string,
 		callback?: ErrorCallback,
 	): void;
+}
+
+// eslint-disable-next-line @typescript-eslint/ban-types
+export type AdminListenEvents = {};
+
+export interface AdminEmitEvents {
+	sendToHost(
+		hostname: string,
+		command: string,
+		message: any,
+		// TODO: What is the actual type of the returned value here?
+		callback?: (result: any) => void,
+	): void;
+
+	changePassword(
+		user: string,
+		password: string,
+		callback?: ErrorCallback,
+	): void;
+
+	getHostByIp(ipOrHostName: string, callback: GetHostByIPCallback): void;
+
+	encrypt(plaintext: string, callback: GenericCallback<string>): void;
+	decrypt(ciphertext: string, callback: GenericCallback<string>): void;
+
+	chmodFile(
+		adapter: string | null,
+		path: string,
+		options?: { mode: number | string },
+		callback?: ErrorAsString<ioBroker.ChownFileCallback>,
+	): void;
+	chownFile(
+		adapter: string | null,
+		path: string,
+		options?: { owner: string; ownerGroup: string },
+		callback?: ErrorAsString<ioBroker.ChownFileCallback>,
+	): void;
+
+	getIsEasyModeStrict(callback: GenericCallback<boolean>): void;
+	getEasyMode(
+		callback: GenericCallback<{
+			strict: boolean;
+			configs: any[];
+		}>,
+	): void;
+
+	// TODO: What's the return type here?
+	getRatings(update: boolean, callback: GenericCallback<any>): void;
+
+	getCurrentInstance(callback: GenericCallback<string>): void;
+	getAdapters(
+		adapterName: string | null | undefined,
+		callback: GenericCallback<ioBroker.AdapterObject[]>,
+	): void;
+	getAdapterInstances(
+		adapterName: string | null | undefined,
+		callback: GenericCallback<ioBroker.InstanceObject[]>,
+	): void;
+	getCompactInstances(
+		callback: GenericCallback<Record<string, CompactInstanceInfo>>,
+	): void;
+	getCompactAdapters(
+		callback: GenericCallback<Record<string, CompactAdapterInfo>>,
+	): void;
+	getCompactInstalled(
+		host: string,
+		callback: GenericCallback<CompactInstalledInfo>,
+	): void;
+	getCompactRepository(
+		host: string,
+		callback: GenericCallback<CompactRepository>,
+	): void;
+	getCompactHosts(callback: GenericCallback<CompactHost[]>): void;
+
+	readLogs(host: string, callback: GenericCallback<Logfile[]>): void;
 }
