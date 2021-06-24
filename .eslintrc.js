@@ -80,6 +80,8 @@ module.exports = {
 			{ allowArgumentsExplicitlyTypedAsAny: true },
 		],
 		"@typescript-eslint/no-this-alias": "off",
+
+		"prefer-template": "error",
 	},
 	overrides: [
 		{

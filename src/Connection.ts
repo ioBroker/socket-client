@@ -120,12 +120,13 @@ export class Connection<
 	private onCmdExitHandler?: (id: string, exitCode: number) => void;
 
 	protected _socket: SocketClient<CustomListenEvents, CustomEmitEvents>;
+	// TODO: type this with a templated index signature https://github.com/microsoft/TypeScript/pull/26797
 	protected _promises: Record<string, Promise<any>>;
 	protected _authTimer: any;
 	protected systemConfig: any;
 
 	private _waitForFirstConnection: Promise<void>;
-	private _waitForFirstConnectionResolve: (
+	private _waitForFirstConnectionResolve?: (
 		value: void | PromiseLike<void>,
 	) => void;
 
@@ -252,13 +253,18 @@ export class Connection<
 			this.onLogHandlers.forEach((cb) => cb(message));
 		});
 
-		this._socket.on("error", (err: unknown) => {
-			let _err = err || "";
-			if (typeof _err.toString !== "function") {
-				_err = JSON.stringify(_err);
+		this._socket.on("error", (err: any) => {
+			let _err: string;
+
+			if (err == undefined) {
+				_err = "";
+			} else if (typeof err.toString !== "function") {
+				_err = err.toString();
+			} else {
+				_err = JSON.stringify(err);
 				console.error(`Received strange error: ${_err}`);
 			}
-			_err = _err.toString();
+
 			if (_err.includes("User not authorized")) {
 				this.authenticate();
 			} else {
@@ -266,7 +272,7 @@ export class Connection<
 			}
 		});
 
-		this._socket.on("connect_error", (err) =>
+		this._socket.on("connect_error", (err: any) =>
 			console.error(`Connect error: ${err}`),
 		);
 
@@ -340,7 +346,7 @@ export class Connection<
 
 		if (this._waitForFirstConnectionResolve) {
 			this._waitForFirstConnectionResolve();
-			this._waitForFirstConnectionResolve = null;
+			this._waitForFirstConnectionResolve = undefined;
 		}
 	}
 
@@ -377,7 +383,7 @@ export class Connection<
 	private onConnect() {
 		this._getUserPermissions((err, acl) => {
 			if (err) {
-				return this.onError("Cannot read user permissions: " + err);
+				return this.onError(`Cannot read user permissions: ${err}`);
 			} else if (!this.doNotLoadACL) {
 				if (this.loaded) {
 					return;
@@ -447,7 +453,7 @@ export class Connection<
 					}
 					return undefined;
 				})
-				.catch((e) => this.onError("Cannot read system config: " + e));
+				.catch((e) => this.onError(`Cannot read system config: ${e}`));
 		});
 	}
 
@@ -805,7 +811,8 @@ export class Connection<
 						this.objects = res;
 						disableProgressUpdate &&
 							this.props.onProgress?.(PROGRESS.OBJECTS_LOADED);
-						err ? reject(err) : resolve(this.objects);
+						if (err) reject(err);
+						resolve(this.objects);
 					},
 				);
 			});
@@ -1053,7 +1060,7 @@ export class Connection<
 	 * Unset the handler for standard output of a command.
 	 */
 	unregisterCmdStdoutHandler(): void {
-		this.onCmdStdoutHandler = null;
+		this.onCmdStdoutHandler = undefined;
 	}
 
 	/**
@@ -1070,7 +1077,7 @@ export class Connection<
 	 * Unset the handler for standard error of a command.
 	 */
 	unregisterCmdStderrHandler(): void {
-		this.onCmdStderrHandler = null;
+		this.onCmdStderrHandler = undefined;
 	}
 
 	/**
@@ -1087,7 +1094,7 @@ export class Connection<
 	 * Unset the handler for exit of a command.
 	 */
 	unregisterCmdExitHandler(): void {
-		this.onCmdExitHandler = null;
+		this.onCmdExitHandler = undefined;
 	}
 
 	/**
@@ -1096,49 +1103,45 @@ export class Connection<
 	 * @param update Force update.
 	 */
 	getEnums(
-		_enum: string,
-		update: boolean,
+		_enum?: string,
+		update?: boolean,
 	): Promise<Record<string, ioBroker.Object>> {
-		if (!update && this._promises["enums_" + (_enum || "all")]) {
-			return this._promises["enums_" + (_enum || "all")];
+		const key = `enums_${_enum || "all"}`;
+		if (!update && key in this._promises) {
+			return this._promises[key];
 		}
 
 		if (!this.connected) {
 			return Promise.reject(ERRORS.NOT_CONNECTED);
 		}
 
-		this._promises["enums_" + (_enum || "all")] = new Promise(
-			(resolve, reject) => {
-				this._socket.emit(
-					"getObjectView",
-					"system",
-					"enum",
-					{
-						startkey: "enum." + (_enum || ""),
-						endkey: "enum." + (_enum ? _enum + "." : "") + "\u9999",
-					},
-					(err, res) => {
-						if (!err && res) {
-							const _res = {};
-							for (let i = 0; i < res.rows.length; i++) {
-								if (
-									_enum &&
-									res.rows[i].id === "enum." + _enum
-								) {
-									continue;
-								}
-								_res[res.rows[i].id] = res.rows[i].value;
+		this._promises[key] = new Promise((resolve, reject) => {
+			this._socket.emit(
+				"getObjectView",
+				"system",
+				"enum",
+				{
+					startkey: `enum.${_enum || ""}`,
+					endkey: _enum ? `enum.${_enum}.\u9999` : `enum.\u9999`,
+				},
+				(err, res) => {
+					if (!err && res) {
+						const _res = {};
+						for (let i = 0; i < res.rows.length; i++) {
+							if (_enum && res.rows[i].id === `enum.${_enum}`) {
+								continue;
 							}
-							resolve(_res);
-						} else {
-							reject(err);
+							_res[res.rows[i].id] = res.rows[i].value;
 						}
-					},
-				);
-			},
-		);
+						resolve(_res);
+					} else {
+						reject(err);
+					}
+				},
+			);
+		});
 
-		return this._promises["enums_" + (_enum || "all")];
+		return this._promises[key];
 	}
 
 	/**
@@ -1195,12 +1198,14 @@ export class Connection<
 				"system",
 				"meta",
 				{ startkey: "", endkey: "\u9999" },
-				(err, objs) =>
-					err
-						? reject(err)
-						: resolve(
-								objs.rows && objs.rows.map((obj) => obj.value),
-						  ),
+				(err, objs) => {
+					if (err) reject(err);
+					resolve(
+						objs!.rows
+							?.map((obj) => obj.value)
+							.filter((val): val is ioBroker.Object => !!val),
+					);
+				},
 			),
 		);
 	}
@@ -1238,9 +1243,8 @@ export class Connection<
 				adapterName,
 				fileName,
 				(err, data, type) => {
-					err
-						? reject(err)
-						: resolve({ file: data as string, mimeType: type! });
+					if (err) reject(err);
+					resolve({ file: data as string, mimeType: type! });
 				},
 			);
 		});
@@ -1268,7 +1272,8 @@ export class Connection<
 					fileName,
 					data,
 					(err) => {
-						err ? reject(err) : resolve();
+						if (err) reject(err);
+						resolve();
 					},
 				);
 			} else {
@@ -1285,7 +1290,8 @@ export class Connection<
 					fileName,
 					base64,
 					(err) => {
-						err ? reject(err) : resolve();
+						if (err) reject(err);
+						resolve();
 					},
 				);
 			}
@@ -1342,28 +1348,28 @@ export class Connection<
 		}
 
 		if (!host.startsWith(host)) {
-			host += "system.host." + host;
+			host += `system.host.${host}`;
 		}
 
 		return new Promise<void>((resolve, reject) => {
-			let timeout =
-				cmdTimeout &&
-				setTimeout(() => {
+			let timeout: NodeJS.Timeout | undefined;
+			if (cmdTimeout) {
+				timeout = setTimeout(() => {
 					if (timeout) {
-						timeout = null;
+						timeout = undefined;
 						reject("cmdExec timeout");
 					}
 				}, cmdTimeout);
+			}
 
 			this._socket.emit("cmdExec", host, cmdId, cmd, (err) => {
-				if (!cmdTimeout || timeout) {
-					timeout && clearTimeout(timeout);
-					timeout = null;
-					if (err) {
-						reject(err);
-					} else {
-						resolve();
-					}
+				if (timeout) clearTimeout(timeout);
+				timeout = undefined;
+
+				if (err) {
+					reject(err);
+				} else {
+					resolve();
 				}
 			});
 		});
@@ -1374,7 +1380,7 @@ export class Connection<
 	 * @param update Force update.
 	 */
 	getSystemConfig(update?: boolean): Promise<ioBroker.OtherObject> {
-		if (!update && this._promises.systemConfig) {
+		if (!update && "systemConfig" in this._promises) {
 			return this._promises.systemConfig;
 		}
 
@@ -1404,7 +1410,7 @@ export class Connection<
 			return Promise.reject("Allowed only in admin");
 		}
 
-		if (!update && this._promises.systemConfigCommon) {
+		if (!update && "systemConfigCommon" in this._promises) {
 			return this._promises.systemConfigCommon;
 		}
 
@@ -1541,26 +1547,26 @@ export class Connection<
 	 */
 	getIpAddresses(host: string, update: boolean): Promise<string[]> {
 		if (!host.startsWith("system.host.")) {
-			host = "system.host." + host;
+			host = `system.host.${host}`;
 		}
 
-		if (!update && this._promises["IPs_" + host]) {
-			return this._promises["IPs_" + host];
+		const cacheKey = `IPs_${host}`;
+		if (!update && cacheKey in this._promises) {
+			return this._promises[cacheKey];
 		}
-		this._promises["IPs_" + host] = this.getObject(host).then((obj) =>
+		this._promises[cacheKey] = this.getObject(host).then((obj) =>
 			obj && obj.common ? obj.common.address || [] : [],
 		);
 
-		return this._promises["IPs_" + host];
+		return this._promises[cacheKey];
 	}
 
 	/**
 	 * Gets the version.
 	 */
 	getVersion(): Promise<{ version: string; serverName: string }> {
-		this._promises.version =
-			this._promises.version ||
-			new Promise((resolve, reject) =>
+		if (!("version" in this._promises)) {
+			this._promises.version = new Promise((resolve, reject) => {
 				this._socket.emit("getVersion", (err, version, serverName) => {
 					// support of old socket.io
 					if (
@@ -1575,8 +1581,9 @@ export class Connection<
 							? reject(err)
 							: resolve({ version, serverName });
 					}
-				}),
-			);
+				});
+			});
+		}
 
 		return this._promises.version;
 	}
@@ -1585,14 +1592,13 @@ export class Connection<
 	 * Gets the web server name.
 	 */
 	getWebServerName(): Promise<string> {
-		this._promises.webName =
-			this._promises.webName ||
-			new Promise((resolve, reject) =>
+		if (!("webName" in this._promises)) {
+			this._promises.webName = new Promise((resolve, reject) => {
 				this._socket.emit("getAdapterName", (err, name) =>
 					err ? reject(err) : resolve(name),
-				),
-			);
-
+				);
+			});
+		}
 		return this._promises.webName;
 	}
 
@@ -1629,7 +1635,7 @@ export class Connection<
 	 * Get uuid
 	 */
 	getUuid(): Promise<ioBroker.Object[]> {
-		if (this._promises.uuid) {
+		if ("uuid" in this._promises) {
 			return this._promises.uuid;
 		}
 
@@ -1650,26 +1656,27 @@ export class Connection<
 	 * @param update Force update.
 	 */
 	checkFeatureSupported(feature: string, update?: boolean): Promise<any> {
-		if (!update && this._promises["supportedFeatures_" + feature]) {
-			return this._promises["supportedFeatures_" + feature];
+		const cacheKey = `supportedFeatures_${feature}`;
+		if (!update && cacheKey in this._promises) {
+			return this._promises[cacheKey];
 		}
 
 		if (!this.connected) {
 			return Promise.reject(ERRORS.NOT_CONNECTED);
 		}
 
-		this._promises["supportedFeatures_" + feature] = new Promise(
-			(resolve, reject) =>
-				this._socket.emit(
-					"checkFeatureSupported",
-					feature,
-					(err, features) => {
-						err ? reject(err) : resolve(features);
-					},
-				),
+		this._promises[cacheKey] = new Promise((resolve, reject) =>
+			this._socket.emit(
+				"checkFeatureSupported",
+				feature,
+				(err, features) => {
+					if (err) reject(err);
+					resolve(features);
+				},
+			),
 		);
 
-		return this._promises["supportedFeatures_" + feature];
+		return this._promises[cacheKey];
 	}
 
 	/**
@@ -1691,8 +1698,9 @@ export class Connection<
 		}
 		adapter = adapter || "";
 
-		if (!update && this._promises["instances_" + adapter]) {
-			return this._promises["instances_" + adapter];
+		const cacheKey = `instances_${adapter}`;
+		if (!update && cacheKey in this._promises) {
+			return this._promises[cacheKey];
 		}
 
 		if (!this.connected) {
@@ -1700,20 +1708,20 @@ export class Connection<
 		}
 
 		if (adapter) {
-			this._promises["instances_" + adapter] = this.getObjectView(
-				"system.adapter." + adapter + ".",
-				"system.group." + adapter + ".\u9999",
+			this._promises[cacheKey] = this.getObjectView(
+				`system.adapter.${adapter}.`,
+				`system.group.${adapter}.\u9999`,
 				"instance",
 			);
 		} else {
-			this._promises["instances_" + adapter] = this.getObjectView(
+			this._promises[cacheKey] = this.getObjectView(
 				"system.adapter.",
 				"system.group.\u9999",
 				"instance",
 			);
 		}
 
-		return this._promises["instances_" + adapter];
+		return this._promises[cacheKey];
 	}
 
 	/**
@@ -1736,8 +1744,9 @@ export class Connection<
 
 		adapter = adapter || "";
 
-		if (!update && this._promises[`adapter_${adapter}`]) {
-			return this._promises["adapter_" + adapter];
+		const cacheKey = `adapter_${adapter}`;
+		if (!update && cacheKey in this._promises) {
+			return this._promises[cacheKey];
 		}
 
 		if (!this.connected) {
@@ -1745,28 +1754,28 @@ export class Connection<
 		}
 
 		if (adapter) {
-			this._promises["adapter_" + adapter] = this.getObjectView(
-				"system.adapter." + adapter,
-				"system.group." + adapter,
+			this._promises[cacheKey] = this.getObjectView(
+				`system.adapter.${adapter}`,
+				`system.group.${adapter}`,
 				"adapter",
 			).then((adapters) => {
-				if (!adapters["system.adapter." + adapter]) {
+				if (!adapters[`system.adapter.${adapter}`]) {
 					return {};
 				} else {
 					return {
-						["system.adapter." + adapter]:
-							adapters["system.adapter." + adapter],
+						[`system.adapter.${adapter}`]:
+							adapters[`system.adapter.${adapter}`],
 					};
 				}
 			});
 		} else {
-			this._promises["adapter_" + adapter] = this.getObjectView(
+			this._promises[cacheKey] = this.getObjectView(
 				"system.adapter.",
 				"system.group.\u9999",
 				"adapter",
 			);
 		}
 
-		return this._promises["adapter_" + adapter];
+		return this._promises[cacheKey];
 	}
 }
