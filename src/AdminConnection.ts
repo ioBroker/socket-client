@@ -1,4 +1,4 @@
-import { Connection, NOT_CONNECTED, PERMISSION_ERROR } from "./Connection";
+import { Connection, ERRORS } from "./Connection";
 import type { ConnectionProps } from "./ConnectionProps";
 
 export class AdminConnection extends Connection {
@@ -22,7 +22,7 @@ export class AdminConnection extends Connection {
 		}
 
 		if (!this.connected) {
-			return Promise.reject(NOT_CONNECTED);
+			return Promise.reject(ERRORS.NOT_CONNECTED);
 		}
 
 		this._promises.cert = (<any>this.getObject("system.certificates")).then(
@@ -102,7 +102,7 @@ export class AdminConnection extends Connection {
 		}
 
 		if (!this.connected) {
-			return Promise.reject(NOT_CONNECTED);
+			return Promise.reject(ERRORS.NOT_CONNECTED);
 		}
 
 		return new Promise((resolve) =>
@@ -124,7 +124,7 @@ export class AdminConnection extends Connection {
 			return Promise.reject("Allowed only in admin");
 		}
 		if (!this.connected) {
-			return Promise.reject(NOT_CONNECTED);
+			return Promise.reject(ERRORS.NOT_CONNECTED);
 		}
 		return new Promise((resolve, reject) =>
 			this._socket.emit("readLogs", host, (err, files) =>
@@ -142,7 +142,7 @@ export class AdminConnection extends Connection {
 			return Promise.reject("Allowed only in admin");
 		}
 		if (!this.connected) {
-			return Promise.reject(NOT_CONNECTED);
+			return Promise.reject(ERRORS.NOT_CONNECTED);
 		}
 		return new Promise<void>((resolve, reject) =>
 			this._socket.emit("sendToHost", host, "delLogs", null, (error) =>
@@ -161,7 +161,7 @@ export class AdminConnection extends Connection {
 			return Promise.reject("Allowed only in admin");
 		}
 		if (!this.connected) {
-			return Promise.reject(NOT_CONNECTED);
+			return Promise.reject(ERRORS.NOT_CONNECTED);
 		}
 		return new Promise<void>((resolve, reject) =>
 			this._socket.emit("deleteFile", adapter, fileName, (err) =>
@@ -180,7 +180,7 @@ export class AdminConnection extends Connection {
 			return Promise.reject("Allowed only in admin");
 		}
 		if (!this.connected) {
-			return Promise.reject(NOT_CONNECTED);
+			return Promise.reject(ERRORS.NOT_CONNECTED);
 		}
 		return new Promise<void>((resolve, reject) =>
 			this._socket.emit("deleteFolder", adapter, folderName, (err) =>
@@ -197,12 +197,12 @@ export class AdminConnection extends Connection {
 		if (Connection.isWeb()) {
 			return Promise.reject("Allowed only in admin");
 		}
-		if (!update && this._promises.hosts) {
+		if (!update && "hosts" in this._promises) {
 			return this._promises.hosts;
 		}
 
 		if (!this.connected) {
-			return Promise.reject(NOT_CONNECTED);
+			return Promise.reject(ERRORS.NOT_CONNECTED);
 		}
 
 		this._promises.hosts = new Promise((resolve, reject) =>
@@ -215,7 +215,7 @@ export class AdminConnection extends Connection {
 					if (err) {
 						reject(err);
 					} else {
-						resolve(doc.rows.map((item) => item.value));
+						resolve(doc?.rows.map((item) => item.value) ?? []);
 					}
 				},
 			),
@@ -232,11 +232,11 @@ export class AdminConnection extends Connection {
 		if (Connection.isWeb()) {
 			return Promise.reject("Allowed only in admin");
 		}
-		if (!update && this._promises.users) {
+		if (!update && "users" in this._promises) {
 			return this._promises.users;
 		}
 		if (!this.connected) {
-			return Promise.reject(NOT_CONNECTED);
+			return Promise.reject(ERRORS.NOT_CONNECTED);
 		}
 
 		this._promises.users = new Promise((resolve, reject) =>
@@ -249,7 +249,7 @@ export class AdminConnection extends Connection {
 					if (err) {
 						reject(err);
 					} else {
-						resolve(doc.rows.map((item) => item.value));
+						resolve(doc?.rows.map((item) => item.value) ?? []);
 					}
 				},
 			),
@@ -266,11 +266,11 @@ export class AdminConnection extends Connection {
 		if (Connection.isWeb()) {
 			return Promise.reject("Allowed only in admin");
 		}
-		if (!update && this._promises.groups) {
+		if (!update && "groups" in this._promises) {
 			return this._promises.groups;
 		}
 		if (!this.connected) {
-			return Promise.reject(NOT_CONNECTED);
+			return Promise.reject(ERRORS.NOT_CONNECTED);
 		}
 
 		this._promises.groups = new Promise((resolve, reject) =>
@@ -310,7 +310,7 @@ export class AdminConnection extends Connection {
 					return this.setObject(obj._id, obj);
 				})
 				.then(() => setTimeout(() => this._renameGroups(objs, cb), 0))
-				.catch((err) => cb?.(err));
+				.catch((err) => cb && cb(err));
 		}
 	}
 
@@ -333,7 +333,7 @@ export class AdminConnection extends Connection {
 			if (groups.length) {
 				// find all elements
 				const groupsToRename = groups.filter((group) =>
-					group._id.startsWith(id + "."),
+					group._id.startsWith(`${id}.`),
 				);
 
 				groupsToRename.forEach(
@@ -372,23 +372,28 @@ export class AdminConnection extends Connection {
 	 * @param update Force update.
 	 * @param timeoutMs optional read timeout.
 	 */
-	getHostInfo(host: string, update: boolean, timeoutMs: number): Promise<any> {
+	getHostInfo(
+		host: string,
+		update: boolean,
+		timeoutMs: number,
+	): Promise<any> {
 		if (Connection.isWeb()) {
 			return Promise.reject("Allowed only in admin");
 		}
 		if (!host.startsWith("system.host.")) {
-			host += "system.host." + host;
+			host += `system.host.${host}`;
 		}
 
-		if (!update && this._promises["hostInfo" + host]) {
-			return this._promises["hostInfo" + host];
+		const cacheKey = `hostInfo_${host}`;
+		if (!update && cacheKey in this._promises) {
+			return this._promises[cacheKey];
 		}
 
 		if (!this.connected) {
-			return Promise.reject(NOT_CONNECTED);
+			return Promise.reject(ERRORS.NOT_CONNECTED);
 		}
 
-		this._promises["hostInfo" + host] = new Promise((resolve, reject) => {
+		this._promises[cacheKey] = new Promise((resolve, reject) => {
 			let timeout = setTimeout(() => {
 				if (timeout) {
 					timeout = null;
@@ -405,7 +410,7 @@ export class AdminConnection extends Connection {
 					if (timeout) {
 						clearTimeout(timeout);
 						timeout = null;
-						if (data === PERMISSION_ERROR) {
+						if (data === ERRORS.PERMISSION_ERROR) {
 							reject('May not read "getHostInfo"');
 						} else if (!data) {
 							reject('Cannot read "getHostInfo"');
@@ -417,7 +422,7 @@ export class AdminConnection extends Connection {
 			);
 		});
 
-		return this._promises["hostInfo" + host];
+		return this._promises[cacheKey];
 	}
 
 	/**
@@ -426,54 +431,57 @@ export class AdminConnection extends Connection {
 	 * @param update Force update.
 	 * @param timeoutMs optional read timeout.
 	 */
-	getHostInfoShort(host: string, update: boolean, timeoutMs: number): Promise<any> {
+	getHostInfoShort(
+		host: string,
+		update: boolean,
+		timeoutMs: number,
+	): Promise<any> {
 		if (Connection.isWeb()) {
 			return Promise.reject("Allowed only in admin");
 		}
 		if (!host.startsWith("system.host.")) {
-			host += "system.host." + host;
+			host += `system.host.${host}`;
 		}
 
-		if (!update && this._promises["hostInfoShort" + host]) {
-			return this._promises["hostInfoShort" + host];
+		const cacheKey = `hostInfoShort_${host}`;
+		if (!update && cacheKey in this._promises) {
+			return this._promises[cacheKey];
 		}
 
 		if (!this.connected) {
-			return Promise.reject(NOT_CONNECTED);
+			return Promise.reject(ERRORS.NOT_CONNECTED);
 		}
 
-		this._promises["hostInfoShort" + host] = new Promise(
-			(resolve, reject) => {
-				let timeout = setTimeout(() => {
+		this._promises[cacheKey] = new Promise((resolve, reject) => {
+			let timeout = setTimeout(() => {
+				if (timeout) {
+					timeout = null;
+					reject("hostInfoShort timeout");
+				}
+			}, timeoutMs || this.props.cmdTimeout);
+
+			this._socket.emit(
+				"sendToHost",
+				host,
+				"getHostInfoShort",
+				null,
+				(data) => {
 					if (timeout) {
+						clearTimeout(timeout);
 						timeout = null;
-						reject("hostInfoShort timeout");
-					}
-				}, timeoutMs || this.props.cmdTimeout);
-
-				this._socket.emit(
-					"sendToHost",
-					host,
-					"getHostInfoShort",
-					null,
-					(data) => {
-						if (timeout) {
-							clearTimeout(timeout);
-							timeout = null;
-							if (data === PERMISSION_ERROR) {
-								reject('May not read "getHostInfoShort"');
-							} else if (!data) {
-								reject('Cannot read "getHostInfoShort"');
-							} else {
-								resolve(data);
-							}
+						if (data === ERRORS.PERMISSION_ERROR) {
+							reject('May not read "getHostInfoShort"');
+						} else if (!data) {
+							reject('Cannot read "getHostInfoShort"');
+						} else {
+							resolve(data);
 						}
-					},
-				);
-			},
-		);
+					}
+				},
+			);
+		});
 
-		return this._promises["hostInfoShort" + host];
+		return this._promises[cacheKey];
 	}
 
 	/**
@@ -483,20 +491,25 @@ export class AdminConnection extends Connection {
 	 * @param update Force update.
 	 * @param timeoutMs timeout in ms.
 	 */
-	getRepository(host: string, args: any, update: boolean, timeoutMs: number): Promise<any> {
+	getRepository(
+		host: string,
+		args: any,
+		update: boolean,
+		timeoutMs: number,
+	): Promise<any> {
 		if (Connection.isWeb()) {
 			return Promise.reject("Allowed only in admin");
 		}
-		if (!update && this._promises.repo) {
+		if (!update && "repo" in this._promises) {
 			return this._promises.repo;
 		}
 
 		if (!this.connected) {
-			return Promise.reject(NOT_CONNECTED);
+			return Promise.reject(ERRORS.NOT_CONNECTED);
 		}
 
 		if (!host.startsWith("system.host.")) {
-			host += "system.host." + host;
+			host += `system.host.${host}`;
 		}
 
 		this._promises.repo = new Promise((resolve, reject) => {
@@ -516,7 +529,7 @@ export class AdminConnection extends Connection {
 					if (timeout) {
 						clearTimeout(timeout);
 						timeout = null;
-						if (data === PERMISSION_ERROR) {
+						if (data === ERRORS.PERMISSION_ERROR) {
 							reject('May not read "getRepository"');
 						} else if (!data) {
 							reject('Cannot read "getRepository"');
@@ -537,23 +550,27 @@ export class AdminConnection extends Connection {
 	 * @param update Force update.
 	 * @param cmdTimeout timeout in ms (optional)
 	 */
-	getInstalled(host: string, update: boolean, cmdTimeout: number): Promise<any> {
+	getInstalled(
+		host: string,
+		update: boolean,
+		cmdTimeout: number,
+	): Promise<any> {
 		if (Connection.isWeb()) {
 			return Promise.reject("Allowed only in admin");
 		}
 
 		this._promises.installed = this._promises.installed || {};
 
-		if (!update && this._promises.installed[host]) {
+		if (!update && "installed" in this._promises[host]) {
 			return this._promises.installed[host];
 		}
 
 		if (!this.connected) {
-			return Promise.reject(NOT_CONNECTED);
+			return Promise.reject(ERRORS.NOT_CONNECTED);
 		}
 
 		if (!host.startsWith("system.host.")) {
-			host += "system.host." + host;
+			host += `system.host.${host}`;
 		}
 
 		this._promises.installed[host] = new Promise((resolve, reject) => {
@@ -573,7 +590,7 @@ export class AdminConnection extends Connection {
 					if (timeout) {
 						clearTimeout(timeout);
 						timeout = null;
-						if (data === PERMISSION_ERROR) {
+						if (data === ERRORS.PERMISSION_ERROR) {
 							reject('May not read "getInstalled"');
 						} else if (!data) {
 							reject('Cannot read "getInstalled"');
@@ -595,16 +612,21 @@ export class AdminConnection extends Connection {
 	 * @param cmdId The command ID.
 	 * @param cmdTimeout Timeout of command in ms
 	 */
-	cmdExec(host: string, cmd: string, cmdId: string, cmdTimeout: number): Promise<void> {
+	cmdExec(
+		host: string,
+		cmd: string,
+		cmdId: string,
+		cmdTimeout: number,
+	): Promise<void> {
 		if (Connection.isWeb()) {
 			return Promise.reject("Allowed only in admin");
 		}
 		if (!this.connected) {
-			return Promise.reject(NOT_CONNECTED);
+			return Promise.reject(ERRORS.NOT_CONNECTED);
 		}
 
 		if (!host.startsWith(host)) {
-			host += "system.host." + host;
+			host += `system.host.${host}`;
 		}
 
 		return new Promise<void>((resolve, reject) => {
@@ -644,7 +666,7 @@ export class AdminConnection extends Connection {
 		).then((result) => {
 			if (result) {
 				if (!this.connected) {
-					return Promise.reject(NOT_CONNECTED);
+					return Promise.reject(ERRORS.NOT_CONNECTED);
 				}
 				return new Promise((resolve, reject) => {
 					let timeout = setTimeout(() => {
@@ -668,7 +690,7 @@ export class AdminConnection extends Connection {
 								clearTimeout(timeout);
 								timeout = null;
 
-								if (data === PERMISSION_ERROR) {
+								if (data === ERRORS.PERMISSION_ERROR) {
 									reject('May not read "BaseSettings"');
 								} else if (!data) {
 									reject('Cannot read "BaseSettings"');
@@ -699,7 +721,7 @@ export class AdminConnection extends Connection {
 		).then((result) => {
 			if (result) {
 				if (!this.connected) {
-					return Promise.reject(NOT_CONNECTED);
+					return Promise.reject(ERRORS.NOT_CONNECTED);
 				}
 				return new Promise((resolve, reject) => {
 					let timeout = setTimeout(() => {
@@ -719,7 +741,7 @@ export class AdminConnection extends Connection {
 								clearTimeout(timeout);
 								timeout = null;
 
-								if (data === PERMISSION_ERROR) {
+								if (data === ERRORS.PERMISSION_ERROR) {
 									reject('May not write "BaseSettings"');
 								} else if (!data) {
 									reject('Cannot write "BaseSettings"');
@@ -803,17 +825,18 @@ export class AdminConnection extends Connection {
 			return Promise.reject("Allowed only in admin");
 		}
 		if (!host.startsWith("system.host.")) {
-			host = "system.host." + host;
+			host = `system.host.${host}`;
 		}
 
-		if (!update && this._promises["IPs_" + host]) {
-			return this._promises["IPs_" + host];
+		const cacheKey = `IPs_${host}`;
+		if (!update && cacheKey in this._promises) {
+			return this._promises[cacheKey];
 		}
-		this._promises["IPs_" + host] = (<any>this.getObject(host)).then(
-			(obj) => (obj && obj.common ? obj.common.address || [] : []),
+		this._promises[cacheKey] = (<any>this.getObject(host)).then((obj) =>
+			obj && obj.common ? obj.common.address || [] : [],
 		);
 
-		return this._promises["IPs_" + host];
+		return this._promises[cacheKey];
 	}
 
 	/**
@@ -821,7 +844,7 @@ export class AdminConnection extends Connection {
 	 * @param ipOrHostName
 	 * @param update Force update.
 	 */
-	getHostByIp(ipOrHostName: string, update: boolean): Promise<any[<name, address, family>() => ]> {
+	getHostByIp(ipOrHostName: string, update: boolean): Promise<any> {
 		if (Connection.isWeb()) {
 			return Promise.reject("Allowed only in admin");
 		}
@@ -829,10 +852,11 @@ export class AdminConnection extends Connection {
 			ipOrHostName = ipOrHostName.replace(/^system\.host\./, "");
 		}
 
-		if (!update && this._promises["rIPs_" + ipOrHostName]) {
-			return this._promises["rIPs_" + ipOrHostName];
+		const cacheKey = `rIPs_${ipOrHostName}`;
+		if (!update && cacheKey in this._promises) {
+			return this._promises[cacheKey];
 		}
-		this._promises["rIPs_" + ipOrHostName] = new Promise((resolve) =>
+		this._promises[cacheKey] = new Promise((resolve) =>
 			this._socket.emit("getHostByIp", ipOrHostName, (ip, host) => {
 				const IPs4 = [
 					{
@@ -895,7 +919,7 @@ export class AdminConnection extends Connection {
 			}),
 		);
 
-		return this._promises["rIPs_" + ipOrHostName];
+		return this._promises[cacheKey];
 	}
 
 	/**
@@ -934,12 +958,16 @@ export class AdminConnection extends Connection {
 	 * @param filename file name with full path. it could be like vis.0/*
 	 * @param options like {mode: 0x644}
 	 */
-	chmodFile(adapter: string, filename: string, options: object): Promise<{ entries: Array<any>; }> {
+	chmodFile(
+		adapter: string,
+		filename: string,
+		options: object,
+	): Promise<{ entries: Array<any> }> {
 		if (Connection.isWeb()) {
 			return Promise.reject("Allowed only in admin");
 		}
 		if (!this.connected) {
-			return Promise.reject(NOT_CONNECTED);
+			return Promise.reject(ERRORS.NOT_CONNECTED);
 		}
 
 		return new Promise((resolve, reject) =>
@@ -960,12 +988,16 @@ export class AdminConnection extends Connection {
 	 * @param filename file name with full path. it could be like vis.0/*
 	 * @param options like {owner: 'newOwner', ownerGroup: 'newGroup'}
 	 */
-	chownFile(adapter: string, filename: string, options: object): Promise<{ entries: Array<any>; }> {
+	chownFile(
+		adapter: string,
+		filename: string,
+		options: object,
+	): Promise<{ entries: Array<any> }> {
 		if (Connection.isWeb()) {
 			return Promise.reject("Allowed only in admin");
 		}
 		if (!this.connected) {
-			return Promise.reject(NOT_CONNECTED);
+			return Promise.reject(ERRORS.NOT_CONNECTED);
 		}
 
 		return new Promise((resolve, reject) =>
@@ -991,7 +1023,7 @@ export class AdminConnection extends Connection {
 		}
 
 		if (!this.connected) {
-			return Promise.reject(NOT_CONNECTED);
+			return Promise.reject(ERRORS.NOT_CONNECTED);
 		}
 		return new Promise((resolve) =>
 			this._socket.emit(
@@ -1015,7 +1047,7 @@ export class AdminConnection extends Connection {
 		}
 
 		if (!this.connected) {
-			return Promise.reject(NOT_CONNECTED);
+			return Promise.reject(ERRORS.NOT_CONNECTED);
 		}
 		return new Promise((resolve) =>
 			this._socket.emit(
@@ -1036,7 +1068,7 @@ export class AdminConnection extends Connection {
 			return Promise.reject("Allowed only in admin");
 		}
 		if (!this.connected) {
-			return Promise.reject(NOT_CONNECTED);
+			return Promise.reject(ERRORS.NOT_CONNECTED);
 		}
 		return new Promise((resolve, reject) =>
 			this._socket.emit("getIsEasyModeStrict", (error, isStrict) =>
@@ -1053,7 +1085,7 @@ export class AdminConnection extends Connection {
 			return Promise.reject("Allowed only in admin");
 		}
 		if (!this.connected) {
-			return Promise.reject(NOT_CONNECTED);
+			return Promise.reject(ERRORS.NOT_CONNECTED);
 		}
 		return new Promise((resolve, reject) =>
 			this._socket.emit("getEasyMode", (error, config) =>
@@ -1070,7 +1102,7 @@ export class AdminConnection extends Connection {
 			return Promise.reject("Allowed only in admin");
 		}
 		if (!this.connected) {
-			return Promise.reject(NOT_CONNECTED);
+			return Promise.reject(ERRORS.NOT_CONNECTED);
 		}
 		return new Promise((resolve, reject) =>
 			this._socket.emit("getRatings", update, (err, ratings) =>
@@ -1081,7 +1113,7 @@ export class AdminConnection extends Connection {
 
 	getCurrentSession(cmdTimeout) {
 		if (!this.connected) {
-			return Promise.reject(NOT_CONNECTED);
+			return Promise.reject(ERRORS.NOT_CONNECTED);
 		}
 
 		return new Promise((resolve, reject) => {
@@ -1105,7 +1137,7 @@ export class AdminConnection extends Connection {
 					}
 				})
 				.catch((e) => {
-					reject("getCurrentSession: " + e);
+					reject(`getCurrentSession: ${e}`);
 				});
 		});
 	}
@@ -1119,7 +1151,7 @@ export class AdminConnection extends Connection {
 		}
 
 		if (!this.connected) {
-			return Promise.reject(NOT_CONNECTED);
+			return Promise.reject(ERRORS.NOT_CONNECTED);
 		}
 
 		this._promises.currentInstance =
@@ -1142,7 +1174,10 @@ export class AdminConnection extends Connection {
 	 * @param adapter The name of the adapter.
 	 * @param update Force update.
 	 */
-	getAdapterInstances(adapter: string, update: boolean): Promise<ioBroker.Object[]> {
+	getAdapterInstances(
+		adapter: string,
+		update: boolean,
+	): Promise<ioBroker.Object[]> {
 		if (Connection.isWeb()) {
 			return Promise.reject("Allowed only in admin");
 		}
@@ -1153,25 +1188,24 @@ export class AdminConnection extends Connection {
 		}
 		adapter = adapter || "";
 
-		if (!update && this._promises["instances_" + adapter]) {
-			return this._promises["instances_" + adapter];
+		const cacheKey = `instances_${adapter}`;
+		if (!update && cacheKey in this._promises) {
+			return this._promises[cacheKey];
 		}
 
 		if (!this.connected) {
-			return Promise.reject(NOT_CONNECTED);
+			return Promise.reject(ERRORS.NOT_CONNECTED);
 		}
 
-		this._promises["instances_" + adapter] = new Promise(
-			(resolve, reject) =>
-				this._socket.emit(
-					"getAdapterInstances",
-					adapter,
-					(err, instances) =>
-						err ? reject(err) : resolve(instances),
-				),
+		this._promises[cacheKey] = new Promise((resolve, reject) =>
+			this._socket.emit(
+				"getAdapterInstances",
+				adapter,
+				(err, instances) => (err ? reject(err) : resolve(instances)),
+			),
 		);
 
-		return this._promises["instances_" + adapter];
+		return this._promises[cacheKey];
 	}
 
 	/**
@@ -1195,21 +1229,22 @@ export class AdminConnection extends Connection {
 
 		adapter = adapter || "";
 
-		if (!update && this._promises["adapter_" + adapter]) {
-			return this._promises["adapter_" + adapter];
+		const cacheKey = `adapter_${adapter}`;
+		if (!update && cacheKey in this._promises) {
+			return this._promises[cacheKey];
 		}
 
 		if (!this.connected) {
-			return Promise.reject(NOT_CONNECTED);
+			return Promise.reject(ERRORS.NOT_CONNECTED);
 		}
 
-		this._promises["adapter_" + adapter] = new Promise((resolve, reject) =>
+		this._promises[cacheKey] = new Promise((resolve, reject) =>
 			this._socket.emit("getAdapters", adapter, (err, adapters) =>
 				err ? reject(err) : resolve(adapters),
 			),
 		);
 
-		return this._promises["adapter_" + adapter];
+		return this._promises[cacheKey];
 	}
 
 	// returns very optimized information for adapters to minimize connection load
@@ -1217,11 +1252,11 @@ export class AdminConnection extends Connection {
 		if (Connection.isWeb()) {
 			return Promise.reject("Allowed only in admin");
 		}
-		if (!update && this._promises.compactAdapters) {
+		if (!update && "compactAdapters" in this._promises) {
 			return this._promises.compactAdapters;
 		}
 		if (!this.connected) {
-			return Promise.reject(NOT_CONNECTED);
+			return Promise.reject(ERRORS.NOT_CONNECTED);
 		}
 		this._promises.compactAdapters = new Promise((resolve, reject) =>
 			this._socket.emit("getCompactAdapters", (err, systemConfig) =>
@@ -1237,11 +1272,11 @@ export class AdminConnection extends Connection {
 		if (Connection.isWeb()) {
 			return Promise.reject("Allowed only in admin");
 		}
-		if (!update && this._promises.compactInstances) {
+		if (!update && "compactInstances" in this._promises) {
 			return this._promises.compactInstances;
 		}
 		if (!this.connected) {
-			return Promise.reject(NOT_CONNECTED);
+			return Promise.reject(ERRORS.NOT_CONNECTED);
 		}
 
 		this._promises.compactInstances = new Promise((resolve, reject) =>
@@ -1262,16 +1297,16 @@ export class AdminConnection extends Connection {
 
 		this._promises.installedCompact = this._promises.installedCompact || {};
 
-		if (!update && this._promises.installedCompact[host]) {
+		if (!update && "installedCompact" in this._promises[host]) {
 			return this._promises.installedCompact[host];
 		}
 
 		if (!this.connected) {
-			return Promise.reject(NOT_CONNECTED);
+			return Promise.reject(ERRORS.NOT_CONNECTED);
 		}
 
 		if (!host.startsWith("system.host.")) {
-			host += "system.host." + host;
+			host += `system.host.${host}`;
 		}
 
 		this._promises.installedCompact[host] = new Promise(
@@ -1287,7 +1322,7 @@ export class AdminConnection extends Connection {
 					if (timeout) {
 						clearTimeout(timeout);
 						timeout = null;
-						if (data === PERMISSION_ERROR) {
+						if (data === ERRORS.PERMISSION_ERROR) {
 							reject('May not read "getCompactInstalled"');
 						} else if (!data) {
 							reject('Cannot read "getCompactInstalled"');
@@ -1316,16 +1351,16 @@ export class AdminConnection extends Connection {
 		if (Connection.isWeb()) {
 			return Promise.reject("Allowed only in admin");
 		}
-		if (!update && this._promises.repoCompact) {
+		if (!update && "repoCompact" in this._promises) {
 			return this._promises.repoCompact;
 		}
 
 		if (!this.connected) {
-			return Promise.reject(NOT_CONNECTED);
+			return Promise.reject(ERRORS.NOT_CONNECTED);
 		}
 
 		if (!host.startsWith("system.host.")) {
-			host += "system.host." + host;
+			host += `system.host.${host}`;
 		}
 
 		this._promises.repoCompact = new Promise((resolve, reject) => {
@@ -1340,7 +1375,7 @@ export class AdminConnection extends Connection {
 				if (timeout) {
 					clearTimeout(timeout);
 					timeout = null;
-					if (data === PERMISSION_ERROR) {
+					if (data === ERRORS.PERMISSION_ERROR) {
 						reject('May not read "getCompactRepository"');
 					} else if (!data) {
 						reject('Cannot read "getCompactRepository"');
@@ -1362,12 +1397,12 @@ export class AdminConnection extends Connection {
 		if (Connection.isWeb()) {
 			return Promise.reject("Allowed only in admin");
 		}
-		if (!update && this._promises.hostsCompact) {
+		if (!update && "hostsCompact" in this._promises) {
 			return this._promises.hostsCompact;
 		}
 
 		if (!this.connected) {
-			return Promise.reject(NOT_CONNECTED);
+			return Promise.reject(ERRORS.NOT_CONNECTED);
 		}
 
 		this._promises.hostsCompact = new Promise((resolve, reject) =>
