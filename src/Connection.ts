@@ -1823,37 +1823,38 @@ export class Connection<
 	getAdapterInstances(
 		adapter?: string,
 		update?: boolean,
-	): Promise<Record<string, ioBroker.InstanceObject>> {
+	): Promise<ioBroker.InstanceObject[]> {
 		if (typeof adapter === "boolean") {
 			update = adapter;
 			adapter = "";
 		}
 		adapter = adapter || "";
 
-		// TODO: Change the return type to match AdminConnection
-
 		return this.request({
 			cacheKey: `instances_${adapter}`,
 			forceUpdate: update,
 			// TODO: check if this should time out
 			commandTimeout: false,
-			executor: (resolve) => {
+			executor: async (resolve) => {
+				const startKey = adapter
+					? `system.adapter.${adapter}.`
+					: "system.adapter.";
+				const endKey = `${startKey}\u9999`;
+
+				const instances = await this.getObjectView(
+					startKey,
+					endKey,
+					"instance",
+				);
+				const instanceObjects = Object.values(instances);
 				if (adapter) {
 					resolve(
-						this.getObjectView(
-							`system.adapter.${adapter}.`,
-							`system.adapter.${adapter}.\u9999`,
-							"instance",
+						instanceObjects.filter(
+							(o) => o.common.name === adapter,
 						),
 					);
 				} else {
-					resolve(
-						this.getObjectView(
-							"system.adapter.",
-							"system.adapter.\u9999",
-							"instance",
-						),
-					);
+					resolve(instanceObjects);
 				}
 			},
 		});
@@ -1867,15 +1868,12 @@ export class Connection<
 	getAdapters(
 		adapter?: string,
 		update?: boolean,
-	): Promise<Record<string, ioBroker.AdapterObject>> {
+	): Promise<ioBroker.AdapterObject[]> {
 		if (typeof adapter === "boolean") {
 			update = adapter;
 			adapter = "";
 		}
-
 		adapter = adapter || "";
-
-		// TODO: Change the return type to match AdminConnection
 
 		return this.request({
 			cacheKey: `adapter_${adapter}`,
@@ -1884,19 +1882,17 @@ export class Connection<
 			commandTimeout: false,
 			executor: async (resolve) => {
 				const adapters = await this.getObjectView(
-					`system.adapter.${adapter}`,
-					`system.adapter.\u9999`,
+					`system.adapter.${adapter || ""}`,
+					`system.adapter.${adapter || "\u9999"}`,
 					"adapter",
 				);
+				const adapterObjects = Object.values(adapters);
 				if (adapter) {
-					const ret: Record<string, ioBroker.AdapterObject> = {};
-					const id = `system.adapter.${adapter}`;
-					if (id in adapters) {
-						ret[id] = adapters[id];
-					}
-					resolve(ret);
+					resolve(
+						adapterObjects.filter((o) => o.common.name === adapter),
+					);
 				} else {
-					resolve(adapters);
+					resolve(adapterObjects);
 				}
 			},
 		});
