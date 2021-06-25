@@ -5,7 +5,7 @@ import type {
 	SocketClient,
 } from "./SocketClient";
 import type { GetUserPermissionsCallback } from "./SocketEvents";
-import { normalizeHostId } from "./tools";
+import { normalizeHostId, wait } from "./tools";
 
 /** Possible progress states. */
 export enum PROGRESS {
@@ -82,10 +82,7 @@ export class Connection<
 		this.states = {};
 		this.objects = null;
 		this.acl = null;
-		this.firstConnect = true;
-		this.waitForRestart = false;
 		this.systemLang = "en";
-		this.connected = false;
 		this._waitForFirstConnection = new Promise((resolve) => {
 			this._waitForFirstConnectionResolve = resolve;
 		});
@@ -93,9 +90,6 @@ export class Connection<
 		this.statesSubscribes = {}; // subscribe for states
 		this.objectsSubscribes = {}; // subscribe for objects
 
-		this.loaded = false;
-		this.loadTimer = null;
-		this.loadCounter = 0;
 		this.admin5only = this.props.admin5only || false;
 
 		this.onConnectionHandlers = [];
@@ -125,12 +119,16 @@ export class Connection<
 	private readonly autoSubscribes: string[];
 	private readonly autoSubscribeLog: boolean;
 
-	public doNotLoadAllObjects: boolean;
-	public doNotLoadACL: boolean;
-	public connected: boolean;
-	public waitForRestart: any;
-	public subscribed: boolean;
-	public loaded: boolean;
+	private readonly doNotLoadAllObjects: boolean;
+	private readonly doNotLoadACL: boolean;
+
+	private connected: boolean = false;
+	private subscribed: boolean = false;
+	private firstConnect: boolean = true;
+	public waitForRestart: boolean = false;
+	public loaded: boolean = false;
+	private scriptLoadCounter: number;
+
 	public statesSubscribes: Record<
 		string,
 		{ reg: RegExp; cbs: ioBroker.StateChangeHandler[] }
@@ -142,12 +140,8 @@ export class Connection<
 	public objects: any;
 	public states: Record<string, ioBroker.State>;
 	public acl: any;
-	public firstConnect: boolean;
 	public systemLang: ioBroker.Languages;
 	public admin5only: any;
-	public loadCounter: number;
-	public loadTimer: any;
-	public scriptLoadCounter: number;
 	public isSecure: boolean;
 
 	public onConnectionHandlers: ((connected: boolean) => void)[];
@@ -270,7 +264,7 @@ export class Connection<
 			this.connected = true;
 
 			if (this.waitForRestart) {
-				window.location.reload(false);
+				window.location.reload();
 			} else {
 				this._subscribe(true);
 				this.onConnectionHandlers.forEach((cb) => cb(true));
@@ -359,21 +353,10 @@ export class Connection<
 		this.isSecure = isSecure;
 
 		if (this.waitForRestart) {
-			window.location.reload(false);
+			window.location.reload();
 		} else {
 			if (this.firstConnect) {
-				// retry strategy
-				this.loadTimer = setTimeout(() => {
-					this.loadTimer = null;
-					this.loadCounter++;
-					if (this.loadCounter < 10) {
-						this.onConnect();
-					}
-				}, 1000);
-
-				if (!this.loaded) {
-					this.onConnect();
-				}
+				this.loadData();
 			} else {
 				this.props.onProgress?.(PROGRESS.READY);
 			}
@@ -415,6 +398,17 @@ export class Connection<
 		}
 	}
 
+	/** Loads the important data and retries a couple of times if it takes too long */
+	private async loadData(): Promise<void> {
+		if (this.loaded) return;
+		const maxAttempts = 10;
+		for (let i = 1; i <= maxAttempts; i++) {
+			this.onConnect();
+			await wait(1000);
+			if (this.loaded) return;
+		}
+	}
+
 	/**
 	 * Called internally.
 	 */
@@ -427,8 +421,6 @@ export class Connection<
 					return;
 				}
 				this.loaded = true;
-				clearTimeout(this.loadTimer);
-				this.loadTimer = null;
 
 				this.props.onProgress?.(PROGRESS.CONNECTED);
 				this.firstConnect = false;
@@ -448,8 +440,6 @@ export class Connection<
 							return undefined;
 						}
 						this.loaded = true;
-						clearTimeout(this.loadTimer);
-						this.loadTimer = null;
 
 						this.props.onProgress?.(PROGRESS.CONNECTED);
 						this.firstConnect = false;

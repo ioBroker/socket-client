@@ -25,3 +25,12 @@ export function objectIdToHostname(id: string): string {
 	}
 	return id;
 }
+
+/**
+ * Creates a promise that waits for the specified time and then resolves
+ */
+export function wait(ms: number): Promise<void> {
+	return new Promise<void>((resolve) => {
+		setTimeout(resolve, ms);
+	});
+}
