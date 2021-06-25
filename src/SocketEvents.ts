@@ -58,9 +58,6 @@ type GenericCallbackNoExtraError<T> = (
 	result?: ERRORS.PERMISSION_ERROR | T,
 ) => void;
 
-type GetCompactInstalledCallback = (installed: CompactInstalledInfo) => void;
-type GetCompactRepositoryCallback = (repo: CompactRepository) => void;
-
 export interface DelObjectOptions {
 	maintenance?: boolean;
 	user?: string;

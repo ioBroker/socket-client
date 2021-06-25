@@ -1000,34 +1000,27 @@ export class AdminConnection extends Connection<
 		});
 	}
 
-	getCurrentSession(cmdTimeout) {
-		if (!this.connected) {
-			return Promise.reject(ERRORS.NOT_CONNECTED);
-		}
+	getCurrentSession(cmdTimeout?: number): any {
+		const controller = new AbortController();
 
-		return new Promise((resolve, reject) => {
-			const controller = new AbortController();
-
-			let timeout = setTimeout(() => {
-				if (timeout) {
-					timeout = null;
-					controller.abort();
-					reject("getCurrentSession timeout");
-				}
-			}, cmdTimeout || 5000);
-
-			return fetch("./session", { signal: controller.signal })
-				.then((res) => res.json())
-				.then((json) => {
-					if (timeout) {
-						clearTimeout(timeout);
-						timeout = null;
-						resolve(json);
-					}
-				})
-				.catch((e) => {
+		return this.request({
+			requireAdmin: true,
+			commandTimeout: cmdTimeout || 5000,
+			onTimeout: () => {
+				controller.abort();
+			},
+			executor: async (resolve, reject, timeout) => {
+				try {
+					const res = await fetch("./session", {
+						signal: controller.signal,
+					});
+					if (timeout.elapsed) return;
+					timeout.clearTimeout();
+					resolve(res.json());
+				} catch (e) {
 					reject(`getCurrentSession: ${e}`);
-				});
+				}
+			},
 		});
 	}
 

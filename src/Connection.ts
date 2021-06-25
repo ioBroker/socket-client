@@ -45,6 +45,8 @@ interface RequestOptions<T> {
 	 * If no timeout is given, the default is used. Set this to `false` to explicitly disable the timeout.
 	 */
 	commandTimeout?: number | false;
+	/** Will be called when the timeout elapses */
+	onTimeout?: () => void;
 	/** Whether the call should only be allowed in the admin adapter */
 	requireAdmin?: boolean;
 	/** Require certain features to be supported for this call */
@@ -736,6 +738,7 @@ export class Connection<
 		cacheKey,
 		forceUpdate,
 		commandTimeout,
+		onTimeout,
 		requireAdmin,
 		requireFeatures,
 		requestName,
@@ -778,6 +781,8 @@ export class Connection<
 			if (commandTimeout !== false) {
 				timeout = setTimeout(() => {
 					timeoutControl.elapsed = true;
+					// Let the caller know that the timeout elapsed
+					onTimeout?.();
 					reject(ERRORS.TIMEOUT);
 				}, commandTimeout ?? this.props.cmdTimeout);
 				timeoutControl.clearTimeout = () => {
@@ -1825,6 +1830,8 @@ export class Connection<
 		}
 		adapter = adapter || "";
 
+		// TODO: Change the return type to match AdminConnection
+
 		return this.request({
 			cacheKey: `instances_${adapter}`,
 			forceUpdate: update,
@@ -1868,7 +1875,7 @@ export class Connection<
 
 		adapter = adapter || "";
 
-		// TODO: Why is this method marked as only admin in AdminConnection.ts, but allowed here?
+		// TODO: Change the return type to match AdminConnection
 
 		return this.request({
 			cacheKey: `adapter_${adapter}`,
