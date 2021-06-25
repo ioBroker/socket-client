@@ -390,43 +390,38 @@ export class AdminConnection extends Connection<
 		newId: string,
 		newName: ioBroker.StringOrTranslated,
 	): Promise<void> {
-		if (Connection.isWeb()) {
-			return Promise.reject("Allowed only in admin");
-		}
-
-		return this.getGroups(true).then((groups) => {
-			if (groups.length) {
-				// find all elements
-				const groupsToRename = groups.filter((group) =>
-					group._id.startsWith(`${id}.`),
+		return this.request({
+			// TODO: check if this should time out
+			commandTimeout: false,
+			requireAdmin: true,
+			executor: async (resolve) => {
+				const groups = await this.getGroups(true);
+				// renaming a group happens by re-creating the object under a different ID
+				const subGroups = groups.filter((g) =>
+					g._id.startsWith(`${id}.`),
 				);
-
-				groupsToRename.forEach(
-					(group) =>
-						(group.newId = newId + group._id.substring(id.length)),
-				);
-
-				return new Promise<void>((resolve, reject) =>
-					this._renameGroups(groupsToRename, (err) =>
-						err ? reject(err) : resolve(),
-					),
-				).then(() => {
-					const obj = groups.find((group) => group._id === id);
-
-					if (obj) {
-						obj._id = newId;
-						if (newName !== undefined) {
-							obj.common = obj.common || {};
-							obj.common.name = newName;
-						}
-
-						return this.setObject(obj._id, obj);
+				// First do this for all sub groups
+				for (const group of subGroups) {
+					const newGroupId = newId + group._id.substring(id.length);
+					await this.delObject(group._id);
+					group._id = newGroupId;
+					await this.setObject(newGroupId, group);
+				}
+				// Then for the parent group
+				const parentGroup = groups.find((g) => g._id === id);
+				if (parentGroup) {
+					// TODO: I guess we should delete this too?
+					// await this.delObject(parentGroup._id);
+					parentGroup._id = newId;
+					if (newName !== undefined) {
+						(parentGroup.common as any) ??= {};
+						parentGroup.common.name = newName as any;
 					}
+					await this.setObject(newId, parentGroup);
+				}
 
-					return;
-				});
-			}
-			return;
+				resolve();
+			},
 		});
 	}
 
