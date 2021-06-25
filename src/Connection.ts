@@ -5,7 +5,6 @@ import type {
 	ListenEventHandler,
 	SocketClient,
 } from "./SocketClient";
-import type { GetUserPermissionsCallback } from "./SocketEvents";
 import { normalizeHostId, wait } from "./tools";
 
 /** Possible progress states. */
@@ -61,6 +60,8 @@ interface RequestOptions<T> {
 	) => void | Promise<void>;
 }
 
+type SystemConfig = NonNullable<ioBroker.ObjectIdToObjectType<"system.config">>;
+
 export class Connection<
 	CustomListenEvents extends Record<
 		keyof CustomListenEvents,
@@ -73,17 +74,6 @@ export class Connection<
 > {
 	constructor(props: Partial<ConnectionProps>) {
 		this.props = this.applyDefaultProps(props);
-
-		this.autoSubscribes = this.props.autoSubscribes ?? [];
-		this.autoSubscribeLog = this.props.autoSubscribeLog ?? false;
-
-		this.doNotLoadAllObjects = this.props.doNotLoadAllObjects ?? true;
-		this.doNotLoadACL = this.props.doNotLoadACL ?? true;
-
-		this.states = {};
-		this.objects = null;
-		this.acl = null;
-		this.systemLang = "en";
 
 		this.waitForSocketLib()
 			.then(() => this.startSocket())
@@ -106,15 +96,14 @@ export class Connection<
 			ioTimeout: Math.max(props.ioTimeout || 20000, 20000),
 			cmdTimeout: Math.max(props.cmdTimeout || 5000, 5000),
 			admin5only: props.admin5only || false,
+			autoSubscribes: props.autoSubscribes ?? [],
+			autoSubscribeLog: props.autoSubscribeLog ?? false,
+			doNotLoadACL: props.doNotLoadACL ?? true,
+			doNotLoadAllObjects: props.doNotLoadAllObjects ?? true,
 		};
 	}
 
 	private readonly props: ConnectionProps;
-	private readonly autoSubscribes: string[];
-	private readonly autoSubscribeLog: boolean;
-
-	private readonly doNotLoadAllObjects: boolean;
-	private readonly doNotLoadACL: boolean;
 
 	private connected: boolean = false;
 	private subscribed: boolean = false;
@@ -130,34 +119,42 @@ export class Connection<
 		string,
 		{ reg: RegExp; cbs: ioBroker.ObjectChangeHandler[] }
 	> = {};
-	public objects: any;
-	public states: Record<string, ioBroker.State>;
-	public acl: any;
-	public systemLang: ioBroker.Languages;
-	public isSecure: boolean;
+	private objects: Record<string, ioBroker.Object> = {};
+	private states: Record<string, ioBroker.State> = {};
+	public acl: any = null;
+	public isSecure: boolean = false;
 
 	public onConnectionHandlers: ((connected: boolean) => void)[] = [];
 	public onLogHandlers: ((message: string) => void)[] = [];
 
+	private onCmdStdoutHandler?: (id: string, text: string) => void;
+	private onCmdStderrHandler?: (id: string, text: string) => void;
+	private onCmdExitHandler?: (id: string, exitCode: number) => void;
 	private onError(error: any): void {
 		(this.props.onError ?? console.error)(error);
 	}
 
-	private onCmdStdoutHandler?: (id: string, text: string) => void;
-	private onCmdStderrHandler?: (id: string, text: string) => void;
-	private onCmdExitHandler?: (id: string, exitCode: number) => void;
+	/** The socket instance */
+	protected _socket!: SocketClient<CustomListenEvents, CustomEmitEvents>;
 
 	private _waitForSocketPromise?: Promise<void>;
-
-	protected _socket!: SocketClient<CustomListenEvents, CustomEmitEvents>;
+	private _waitForFirstConnectionPromise = createDeferredPromise();
 
 	/** Cache for server requests */
 	private _promises: Record<string, Promise<any>> = {};
 
 	protected _authTimer: any;
-	protected systemConfig: any;
 
-	private _waitForFirstConnectionPromise = createDeferredPromise();
+	protected _systemConfig?: SystemConfig;
+	/** The "system.config" object */
+	public get systemConfig(): Readonly<SystemConfig> | undefined {
+		return this._systemConfig;
+	}
+
+	private _systemLang: ioBroker.Languages = "en";
+	public get systemLang(): ioBroker.Languages {
+		return this._systemLang;
+	}
 
 	/**
 	 * Checks if this connection is running in a web adapter and not in an admin.
@@ -382,12 +379,17 @@ export class Connection<
 	/**
 	 * Called internally.
 	 */
-	private _getUserPermissions(cb?: GetUserPermissionsCallback) {
-		if (this.doNotLoadACL) {
-			cb?.();
-		} else {
-			this._socket.emit("getUserPermissions", cb);
-		}
+	private async getUserPermissions(): Promise<any> {
+		return this.request({
+			// TODO: check if this should time out
+			commandTimeout: false,
+			executor: (resolve, reject) => {
+				this._socket.emit("getUserPermissions", (err, acl) => {
+					if (err) reject(err);
+					resolve(acl!);
+				});
+			},
+		});
 	}
 
 	/** Loads the important data and retries a couple of times if it takes too long */
@@ -395,86 +397,73 @@ export class Connection<
 		if (this.loaded) return;
 		const maxAttempts = 10;
 		for (let i = 1; i <= maxAttempts; i++) {
-			this.onConnect();
+			this.doLoadData();
 			await wait(1000);
 			if (this.loaded) return;
 		}
 	}
 
 	/**
-	 * Called internally.
+	 * Called after the socket is connected. Loads the necessary data.
 	 */
-	private onConnect() {
-		this._getUserPermissions((err, acl) => {
-			if (err) {
-				return this.onError(`Cannot read user permissions: ${err}`);
-			} else if (!this.doNotLoadACL) {
-				if (this.loaded) {
-					return;
-				}
-				this.loaded = true;
+	private async doLoadData() {
+		if (this.loaded) return;
 
-				this.props.onProgress?.(PROGRESS.CONNECTED);
-				this.firstConnect = false;
-
-				this.acl = acl;
+		// Load ACL if not disabled
+		if (!this.props.doNotLoadACL) {
+			try {
+				this.acl = await this.getUserPermissions();
+			} catch (e) {
+				this.onError(`Cannot read user permissions: ${e}`);
+				return;
 			}
+		}
 
-			// Read system configuration
-			return (
-				this.props.admin5only && !Connection.isWeb()
-					? this.getCompactSystemConfig()
-					: this.getSystemConfig()
-			)
-				.then((data) => {
-					if (this.doNotLoadACL) {
-						if (this.loaded) {
-							return undefined;
-						}
-						this.loaded = true;
+		// Load system config if not disabled
+		try {
+			if (this.props.admin5only && !Connection.isWeb()) {
+				this._systemConfig = await this.getCompactSystemConfig();
+			} else {
+				this._systemConfig = await this.getSystemConfig();
+			}
+		} catch (e) {
+			this.onError(`Cannot read system config: ${e}`);
+			return;
+		}
 
-						this.props.onProgress?.(PROGRESS.CONNECTED);
-						this.firstConnect = false;
-					}
+		// Detect the system language
+		this._systemLang = this._systemConfig.common?.language;
+		if (!this._systemLang) {
+			this._systemLang = (window.navigator.userLanguage ||
+				window.navigator.language) as any;
 
-					this.systemConfig = data;
-					if (this.systemConfig && this.systemConfig.common) {
-						this.systemLang = this.systemConfig.common.language;
-					} else {
-						this.systemLang =
-							<any>window.navigator.userLanguage ||
-							window.navigator.language;
+			if (
+				this.systemLang !== "en" &&
+				this.systemLang !== "de" &&
+				this.systemLang !== "ru"
+			) {
+				this._systemLang = "en";
+			}
+			this._systemConfig.common.language = this._systemLang;
+		}
+		this.props.onLanguage?.(this.systemLang);
 
-						if (
-							this.systemLang !== "en" &&
-							this.systemLang !== "de" &&
-							this.systemLang !== "ru"
-						) {
-							this.systemConfig.common.language = "en";
-							this.systemLang = "en";
-						}
-					}
+		// We are now connected
+		this.loaded = true;
+		this.props.onProgress?.(PROGRESS.CONNECTED);
+		this.firstConnect = false;
 
-					this.props.onLanguage &&
-						this.props.onLanguage(<any>this.systemLang);
+		// Load all objects if desired
+		if (!this.props.doNotLoadAllObjects) {
+			this.objects = await this.getObjects();
+		} else if (this.props.admin5only) {
+			this.objects = {};
+		} else {
+			this.objects = { "system.config": this._systemConfig };
+		}
 
-					if (!this.doNotLoadAllObjects) {
-						return this.getObjects().then(() => {
-							this.props.onProgress?.(PROGRESS.READY);
-							this.props.onReady &&
-								this.props.onReady(this.objects);
-						});
-					} else {
-						this.objects = this.props.admin5only
-							? {}
-							: { "system.config": data };
-						this.props.onProgress?.(PROGRESS.READY);
-						this.props.onReady?.(this.objects);
-					}
-					return undefined;
-				})
-				.catch((e) => this.onError(`Cannot read system config: ${e}`));
-		});
+		this.props.onProgress?.(PROGRESS.READY);
+		this.props.onReady?.(this.objects);
 	}
 
 	/**
@@ -482,13 +471,9 @@ export class Connection<
 	 */
 	private authenticate() {
 		if (window.location.search.includes("&href=")) {
-			window.location = <any>(
-				`${window.location.protocol}//${window.location.host}${window.location.pathname}${window.location.search}${window.location.hash}`
-			);
+			window.location.href = `${window.location.protocol}//${window.location.host}${window.location.pathname}${window.location.search}${window.location.hash}`;
 		} else {
-			window.location = <any>(
-				`${window.location.protocol}//${window.location.host}${window.location.pathname}?login&href=${window.location.search}${window.location.hash}`
-			);
+			window.location.href = `${window.location.protocol}//${window.location.host}${window.location.pathname}?login&href=${window.location.search}${window.location.hash}`;
 		}
 	}
 
@@ -537,7 +522,7 @@ export class Connection<
 		if (typeof cb === "function" && this.connected) {
 			if (binary) {
 				this.getBinaryState(id)
-					.then((base64) => cb(id, <any>base64))
+					.then((base64) => cb(id, base64))
 					.catch((e) =>
 						console.error(
 							`Cannot getForeignStates "${id}": ${JSON.stringify(
@@ -652,9 +637,6 @@ export class Connection<
 	 */
 	private objectChange(id: string, obj: ioBroker.Object | null | undefined) {
 		// update main.objects cache
-		if (!this.objects) {
-			return;
-		}
 
 		/** @type {import("./types").OldObject} */
 		let oldObj: import("./types").OldObject;
@@ -902,10 +884,10 @@ export class Connection<
 				this._socket.emit(
 					Connection.isWeb() ? "getObjects" : "getAllObjects",
 					(err, res) => {
-						this.objects = res;
 						if (!disableProgressUpdate)
 							this.props.onProgress?.(PROGRESS.OBJECTS_LOADED);
 						if (err) reject(err);
+						this.objects = res ?? {};
 						resolve(this.objects);
 					},
 				);
@@ -920,7 +902,7 @@ export class Connection<
 	private _subscribe(isEnable: boolean) {
 		if (isEnable && !this.subscribed) {
 			this.subscribed = true;
-			this.autoSubscribes.forEach((id) =>
+			this.props.autoSubscribes.forEach((id) =>
 				this._socket.emit("subscribeObjects", id),
 			);
 			// re subscribe objects
@@ -928,7 +910,8 @@ export class Connection<
 				this._socket.emit("subscribeObjects", id),
 			);
 			// re-subscribe logs
-			this.autoSubscribeLog && this._socket.emit("requireLog", true);
+			this.props.autoSubscribeLog &&
+				this._socket.emit("requireLog", true);
 			// re subscribe states
 			Object.keys(this.statesSubscribes).forEach((id) =>
 				this._socket.emit("subscribe", id),
@@ -936,14 +919,15 @@ export class Connection<
 		} else if (!isEnable && this.subscribed) {
 			this.subscribed = false;
 			// un-subscribe objects
-			this.autoSubscribes.forEach((id) =>
+			this.props.autoSubscribes.forEach((id) =>
 				this._socket.emit("unsubscribeObjects", id),
 			);
 			Object.keys(this.objectsSubscribes).forEach((id) =>
 				this._socket.emit("unsubscribeObjects", id),
 			);
 			// un-subscribe logs
-			this.autoSubscribeLog && this._socket.emit("requireLog", false);
+			this.props.autoSubscribeLog &&
+				this._socket.emit("requireLog", false);
 
 			// un-subscribe states
 			Object.keys(this.statesSubscribes).forEach((id) =>
@@ -1478,9 +1462,7 @@ export class Connection<
 	 * Gets the system configuration.
 	 * @param update Force update.
 	 */
-	getSystemConfig(
-		update?: boolean,
-	): ioBroker.GetObjectPromise<"system.config"> {
+	getSystemConfig(update?: boolean): Promise<SystemConfig> {
 		return this.request({
 			cacheKey: "systemConfig",
 			forceUpdate: update,
@@ -1498,9 +1480,7 @@ export class Connection<
 	}
 
 	// returns very optimized information for adapters to minimize connection load
-	getCompactSystemConfig(
-		update?: boolean,
-	): Promise<ioBroker.ObjectIdToObjectType<"system.config">> {
+	getCompactSystemConfig(update?: boolean): Promise<SystemConfig> {
 		return this.request({
 			cacheKey: "systemConfigCommon",
 			forceUpdate: update,
@@ -1512,6 +1492,9 @@ export class Connection<
 					"getCompactSystemConfig",
 					(err, systemConfig) => {
 						if (err) reject(err);
+						(systemConfig as any) ??= {};
+						(systemConfig as any).common ??= {};
+						(systemConfig as any).native ??= {};
 						resolve(systemConfig!);
 					},
 				);
