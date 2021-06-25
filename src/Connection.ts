@@ -96,7 +96,11 @@ export class Connection<
 		this.onLogHandlers = [];
 
 		this._promises = {};
-		this.startSocket();
+		this.waitForSocketLib()
+			.then(() => this.startSocket())
+			.catch((e) => {
+				alert(`Socket connection could not be initialized: ${e}`);
+			});
 	}
 
 	private applyDefaultProps(
@@ -127,7 +131,6 @@ export class Connection<
 	private firstConnect: boolean = true;
 	public waitForRestart: boolean = false;
 	public loaded: boolean = false;
-	private scriptLoadCounter: number;
 
 	public statesSubscribes: Record<
 		string,
@@ -155,8 +158,10 @@ export class Connection<
 	private onCmdStderrHandler?: (id: string, text: string) => void;
 	private onCmdExitHandler?: (id: string, exitCode: number) => void;
 
-	protected _socket: SocketClient<CustomListenEvents, CustomEmitEvents>;
-	// TODO: type this with a templated index signature https://github.com/microsoft/TypeScript/pull/26797
+	private _waitForSocketPromise?: Promise<void>;
+
+	protected _socket!: SocketClient<CustomListenEvents, CustomEmitEvents>;
+
 	protected _promises: Record<string, Promise<any>>;
 	protected _authTimer: any;
 	protected systemConfig: any;
@@ -174,36 +179,38 @@ export class Connection<
 		return window.socketUrl !== undefined;
 	}
 
+	private waitForSocketLib(): Promise<void> {
+		// Only wait once
+		if (this._waitForSocketPromise) return this._waitForSocketPromise;
+
+		this._waitForSocketPromise = new Promise(async (resolve, reject) => {
+			// If socket io is not yet loaded, we need to wait for it
+			if (typeof window.io === "undefined") {
+				// If the registerSocketOnLoad function is defined in index.html,
+				// we can use it to know when the socket library was loaded
+				if (typeof window.registerSocketOnLoad === "function") {
+					window.registerSocketOnLoad(() => resolve());
+				} else {
+					// otherwise we need to poll
+					for (let i = 1; i <= 30; i++) {
+						if (window.io) return resolve();
+						await wait(100);
+					}
+
+					reject(new Error("Socket library could not be loaded!"));
+				}
+			} else {
+				resolve();
+			}
+		});
+		return this._waitForSocketPromise;
+	}
+
 	/**
 	 * Starts the socket.io connection.
 	 */
-	startSocket(): void {
-		// if socket io is not yet loaded
-		if (typeof window.io === "undefined") {
-			// if in index.html the onLoad function not defined
-			if (typeof window.registerSocketOnLoad !== "function") {
-				// poll if loaded
-				this.scriptLoadCounter = this.scriptLoadCounter || 0;
-				this.scriptLoadCounter++;
-
-				if (this.scriptLoadCounter < 30) {
-					// wait till the script loaded
-					setTimeout(() => this.startSocket(), 100);
-					return;
-				} else {
-					window.alert("Cannot load socket.io.js!");
-				}
-			} else {
-				// register on load
-				window.registerSocketOnLoad(() => this.startSocket());
-			}
-			return;
-		} else {
-			// socket was initialized, do not repeat
-			if (this._socket) {
-				return;
-			}
-		}
+	async startSocket(): Promise<void> {
+		if (this._socket) return;
 
 		let host = this.props.host;
 		let port = this.props.port;
