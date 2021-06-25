@@ -1,4 +1,5 @@
 import type { ConnectionProps } from "./ConnectionProps";
+import { createDeferredPromise } from "./DeferredPromise";
 import type {
 	EmitEventHandler,
 	ListenEventHandler,
@@ -83,19 +84,7 @@ export class Connection<
 		this.objects = null;
 		this.acl = null;
 		this.systemLang = "en";
-		this._waitForFirstConnection = new Promise((resolve) => {
-			this._waitForFirstConnectionResolve = resolve;
-		});
 
-		this.statesSubscribes = {}; // subscribe for states
-		this.objectsSubscribes = {}; // subscribe for objects
-
-		this.admin5only = this.props.admin5only || false;
-
-		this.onConnectionHandlers = [];
-		this.onLogHandlers = [];
-
-		this._promises = {};
 		this.waitForSocketLib()
 			.then(() => this.startSocket())
 			.catch((e) => {
@@ -116,6 +105,7 @@ export class Connection<
 				(window.location.port === "3000" ? 8081 : window.location.port),
 			ioTimeout: Math.max(props.ioTimeout || 20000, 20000),
 			cmdTimeout: Math.max(props.cmdTimeout || 5000, 5000),
+			admin5only: props.admin5only || false,
 		};
 	}
 
@@ -135,20 +125,19 @@ export class Connection<
 	public statesSubscribes: Record<
 		string,
 		{ reg: RegExp; cbs: ioBroker.StateChangeHandler[] }
-	>;
+	> = {};
 	public objectsSubscribes: Record<
 		string,
 		{ reg: RegExp; cbs: ioBroker.ObjectChangeHandler[] }
-	>;
+	> = {};
 	public objects: any;
 	public states: Record<string, ioBroker.State>;
 	public acl: any;
 	public systemLang: ioBroker.Languages;
-	public admin5only: any;
 	public isSecure: boolean;
 
-	public onConnectionHandlers: ((connected: boolean) => void)[];
-	public onLogHandlers: ((message: string) => void)[];
+	public onConnectionHandlers: ((connected: boolean) => void)[] = [];
+	public onLogHandlers: ((message: string) => void)[] = [];
 
 	private onError(error: any): void {
 		(this.props.onError ?? console.error)(error);
@@ -162,14 +151,13 @@ export class Connection<
 
 	protected _socket!: SocketClient<CustomListenEvents, CustomEmitEvents>;
 
-	protected _promises: Record<string, Promise<any>>;
+	/** Cache for server requests */
+	private _promises: Record<string, Promise<any>> = {};
+
 	protected _authTimer: any;
 	protected systemConfig: any;
 
-	private _waitForFirstConnection: Promise<void>;
-	private _waitForFirstConnectionResolve?: (
-		value: void | PromiseLike<void>,
-	) => void;
+	private _waitForFirstConnectionPromise = createDeferredPromise();
 
 	/**
 	 * Checks if this connection is running in a web adapter and not in an admin.
@@ -372,10 +360,7 @@ export class Connection<
 			this.onConnectionHandlers.forEach((cb) => cb(true));
 		}
 
-		if (this._waitForFirstConnectionResolve) {
-			this._waitForFirstConnectionResolve();
-			this._waitForFirstConnectionResolve = undefined;
-		}
+		this._waitForFirstConnectionPromise.resolve();
 	}
 
 	/**
@@ -391,7 +376,7 @@ export class Connection<
 	 * @returns {Promise<void>} Promise resolves if once connected.
 	 */
 	waitForFirstConnection(): Promise<void> {
-		return this._waitForFirstConnection;
+		return this._waitForFirstConnectionPromise;
 	}
 
 	/**
@@ -437,7 +422,7 @@ export class Connection<
 
 			// Read system configuration
 			return (
-				this.admin5only && !Connection.isWeb()
+				this.props.admin5only && !Connection.isWeb()
 					? this.getCompactSystemConfig()
 					: this.getSystemConfig()
 			)
@@ -480,7 +465,7 @@ export class Connection<
 								this.props.onReady(this.objects);
 						});
 					} else {
-						this.objects = this.admin5only
+						this.objects = this.props.admin5only
 							? {}
 							: { "system.config": data };
 						this.props.onProgress?.(PROGRESS.READY);
