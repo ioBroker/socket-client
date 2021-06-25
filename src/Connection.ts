@@ -217,14 +217,10 @@ export class Connection<
 
 		// if web adapter, socket io could be on other port or even host
 		if (window.socketUrl) {
-			let parts = window.socketUrl.split(":");
-			host = parts[0] || host;
-			port = parts[1] || port;
-			if (host.includes("://")) {
-				parts = host.split("://");
-				protocol = parts[0];
-				host = parts[1];
-			}
+			const parsed = new URL(window.socketUrl);
+			host = parsed.hostname;
+			port = parsed.port;
+			protocol = parsed.protocol.replace(":", "");
 		}
 
 		const url = `${protocol}://${host}:${port}`;
