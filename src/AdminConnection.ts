@@ -62,6 +62,58 @@ function parseCertificate(name: string, cert: string): Certificate | undefined {
 	}
 	return { name, type };
 }
+
+interface IPAddress {
+	name: string;
+	address: string;
+	family: "ipv4" | "ipv6";
+}
+
+interface IPAddresses {
+	IPs4: IPAddress[];
+	IPs6: IPAddress[];
+}
+
+function parseIPAddresses(host: ioBroker.HostObject): IPAddresses {
+	const IPs4: IPAddress[] = [
+		{
+			name: "[IPv4] 0.0.0.0 - Listen on all IPs",
+			address: "0.0.0.0",
+			family: "ipv4",
+		},
+	];
+	const IPs6: IPAddress[] = [
+		{
+			name: "[IPv6] :: - Listen on all IPs",
+			address: "::",
+			family: "ipv6",
+		},
+	];
+	if (host.native?.hardware?.networkInterfaces) {
+		for (const [eth, iface] of Object.entries(
+			host.native.hardware.networkInterfaces,
+		)) {
+			if (!iface) continue;
+
+			for (const ip of iface) {
+				if (ip.family !== "IPv6") {
+					IPs4.push({
+						name: `[${ip.family}] ${ip.address} - ${eth}`,
+						address: ip.address,
+						family: "ipv4",
+					});
+				} else {
+					IPs6.push({
+						name: `[${ip.family}] ${ip.address} - ${eth}`,
+						address: ip.address,
+						family: "ipv6",
+					});
+				}
+			}
+		}
+	}
+	return { IPs4, IPs6 };
+}
 export class AdminConnection extends Connection<
 	AdminListenEvents,
 	AdminEmitEvents
@@ -746,67 +798,8 @@ export class AdminConnection extends Connection<
 					if (timeout.elapsed) return;
 					timeout.clearTimeout();
 
-					const IPs4 = [
-						{
-							name: "[IPv4] 0.0.0.0 - Listen on all IPs",
-							address: "0.0.0.0",
-							family: "ipv4",
-						},
-					];
-					const IPs6 = [
-						{
-							name: "[IPv6] :: - Listen on all IPs",
-							address: "::",
-							family: "ipv6",
-						},
-					];
-					if (host.native?.hardware?.networkInterfaces) {
-						for (const eth in host.native.hardware
-							.networkInterfaces) {
-							if (
-								!host.native.hardware.networkInterfaces.hasOwnProperty(
-									eth,
-								)
-							) {
-								continue;
-							}
-							for (
-								let num = 0;
-								num <
-								host.native.hardware.networkInterfaces[eth]
-									.length;
-								num++
-							) {
-								if (
-									host.native.hardware.networkInterfaces[eth][
-										num
-									].family !== "IPv6"
-								) {
-									IPs4.push({
-										name: `[${host.native.hardware.networkInterfaces[eth][num].family}] ${host.native.hardware.networkInterfaces[eth][num].address} - ${eth}`,
-										address:
-											host.native.hardware
-												.networkInterfaces[eth][num]
-												.address,
-										family: "ipv4",
-									});
-								} else {
-									IPs6.push({
-										name: `[${host.native.hardware.networkInterfaces[eth][num].family}] ${host.native.hardware.networkInterfaces[eth][num].address} - ${eth}`,
-										address:
-											host.native.hardware
-												.networkInterfaces[eth][num]
-												.address,
-										family: "ipv6",
-									});
-								}
-							}
-						}
-					}
-					for (let i = 0; i < IPs6.length; i++) {
-						IPs4.push(IPs6[i]);
-					}
-					resolve(IPs4);
+					const { IPs4, IPs6 } = parseIPAddresses(host);
+					resolve([...IPs4, ...IPs6]);
 				});
 			},
 		});
