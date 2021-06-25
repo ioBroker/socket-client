@@ -34,3 +34,21 @@ export function wait(ms: number): Promise<void> {
 		setTimeout(resolve, ms);
 	});
 }
+
+/** Converts ioB pattern into regex */
+export function pattern2RegEx(pattern: string): string {
+	pattern = (pattern || "").toString();
+
+	const startsWithWildcard = pattern[0] === "*";
+	const endsWithWildcard = pattern[pattern.length - 1] === "*";
+
+	pattern = pattern
+		.replace(/[-/\\^$+?.()|[\]{}]/g, "\\$&")
+		.replace(/\*/g, ".*");
+
+	return (
+		(startsWithWildcard ? "" : "^") +
+		pattern +
+		(endsWithWildcard ? "" : "$")
+	);
+}

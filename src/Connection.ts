@@ -5,7 +5,7 @@ import type {
 	ListenEventHandler,
 	SocketClient,
 } from "./SocketClient";
-import { normalizeHostId, wait } from "./tools";
+import { normalizeHostId, pattern2RegEx, wait } from "./tools";
 
 /** Possible progress states. */
 export enum PROGRESS {
@@ -60,7 +60,24 @@ interface RequestOptions<T> {
 	) => void | Promise<void>;
 }
 
-type SystemConfig = NonNullable<ioBroker.ObjectIdToObjectType<"system.config">>;
+export type SystemConfig = NonNullable<
+	ioBroker.ObjectIdToObjectType<"system.config">
+>;
+export type BinaryStateChangeHandler = (
+	id: string,
+	base64: string | null,
+) => void;
+
+export interface OldObject {
+	_id: string;
+	type: string;
+}
+
+export type ObjectChangeHandler = (
+	id: string,
+	obj: ioBroker.Object | null | undefined,
+	oldObj?: OldObject,
+) => void | Promise<void>;
 
 export class Connection<
 	CustomListenEvents extends Record<
@@ -111,16 +128,20 @@ export class Connection<
 	public waitForRestart: boolean = false;
 	public loaded: boolean = false;
 
-	public statesSubscribes: Record<
+	private statesSubscribes: Record<
 		string,
-		{ reg: RegExp; cbs: ioBroker.StateChangeHandler[] }
+		{
+			reg: RegExp;
+			cbs: (ioBroker.StateChangeHandler | BinaryStateChangeHandler)[];
+		}
 	> = {};
-	public objectsSubscribes: Record<
+	private objectsSubscribes: Record<
 		string,
-		{ reg: RegExp; cbs: ioBroker.ObjectChangeHandler[] }
+		{ reg: RegExp; cbs: ObjectChangeHandler[] }
 	> = {};
 	private objects: Record<string, ioBroker.Object> = {};
 	private states: Record<string, ioBroker.State> = {};
+
 	public acl: any = null;
 	public isSecure: boolean = false;
 
@@ -480,75 +501,88 @@ export class Connection<
 	/**
 	 * Subscribe to changes of the given state.
 	 * @param id The ioBroker state ID.
-	 * @param cb The callback.
-	 */
-	/**
-	 * Subscribe to changes of the given state.
-	 * @param id The ioBroker state ID.
 	 * @param binary Set to true if the given state is binary and requires Base64 decoding.
 	 * @param cb The callback.
 	 */
+
 	subscribeState(
 		id: string,
-		binary: ioBroker.StateChangeHandler | boolean,
+		binary: true,
+		cb: BinaryStateChangeHandler,
+	): Promise<void>;
+
+	subscribeState(
+		id: string,
+		binary: false,
 		cb: ioBroker.StateChangeHandler,
-	): void {
-		if (typeof binary === "function") {
-			cb = binary;
+	): Promise<void>;
+
+	subscribeState(id: string, cb: ioBroker.StateChangeHandler): Promise<void>;
+
+	async subscribeState(
+		...args:
+			| [id: string, binary: true, cb: BinaryStateChangeHandler]
+			| [id: string, binary: false, cb: ioBroker.StateChangeHandler]
+			| [id: string, cb: ioBroker.StateChangeHandler]
+	): Promise<void> {
+		let id: string;
+		let binary: boolean;
+		let cb: ioBroker.StateChangeHandler | BinaryStateChangeHandler;
+		if (args.length === 3) {
+			[id, binary, cb] = args;
+		} else {
+			[id, cb] = args;
 			binary = false;
 		}
 
-		if (!this.statesSubscribes[id]) {
-			let reg = id
-				.replace(/\./g, "\\.")
-				.replace(/\*/g, ".*")
-				.replace(/\(/g, "\\(")
-				.replace(/\)/g, "\\)")
-				.replace(/\+/g, "\\+")
-				.replace(/\[/g, "\\[");
+		if (typeof cb !== "function") {
+			throw new Error("The state change handler must be a function!");
+		}
 
-			if (reg.indexOf("*") === -1) {
-				reg += "$";
-			}
-			this.statesSubscribes[id] = { reg: new RegExp(reg), cbs: [] };
-			this.statesSubscribes[id].cbs.push(cb);
-			if (this.connected) {
-				this._socket.emit("subscribe", id);
-			}
+		if (!this.statesSubscribes[id]) {
+			this.statesSubscribes[id] = {
+				reg: new RegExp(pattern2RegEx(id)),
+				cbs: [cb],
+			};
+			if (this.connected) this._socket.emit("subscribe", id);
 		} else {
 			!this.statesSubscribes[id].cbs.includes(cb) &&
 				this.statesSubscribes[id].cbs.push(cb);
 		}
-		if (typeof cb === "function" && this.connected) {
+
+		if (this.connected) {
+			// Try to get the current value(s) of the state(s) and call the change handlers
 			if (binary) {
-				this.getBinaryState(id)
-					.then((base64) => cb(id, base64))
-					.catch((e) =>
-						console.error(
-							`Cannot getForeignStates "${id}": ${JSON.stringify(
-								e,
-							)}`,
-						),
+				let base64: string | undefined;
+				try {
+					base64 = await this.getBinaryState(id);
+				} catch (e) {
+					console.error(
+						`Cannot getBinaryState "${id}": ${JSON.stringify(e)}`,
 					);
+				}
+				if (base64 != undefined) {
+					(cb as BinaryStateChangeHandler)(id, base64);
+				}
 			} else {
-				this._socket.emit("getForeignStates", id, (err, states) => {
-					err &&
-						console.error(
-							`Cannot getForeignStates "${id}": ${JSON.stringify(
-								err,
-							)}`,
-						);
-					states &&
-						Object.keys(states).forEach((id) => cb(id, states[id]));
-				});
+				let states: Record<string, ioBroker.State> | undefined;
+				try {
+					states = await this.getForeignStates(id);
+				} catch (e) {
+					console.error(
+						`Cannot getForeignStates "${id}": ${JSON.stringify(e)}`,
+					);
+					return;
+				}
+				if (states) {
+					for (const [id, state] of Object.entries(states)) {
+						(cb as ioBroker.StateChangeHandler)(id, state);
+					}
+				}
 			}
 		}
 	}
 
-	/**
-	 * Unsubscribes all callbacks from changes of the given state.
-	 * @param id The ioBroker state ID.
-	 */
 	/**
 	 * Unsubscribes the given callback from changes of the given state.
 	 * @param id The ioBroker state ID.
@@ -556,17 +590,15 @@ export class Connection<
 	 */
 	unsubscribeState(id: string, cb?: ioBroker.StateChangeHandler): void {
 		if (this.statesSubscribes[id]) {
+			const sub = this.statesSubscribes[id];
 			if (cb) {
-				const pos = this.statesSubscribes[id].cbs.indexOf(cb);
-				pos !== -1 && this.statesSubscribes[id].cbs.splice(pos, 1);
+				const pos = sub.cbs.indexOf(cb);
+				pos !== -1 && sub.cbs.splice(pos, 1);
 			} else {
-				this.statesSubscribes[id].cbs = [];
+				sub.cbs = [];
 			}
 
-			if (
-				!this.statesSubscribes[id].cbs ||
-				!this.statesSubscribes[id].cbs.length
-			) {
+			if (!sub.cbs || !sub.cbs.length) {
 				delete this.statesSubscribes[id];
 				this.connected && this._socket.emit("unsubscribe", id);
 			}
@@ -578,17 +610,12 @@ export class Connection<
 	 * @param id The ioBroker object ID.
 	 * @param cb The callback.
 	 */
-	subscribeObject(
-		id: string,
-		cb: ioBroker.ObjectChangeHandler,
-	): Promise<void> {
+	subscribeObject(id: string, cb: ObjectChangeHandler): Promise<void> {
 		if (!this.objectsSubscribes[id]) {
-			let reg = id.replace(/\./g, "\\.").replace(/\*/g, ".*");
-			if (!reg.includes("*")) {
-				reg += "$";
-			}
-			this.objectsSubscribes[id] = { reg: new RegExp(reg), cbs: [] };
-			this.objectsSubscribes[id].cbs.push(cb);
+			this.objectsSubscribes[id] = {
+				reg: new RegExp(pattern2RegEx(id)),
+				cbs: [cb],
+			};
 			this.connected && this._socket.emit("subscribeObjects", id);
 		} else {
 			!this.objectsSubscribes[id].cbs.includes(cb) &&
@@ -606,23 +633,17 @@ export class Connection<
 	 * @param id The ioBroker object ID.
 	 * @param cb The callback.
 	 */
-	unsubscribeObject(
-		id: string,
-		cb: ioBroker.ObjectChangeHandler,
-	): Promise<void> {
+	unsubscribeObject(id: string, cb: ObjectChangeHandler): Promise<void> {
 		if (this.objectsSubscribes[id]) {
+			const sub = this.objectsSubscribes[id];
 			if (cb) {
-				const pos = this.objectsSubscribes[id].cbs.indexOf(cb);
-				pos !== -1 && this.objectsSubscribes[id].cbs.splice(pos, 1);
+				const pos = sub.cbs.indexOf(cb);
+				pos !== -1 && sub.cbs.splice(pos, 1);
 			} else {
-				this.objectsSubscribes[id].cbs = [];
+				sub.cbs = [];
 			}
 
-			if (
-				this.connected &&
-				(!this.objectsSubscribes[id].cbs ||
-					!this.objectsSubscribes[id].cbs.length)
-			) {
+			if (this.connected && (!sub.cbs || !sub.cbs.length)) {
 				delete this.objectsSubscribes[id];
 				this.connected && this._socket.emit("unsubscribeObjects", id);
 			}
@@ -638,19 +659,22 @@ export class Connection<
 	private objectChange(id: string, obj: ioBroker.Object | null | undefined) {
 		// update main.objects cache
 
-		/** @type {import("./types").OldObject} */
-		let oldObj: import("./types").OldObject;
+		// Remember the id and type of th old object
+		let oldObj: OldObject | undefined;
+		if (this.objects[id]) {
+			oldObj = { _id: id, type: this.objects[id].type };
+		}
 
 		let changed = false;
 		if (obj) {
-			if (obj._rev && this.objects[id]) {
-				this.objects[id]._rev = obj._rev;
+			// The object was added, updated or changed
+
+			// Copy the _rev property (whatever that is)
+			if ((obj as any)._rev && this.objects[id]) {
+				(this.objects[id] as any)._rev = (obj as any)._rev;
 			}
 
-			if (this.objects[id]) {
-				oldObj = { _id: id, type: this.objects[id].type };
-			}
-
+			// Detect if there was a change
 			if (
 				!this.objects[id] ||
 				JSON.stringify(this.objects[id]) !== JSON.stringify(obj)
@@ -659,22 +683,20 @@ export class Connection<
 				changed = true;
 			}
 		} else if (this.objects[id]) {
-			oldObj = { _id: id, type: this.objects[id].type };
+			// The object was deleted
 			delete this.objects[id];
 			changed = true;
 		}
 
-		Object.keys(this.objectsSubscribes).forEach((_id) => {
-			if (_id === id || this.objectsSubscribes[_id].reg.test(id)) {
-				this.objectsSubscribes[_id].cbs.forEach((cb) =>
-					cb(id, obj, oldObj),
-				);
+		// Notify all subscribed listeners
+		for (const [_id, sub] of Object.entries(this.objectsSubscribes)) {
+			if (_id === id || sub.reg.test(id)) {
+				sub.cbs.forEach((cb) => cb(id, obj, oldObj));
 			}
-		});
-
-		if (changed && this.props.onObjectChange) {
-			this.props.onObjectChange(id, obj);
 		}
+
+		// Notify the default listener on change
+		if (changed) this.props.onObjectChange?.(id, obj);
 	}
 
 	/**
@@ -683,12 +705,12 @@ export class Connection<
 	 * @param state
 	 */
 	private stateChange(id: string, state: ioBroker.State | null | undefined) {
-		for (const task in this.statesSubscribes) {
-			if (
-				this.statesSubscribes.hasOwnProperty(task) &&
-				this.statesSubscribes[task].reg.test(id)
-			) {
-				this.statesSubscribes[task].cbs.forEach((cb) => cb(id, state));
+		for (const sub of Object.values(this.statesSubscribes)) {
+			if (sub.reg.test(id)) {
+				for (const cb of sub.cbs) {
+					// TODO: This might not be correct - check what happens if state is a binary state
+					cb(id, (state ?? null) as any);
+				}
 			}
 		}
 	}
@@ -701,7 +723,7 @@ export class Connection<
 		onTimeout,
 		requireAdmin,
 		requireFeatures,
-		requestName,
+		// requestName,
 		executor,
 	}: RequestOptions<T>): Promise<T> {
 		// TODO: mention requestName in errors
