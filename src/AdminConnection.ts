@@ -269,12 +269,11 @@ export class AdminConnection extends Connection {
             cb && cb();
         } else {
             let obj = objs.pop();
-            this.delObject(obj._id)
-                .then(() => {
-                    obj._id = obj.newId;
-                    delete obj.newId;
-                    return this.setObject(obj._id, obj)
-                })
+            const oldId = obj._id;
+            obj._id = obj.newId;
+            delete obj.newId;
+            this.setObject(obj._id, obj)// first, create new group
+                .then(() => this.delObject(oldId))// then delete old
                 .then(() => setTimeout(() => this._renameGroups(objs, cb), 0))
                 .catch(err => cb && cb(err));
         }
@@ -302,21 +301,22 @@ export class AdminConnection extends Connection {
 
                     return new Promise<void>((resolve, reject) =>
                         this._renameGroups(<any>groupsToRename, err => err ? reject(err) : resolve()))
-                        .then(() => {
-                            const obj = groups.find(group => group._id === id);
+                            .then(() => {
+                                const obj = groups.find(group => group._id === id);
 
-                            if (obj) {
-                                obj._id = newId;
-                                if (newName !== undefined) {
-                                    (<any>obj).common = obj.common || {};
-                                    obj.common.name = newName;
+                                if (obj) {
+                                    obj._id = newId;
+                                    if (newName !== undefined) {
+                                        (<any>obj).common = obj.common || {};
+                                        obj.common.name = newName;
+                                    }
+
+                                    return this.setObject(obj._id, obj)  // create new group
+                                        .then(() => this.delObject(id)); // and delete old one
                                 }
 
-                                return this.setObject(obj._id, obj);
-                            }
-
-                            return undefined;
-                        });
+                                return undefined;
+                            });
                 }
                 return undefined;
             });
