@@ -16,7 +16,7 @@ There are 2 connection types in it:
 	### **WORK IN PROGRESS**
 -->
 
-### 1.0.3 (2021-07-12)
+### **WORK IN PROGRESS**
 * (bluefox) Fix the renaming of groups
 
 ### 1.0.3 (2021-06-10)
