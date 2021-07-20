@@ -358,28 +358,6 @@ export class AdminConnection extends Connection<
 	}
 
 	/**
-	 * Called internally.
-	 * @private
-	 * @param objs
-	 * @param cb
-	 */
-	private _renameGroups(objs: any[], cb: (err?: any) => void) {
-		if (!objs || !objs.length) {
-			cb?.();
-		} else {
-			const obj = objs.pop();
-			this.delObject(obj._id)
-				.then(() => {
-					obj._id = obj.newId;
-					delete obj.newId;
-					return this.setObject(obj._id, obj);
-				})
-				.then(() => setTimeout(() => this._renameGroups(objs, cb), 0))
-				.catch((err) => cb && cb(err));
-		}
-	}
-
-	/**
 	 * Rename a group.
 	 * @param id The id.
 	 * @param newId The new id.
@@ -402,22 +380,27 @@ export class AdminConnection extends Connection<
 				);
 				// First do this for all sub groups
 				for (const group of subGroups) {
+					const oldGroupId = group._id;
 					const newGroupId = newId + group._id.substring(id.length);
-					await this.delObject(group._id);
 					group._id = newGroupId;
+
+					// Create new object, then delete the old one if it worked
 					await this.setObject(newGroupId, group);
+					await this.delObject(oldGroupId);
 				}
 				// Then for the parent group
 				const parentGroup = groups.find((g) => g._id === id);
 				if (parentGroup) {
-					// TODO: I guess we should delete this too?
-					// await this.delObject(parentGroup._id);
+					const oldGroupId = parentGroup._id;
 					parentGroup._id = newId;
 					if (newName !== undefined) {
 						(parentGroup.common as any) ??= {};
 						parentGroup.common.name = newName as any;
 					}
+
+					// Create new object, then delete the old one if it worked
 					await this.setObject(newId, parentGroup);
+					await this.delObject(oldGroupId);
 				}
 
 				resolve();
