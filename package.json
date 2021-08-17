@@ -7,7 +7,7 @@
     "build": "tsc",
     "watch": "npm run build -- --watch",
     "lint": "eslint src/**/*.ts",
-    "//prepare": "npm run build",
+    "prepare": "npm run build",
     "release": "release-script"
   },
   "repository": {
