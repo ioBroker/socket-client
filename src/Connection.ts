@@ -1540,7 +1540,7 @@ export class Connection<
 					pattern || "*",
 					(err, states) => {
 						if (err) reject(err);
-						resolve(states);
+						resolve(states ?? {});
 					},
 				);
 			},
