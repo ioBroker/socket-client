@@ -34,7 +34,8 @@ export type EmitEventHandler =
 	  ) => void)
 	| ((arg1: any, arg2: any, callback?: (...args: any[]) => void) => void)
 	| ((arg1: any, callback?: (...args: any[]) => void) => void)
-	| ((...args: any[], callback?: (...args: any[]) => void) => void);
+	| ((...args: [...any[], (...args: any[]) => void]) => void)
+	| ((...args: any[]) => void);
 
 // export type ListenEventHandler = (...args: any[]) => void;
 
