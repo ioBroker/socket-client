@@ -457,11 +457,12 @@ export class Connection<
 		if (!this._systemLang) {
 			this._systemLang = (window.navigator.userLanguage ||
 				window.navigator.language) as any;
-
-			if (
-				this.systemLang !== "en" &&
-				this.systemLang !== "de" &&
-				this.systemLang !== "ru"
+			// Browsers may report languages like "de-DE", "en-US", etc.
+			// ioBroker expects "de", "en", ...
+			if (/^(en|de|ru|pt|nl|fr|it|es|pl)\-?/.test(this._systemLang)) {
+				this._systemLang = this._systemLang.substr(0, 2) as any;
+			} else if (
+				!/^(en|de|ru|pt|nl|fr|it|es|pl|zh-cn)$/.test(this._systemLang)
 			) {
 				this._systemLang = "en";
 			}
@@ -1062,11 +1063,11 @@ export class Connection<
 	 * @param command Command name of the target instance.
 	 * @param data The message data to send.
 	 */
-	sendTo(
+	sendTo<T extends unknown = unknown>(
 		instance: string,
 		command: string,
-		data: ioBroker.MessagePayload,
-	): Promise<ioBroker.Message | undefined> {
+		data?: ioBroker.MessagePayload | null,
+	): Promise<T> {
 		return this.request({
 			// TODO: check if this should time out
 			commandTimeout: false,

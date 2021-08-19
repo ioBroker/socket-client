@@ -264,7 +264,7 @@ export interface IOEmitEvents {
 	sendTo(
 		instance: string,
 		command: string,
-		data: ioBroker.MessagePayload,
+		data?: ioBroker.MessagePayload | null,
 		// TODO: What is the actual type of the returned value here?
 		callback?: (result: any) => void,
 	): void;
