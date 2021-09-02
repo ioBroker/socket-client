@@ -1063,10 +1063,10 @@ export class Connection<
 	 * @param command Command name of the target instance.
 	 * @param data The message data to send.
 	 */
-	sendTo<T extends unknown = unknown>(
+	sendTo<T extends any = any>(
 		instance: string,
 		command: string,
-		data?: ioBroker.MessagePayload | null,
+		data?: any,
 	): Promise<T> {
 		return this.request({
 			// TODO: check if this should time out
@@ -1077,7 +1077,7 @@ export class Connection<
 					instance,
 					command,
 					data,
-					(result) => {
+					(result: any) => {
 						resolve(result);
 					},
 				);

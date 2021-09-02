@@ -261,12 +261,11 @@ export interface IOEmitEvents {
 		callback: GenericCallback<boolean>,
 	): void;
 
-	sendTo(
+	sendTo<T extends any = any>(
 		instance: string,
 		command: string,
-		data?: ioBroker.MessagePayload | null,
-		// TODO: What is the actual type of the returned value here?
-		callback?: (result: any) => void,
+		data?: any,
+		callback?: (result: T) => void,
 	): void;
 	cmdExec(
 		hostName: string,
@@ -280,12 +279,11 @@ export interface IOEmitEvents {
 export type AdminListenEvents = {};
 
 export interface AdminEmitEvents {
-	sendToHost(
+	sendToHost<T extends any = any>(
 		hostname: string,
 		command: string,
-		message: any,
-		// TODO: What is the actual type of the returned value here?
-		callback?: (result: any) => void,
+		data?: any,
+		callback?: (result: T) => void,
 	): void;
 
 	changePassword(
