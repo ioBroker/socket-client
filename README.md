@@ -16,7 +16,7 @@ There are 2 connection types in it:
 	### **WORK IN PROGRESS**
 -->
 
-### **WORK IN PROGRESS**
+### 1.0.5 (2021-09-13)
 * (AlCalzone) The package was completely rewritten to make proper use of TypeScript
 
 ### 1.0.4 (2021-07-12)
