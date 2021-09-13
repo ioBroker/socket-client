@@ -17,7 +17,7 @@ There are 2 connection types in it:
 -->
 
 ### **WORK IN PROGRESS**
-* (AlCalzone) Complete rewrite to make proper use of TypeScript
+* (AlCalzone) The package was completely rewritten to make proper use of TypeScript
 
 ### 1.0.4 (2021-07-12)
 * (bluefox) Fix the renaming of groups
