@@ -1581,16 +1581,8 @@ export class Connection<
 	 */
 	setSystemConfig(
 		obj: ioBroker.SettableObjectWorker<ioBroker.OtherObject>,
-	): Promise<ioBroker.SettableObjectWorker<ioBroker.OtherObject>> {
-		return this.request({
-			cacheKey: "systemConfig",
-			// TODO: check if this should time out
-			commandTimeout: false,
-			executor: async (resolve) => {
-				await this.setObject("system.config", obj);
-				resolve(obj);
-			},
-		});
+	): Promise<void> {
+		return this.setObject("system.config", obj);
 	}
 
 	/**
