@@ -15,8 +15,8 @@ There are 2 connection types in it:
 	Placeholder for the next version (at the beginning of the line):
 	### **WORK IN PROGRESS**
 -->
-### **WORK IN PROGRESS**
-* (AlCalzone) setSystemConfig simplified 
+### 1.0.6 (2021-10-20)
+* (AlCalzone) setSystemConfig simplified
 
 ### 1.0.5 (2021-09-13)
 * (AlCalzone) The package was completely rewritten to make proper use of TypeScript
