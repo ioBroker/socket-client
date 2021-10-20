@@ -1,5 +1,5 @@
 {
-	"plugins": ["iobroker", "license"],
+	"plugins": ["license"],
 	"exec": {
 		"beforePush": "npm run tsc"
 	}
