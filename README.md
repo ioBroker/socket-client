@@ -15,6 +15,9 @@ There are 2 connection types in it:
 	Placeholder for the next version (at the beginning of the line):
 	### **WORK IN PROGRESS**
 -->
+### **WORK IN PROGRESS**
+* (bluefox) Improved the vendor support
+
 ### 1.0.6 (2021-10-20)
 * (AlCalzone) setSystemConfig simplified
 

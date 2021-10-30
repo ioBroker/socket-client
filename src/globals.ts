@@ -5,6 +5,7 @@ declare global {
 		io: { connect: (name: string, par: any) => SocketClient };
 		socketUrl: string;
 		registerSocketOnLoad: (callback: () => void) => void;
+		vendorPrefix: string;
 	}
 
 	interface Navigator {

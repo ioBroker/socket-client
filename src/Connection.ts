@@ -443,7 +443,8 @@ export class Connection<
 
 		// Load system config if not disabled
 		try {
-			if (this.props.admin5only && !Connection.isWeb()) {
+			if (this.props.admin5only && !Connection.isWeb() &&
+				(!window.vendorPrefix || window.vendorPrefix === '@@vendorPrefix@@')) {
 				this._systemConfig = await this.getCompactSystemConfig();
 			} else {
 				this._systemConfig = await this.getSystemConfig();
