@@ -15,6 +15,9 @@ There are 2 connection types in it:
 	Placeholder for the next version (at the beginning of the line):
 	### **WORK IN PROGRESS**
 -->
+### **WORK IN PROGRESS**
+* (bluefox) Fixed `getInstalled` command 
+
 ### 1.0.7 (2021-10-30)
 * (bluefox) Improved the vendor support
 

@@ -533,7 +533,7 @@ export class AdminConnection extends Connection<
 		host = normalizeHostId(host);
 
 		return this.request({
-			cacheKey: "repo",
+			cacheKey: "installed",
 			forceUpdate: update,
 			commandTimeout: cmdTimeout,
 			executor: (resolve, reject, timeout) => {
