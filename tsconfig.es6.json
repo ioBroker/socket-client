@@ -1,0 +1,38 @@
+{
+	"extends": "@tsconfig/node12/tsconfig.json",
+	"compilerOptions": {
+		// Don't output anything when the build fails
+		"noEmitOnError": true,
+
+		"target": "esnext",   /* Specify ECMAScript target version: 'ES3' (default), 'ES5', 'ES2015', 'ES2016', 'ES2017','ES2018' or 'ESNEXT'. */
+		"module": "esnext",   /* Specify module code generation: 'none', 'commonjs', 'amd', 'system', 'umd', 'es2015', or 'ESNext'. */
+	
+		// What to output where
+		"outDir": "./dist/es6",
+		"declaration": true,
+		"removeComments": false,
+		"sourceMap": true,
+		"inlineSourceMap": false,
+
+		// Strictness flags - check the base config before adding something here
+		"importsNotUsedAsValues": "error",
+		"noUnusedLocals": true,
+		"noImplicitReturns": true,
+		"noFallthroughCasesInSwitch": true,
+
+		"lib": [
+			"DOM",
+			"es2019",
+			"es2020.promise",
+			"es2020.bigint",
+			"es2020.string"
+		],
+	},
+	"include": [
+		"./src/**/*"
+	],
+	"exclude": [
+		"node_modules",
+		"**/*.spec.ts"
+	]
+}
