@@ -10,6 +10,16 @@ There are 2 connection types in it:
 ## Build
 `npm run tsc -watch`
 
+## How to use in frontend
+
+- Create Socket instance:
+  window.io = new SocketIo();
+- build connection:
+  const adminConnection = new AdminConnection({ protocol: 'http', host: '192.168.1.2', port: 8081, admin5only: true, autoSubscribes: [] });
+  await adminConnection.startSocket();
+  await adminConnection.waitForFirstConnection();
+  console.log(await adminConnection.getHosts());
+
 ## Changelog
 <!--
 	Placeholder for the next version (at the beginning of the line):
