@@ -15,6 +15,9 @@ There are 2 connection types in it:
 	Placeholder for the next version (at the beginning of the line):
 	### **WORK IN PROGRESS**
 -->
+### 1.0.9 (2021-12-14)
+* (jogibear998) Add ES6 Modules Version
+
 ### 1.0.8 (2021-10-30)
 * (bluefox) Fixed `getInstalled` command
 
