@@ -927,9 +927,11 @@ export class Connection<
 	private _subscribe(isEnable: boolean) {
 		if (isEnable && !this.subscribed) {
 			this.subscribed = true;
-			this.props.autoSubscribes.forEach((id) =>
-				this._socket.emit("subscribeObjects", id),
-			);
+			if (this.props.autoSubscribes) {
+				this.props.autoSubscribes.forEach((id) =>
+					this._socket.emit("subscribeObjects", id),
+				);
+			}
 			// re subscribe objects
 			Object.keys(this.objectsSubscribes).forEach((id) =>
 				this._socket.emit("subscribeObjects", id),
@@ -944,9 +946,11 @@ export class Connection<
 		} else if (!isEnable && this.subscribed) {
 			this.subscribed = false;
 			// un-subscribe objects
-			this.props.autoSubscribes.forEach((id) =>
-				this._socket.emit("unsubscribeObjects", id),
-			);
+			if (this.props.autoSubscribes) {
+				this.props.autoSubscribes.forEach((id) =>
+					this._socket.emit("unsubscribeObjects", id),
+				);
+			}
 			Object.keys(this.objectsSubscribes).forEach((id) =>
 				this._socket.emit("unsubscribeObjects", id),
 			);
