@@ -25,6 +25,9 @@ There are 2 connection types in it:
 	Placeholder for the next version (at the beginning of the line):
 	### **WORK IN PROGRESS**
 -->
+### 1.0.10 (2021-12-14)
+* (jogibear998) Add TS Version from socket.io from admin ui
+
 ### 1.0.9 (2021-12-14)
 * (jogibear998) Add ES6 Modules Version
 
