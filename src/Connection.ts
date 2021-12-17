@@ -237,7 +237,7 @@ export class Connection<
 		const url = `${protocol}://${host}:${port}`;
 
 		this._socket = window.io.connect(url, {
-			query: "ws=true",
+			query: protocol == 'ws' || protocol =='wss' ? 'ws=true' : '',
 			name: this.props.name,
 			timeout: this.props.ioTimeout,
 		});

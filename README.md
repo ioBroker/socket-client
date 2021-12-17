@@ -12,8 +12,9 @@ There are 2 connection types in it:
 
 ## How to use in frontend
 
-- Create Socket instance:
-  window.io = new SocketIo();
+- At the moment this lib is only tested with socket lib from admin & against admin socket 
+- load socket lib from admin or use fork from here
+  window.io = new AdminSocketIo();
 - build connection:
   const adminConnection = new AdminConnection({ protocol: 'http', host: '192.168.1.2', port: 8081, admin5only: true, autoSubscribes: [] });
   await adminConnection.startSocket();
@@ -23,9 +24,9 @@ There are 2 connection types in it:
 ## Changelog
 <!--
 	Placeholder for the next version (at the beginning of the line):
-	### **WORK IN PROGRESS**
+	### **WORK IN PROGRESS** ###
 -->
-### 1.0.10 (2021-12-14)
+### 1.0.10 (2021-12-17)
 * (jogibear998) Add TS Version from socket.io from admin ui
 
 ### 1.0.9 (2021-12-14)
