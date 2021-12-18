@@ -245,6 +245,7 @@ export class Connection<
 		this._socket.on("connect", (noTimeout) => {
 			// If the user is not admin it takes some time to install the handlers, because all rights must be checked
 			if (noTimeout !== true) {
+				this.connected = true;
 				setTimeout(
 					() =>
 						this.getVersion().then((info) => {
