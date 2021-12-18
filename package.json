@@ -31,8 +31,8 @@
   },
   "homepage": "https://github.com/ioBroker/socket-client",
   "devDependencies": {
-    "@alcalzone/release-script": "^3.4.1",
-    "@alcalzone/release-script-plugin-license": "^3.4.1",
+    "@alcalzone/release-script": "~3.4.2",
+    "@alcalzone/release-script-plugin-license": "~3.4.1",
     "@tsconfig/node12": "^1.0.9",
     "@types/iobroker": "^3.3.4",
     "@typescript-eslint/eslint-plugin": "^5.7.0",
