@@ -5,7 +5,9 @@
 		"noEmitOnError": true,
 
 		// What to output where
-		"outDir": "./dist",
+		"outDir": "./dist/esm",
+		"module":"ES2020", // will be transpiled to CommonJS in the postbuild step
+
 		"declaration": true,
 		"removeComments": false,
 		"sourceMap": true,
@@ -16,6 +18,7 @@
 		"noUnusedLocals": true,
 		"noImplicitReturns": true,
 		"noFallthroughCasesInSwitch": true,
+		"useUnknownInCatchVariables": false,
 
 		"lib": [
 			"DOM",

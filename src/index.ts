@@ -1,4 +1,4 @@
-export * from "./AdminConnection";
-export * from "./Connection";
-export * from "./ConnectionProps";
-export type { EmitEventHandler, ListenEventHandler } from "./SocketClient";
+export * from "./AdminConnection.js";
+export * from "./Connection.js";
+export * from "./ConnectionProps.js";
+export type { EmitEventHandler, ListenEventHandler } from "./SocketClient.js";
