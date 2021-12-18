@@ -12,11 +12,12 @@ There are 2 connection types in it:
 
 ## How to use in frontend
 
-- At the moment this lib is only tested with socket lib from admin & against admin socket 
-- load socket lib from admin or use fork from here
+- load socket lib from admin or web adapter
+  e.g.: <script src="../lib/js/socket.io.js"></script>
+  with connection to admin-adapter you could also use the included fork (for testing):
   window.io = new AdminSocketIo();
 - build connection:
-  const adminConnection = new AdminConnection({ protocol: 'http', host: '192.168.1.2', port: 8081, admin5only: true, autoSubscribes: [] });
+  const adminConnection = new AdminConnection({ protocol: 'ws', host: '192.168.1.2', port: 8081, admin5only: false, autoSubscribes: [] });
   await adminConnection.startSocket();
   await adminConnection.waitForFirstConnection();
   console.log(await adminConnection.getHosts());
@@ -26,8 +27,9 @@ There are 2 connection types in it:
 	Placeholder for the next version (at the beginning of the line):
 	### **WORK IN PROGRESS** ###
 -->
-### 1.0.10 (2021-12-17)
+### 1.0.10 (2021-12-18)
 * (jogibear998) Add TS Version from socket.io from admin ui
+* (jogibear998) Fix connection with web adapter
 
 ### 1.0.9 (2021-12-14)
 * (jogibear998) Add ES6 Modules Version
