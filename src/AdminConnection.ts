@@ -1,5 +1,5 @@
-import { Connection, ERRORS, RequestOptions } from "./Connection";
-import type { ConnectionProps } from "./ConnectionProps";
+import { Connection, ERRORS, RequestOptions } from "./Connection.js";
+import type { ConnectionProps } from "./ConnectionProps.js";
 import type {
 	AdminEmitEvents,
 	AdminListenEvents,
@@ -9,12 +9,12 @@ import type {
 	CompactInstanceInfo,
 	CompactRepository,
 	LogFile,
-} from "./SocketEvents";
+} from "./SocketEvents.js";
 import {
 	getObjectViewResultToArray,
 	normalizeHostId,
 	objectIdToHostname,
-} from "./tools";
+} from "./tools.js";
 
 interface Certificate {
 	name: string;

@@ -1,4 +1,4 @@
-import type { IOEmitEvents, IOListenEvents } from "./SocketEvents";
+import type { IOEmitEvents, IOListenEvents } from "./SocketEvents.js";
 
 export type ListenEventHandler =
 	// Add more overloads as necessary

@@ -1,11 +1,11 @@
-import type { ConnectionProps } from "./ConnectionProps";
-import { createDeferredPromise } from "./DeferredPromise";
+import type { ConnectionProps } from "./ConnectionProps.js";
+import { createDeferredPromise } from "./DeferredPromise.js";
 import type {
 	EmitEventHandler,
 	ListenEventHandler,
 	SocketClient,
-} from "./SocketClient";
-import { normalizeHostId, pattern2RegEx, wait } from "./tools";
+} from "./SocketClient.js";
+import { normalizeHostId, pattern2RegEx, wait } from "./tools.js";
 
 /** Possible progress states. */
 export enum PROGRESS {
@@ -237,7 +237,7 @@ export class Connection<
 		const url = `${protocol}://${host}:${port}`;
 
 		this._socket = window.io.connect(url, {
-			query: protocol == 'ws' || protocol =='wss' ? 'ws=true' : '',
+			query: protocol == "ws" || protocol == "wss" ? "ws=true" : "",
 			name: this.props.name,
 			timeout: this.props.ioTimeout,
 		});
@@ -444,8 +444,12 @@ export class Connection<
 
 		// Load system config if not disabled
 		try {
-			if (this.props.admin5only && !Connection.isWeb() &&
-				(!window.vendorPrefix || window.vendorPrefix === '@@vendorPrefix@@')) {
+			if (
+				this.props.admin5only &&
+				!Connection.isWeb() &&
+				(!window.vendorPrefix ||
+					window.vendorPrefix === "@@vendorPrefix@@")
+			) {
 				this._systemConfig = await this.getCompactSystemConfig();
 			} else {
 				this._systemConfig = await this.getSystemConfig();
@@ -1070,11 +1074,7 @@ export class Connection<
 	 * @param command Command name of the target instance.
 	 * @param data The message data to send.
 	 */
-	sendTo<T extends any = any>(
-		instance: string,
-		command: string,
-		data?: any,
-	): Promise<T> {
+	sendTo<T = any>(instance: string, command: string, data?: any): Promise<T> {
 		return this.request({
 			// TODO: check if this should time out
 			commandTimeout: false,

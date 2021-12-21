@@ -1,4 +1,4 @@
-import type { ERRORS } from "./Connection";
+import type { ERRORS } from "./Connection.js";
 
 /** Defines which events are emitted by the server and can be listened on the client */
 export interface IOListenEvents {
@@ -264,7 +264,7 @@ export interface IOEmitEvents {
 		callback: GenericCallback<boolean>,
 	): void;
 
-	sendTo<T extends any = any>(
+	sendTo<T = any>(
 		instance: string,
 		command: string,
 		data?: any,
@@ -282,7 +282,7 @@ export interface IOEmitEvents {
 export type AdminListenEvents = {};
 
 export interface AdminEmitEvents {
-	sendToHost<T extends any = any>(
+	sendToHost<T = any>(
 		hostname: string,
 		command: string,
 		data?: any,

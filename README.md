@@ -8,31 +8,41 @@ There are 2 connection types in it:
 - `AdminConnection` => for Admin UI Connections, these have access to more commands.
 
 ## Build
-`npm run tsc -watch`
+`npm run build` for one-time builds.
+`npm run watch` for continuous builds.
 
 ## How to use in frontend
 
-- load socket lib from admin or web adapter
-  e.g.: <script src="../lib/js/socket.io.js"></script>
-  with connection to admin-adapter you could also use the included fork (for testing):
-  window.io = new AdminSocketIo();
-- build connection:
-  const adminConnection = new AdminConnection({ protocol: 'ws', host: '192.168.1.2', port: 8081, admin5only: false, autoSubscribes: [] });
-  await adminConnection.startSocket();
-  await adminConnection.waitForFirstConnection();
-  console.log(await adminConnection.getHosts());
+Include the socket library from Admin or Web adapter:
+```html
+<script src="../lib/js/socket.io.js"></script>
+```
+
+Instantiate the connection:
+```js
+const adminConnection = new AdminConnection({
+	protocol: 'ws',
+	host: '192.168.1.2',
+	port: 8081,
+	admin5only: false,
+	autoSubscribes: [],
+	// optional: other options
+});
+
+await adminConnection.startSocket();
+await adminConnection.waitForFirstConnection();
+// and use it
+console.log(await adminConnection.getHosts());
+```
 
 ## Changelog
 <!--
 	Placeholder for the next version (at the beginning of the line):
-	### **WORK IN PROGRESS** ###
+	### **WORK IN PROGRESS**
 -->
-### 1.0.10 (2021-12-18)
-* (jogibear998) Add TS Version from socket.io from admin ui
+### **WORK IN PROGRESS**
 * (jogibear998) Fix connection with web adapter
-
-### 1.0.9 (2021-12-14)
-* (jogibear998) Add ES6 Modules Version
+* (jogibear998 & AlCalzone) Convert package to a CommonJS/ESM hybrid
 
 ### 1.0.8 (2021-10-30)
 * (bluefox) Fixed `getInstalled` command
