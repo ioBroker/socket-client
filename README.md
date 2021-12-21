@@ -40,7 +40,7 @@ console.log(await adminConnection.getHosts());
 	Placeholder for the next version (at the beginning of the line):
 	### **WORK IN PROGRESS**
 -->
-### **WORK IN PROGRESS**
+### 1.0.9 (2021-12-21)
 * (jogibear998) Fix connection with web adapter
 * (jogibear998 & AlCalzone) Convert package to a CommonJS/ESM hybrid
 
