@@ -1,6 +1,6 @@
 package.json
 package-lock.json
 dist/
-# README.md
+README.md
 CHANGELOG.md
 .github/workflows/
