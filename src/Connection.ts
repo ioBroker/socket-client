@@ -234,7 +234,7 @@ export class Connection<
 			protocol = parsed.protocol.replace(":", "");
 		}
 
-		const url = `${protocol}://${host}:${port}`;
+		const url = port || port === '80' || port === '443' ? `${protocol}://${host}:${port}` : `${protocol}://${host}`;
 
 		this._socket = window.io.connect(url, {
 			query: protocol == "ws" || protocol == "wss" ? "ws=true" : "",
