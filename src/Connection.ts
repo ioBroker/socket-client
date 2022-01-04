@@ -1253,16 +1253,54 @@ export class Connection<
 		});
 	}
 
+	
+
 	/**
 	 * Query a predefined object view.
+	 * @deprecated use getObjectViewSystem or getObjectViewCustom
 	 * @param start The start ID.
 	 * @param end The end ID.
 	 * @param type The type of object.
 	 */
-	getObjectView<T extends ioBroker.ObjectType>(
+	
+	 getObjectView<T extends ioBroker.ObjectType>(
 		start: string,
 		end: string,
+		type: T
+	): Promise<Record<string, ioBroker.AnyObject & { type: T }>> {
+		return this.getObjectViewCustom('system', type, start, end);
+	}
+
+	/**
+	 * Query a predefined object view.
+	 * @param design The namespace of the object view, as defined in io-package.json. Usually the adapter name, e.g. "hm-rpc"
+	 * @param type The type of object.
+	 * @param start The start ID.
+	 * @param end The end ID.
+	 */
+	
+	 getObjectViewSystem<T extends ioBroker.ObjectType>(
 		type: T,
+		start?: string,
+		end?: string,
+	): Promise<Record<string, ioBroker.AnyObject & { type: T }>> {
+		return this.getObjectViewCustom('system', type, start, end);
+	}
+
+
+	/**
+	 * Query a predefined object view.
+	 * @param design The namespace of the object view, as defined in io-package.json. Usually the adapter name, e.g. "hm-rpc"
+	 * @param type The type of object.
+	 * @param start The start ID.
+	 * @param end The end ID.
+	 */
+	
+	getObjectViewCustom<T extends ioBroker.ObjectType>(
+		design: 'system' | 'chart' | string,
+		type: T | string,
+		start?: string,
+		end?: string,
 	): Promise<Record<string, ioBroker.AnyObject & { type: T }>> {
 		return this.request({
 			// TODO: check if this should time out
@@ -1273,7 +1311,7 @@ export class Connection<
 
 				this._socket.emit(
 					"getObjectView",
-					"system",
+					design,
 					type,
 					{ startkey: start, endkey: end },
 					(err, res) => {
@@ -1824,10 +1862,10 @@ export class Connection<
 					: "system.adapter.";
 				const endKey = `${startKey}\u9999`;
 
-				const instances = await this.getObjectView(
+				const instances = await this.getObjectViewSystem(
+					"instance",
 					startKey,
 					endKey,
-					"instance",
 				);
 				const instanceObjects = Object.values(instances);
 				if (adapter) {
@@ -1864,10 +1902,10 @@ export class Connection<
 			// TODO: check if this should time out
 			commandTimeout: false,
 			executor: async (resolve) => {
-				const adapters = await this.getObjectView(
-					`system.adapter.${adapter || ""}`,
-					`system.adapter.${adapter || "\u9999"}`,
+				const adapters = await this.getObjectViewSystem(
 					"adapter",
+					`system.adapter.${adapter || ""}`,
+					`system.adapter.${adapter || "\u9999"}`
 				);
 				const adapterObjects = Object.values(adapters);
 				if (adapter) {
