@@ -1253,6 +1253,24 @@ export class Connection<
 		});
 	}
 
+	
+
+	/**
+	 * Query a predefined object view.
+	 * @deprecated use getObjectViewSystem or getObjectViewCustom
+	 * @param start The start ID.
+	 * @param end The end ID.
+	 * @param type The type of object.
+	 */
+	
+	 getObjectView<T extends ioBroker.ObjectType>(
+		start: string,
+		end: string,
+		type: T
+	): Promise<Record<string, ioBroker.AnyObject & { type: T }>> {
+		return this.getObjectViewCustom('system', type, start, end);
+	}
+
 	/**
 	 * Query a predefined object view.
 	 * @param design The namespace of the object view, as defined in io-package.json. Usually the adapter name, e.g. "hm-rpc"
@@ -1260,7 +1278,25 @@ export class Connection<
 	 * @param start The start ID.
 	 * @param end The end ID.
 	 */
-	getObjectView<T extends ioBroker.ObjectType>(
+	
+	 getObjectViewSystem<T extends ioBroker.ObjectType>(
+		type: T,
+		start?: string,
+		end?: string,
+	): Promise<Record<string, ioBroker.AnyObject & { type: T }>> {
+		return this.getObjectViewCustom('system', type, start, end);
+	}
+
+
+	/**
+	 * Query a predefined object view.
+	 * @param design The namespace of the object view, as defined in io-package.json. Usually the adapter name, e.g. "hm-rpc"
+	 * @param type The type of object.
+	 * @param start The start ID.
+	 * @param end The end ID.
+	 */
+	
+	getObjectViewCustom<T extends ioBroker.ObjectType>(
 		design: 'system' | 'chart' | string,
 		type: T | string,
 		start?: string,
@@ -1826,8 +1862,7 @@ export class Connection<
 					: "system.adapter.";
 				const endKey = `${startKey}\u9999`;
 
-				const instances = await this.getObjectView(
-					"system",
+				const instances = await this.getObjectViewSystem(
 					"instance",
 					startKey,
 					endKey,
@@ -1867,8 +1902,7 @@ export class Connection<
 			// TODO: check if this should time out
 			commandTimeout: false,
 			executor: async (resolve) => {
-				const adapters = await this.getObjectView(
-					"system",
+				const adapters = await this.getObjectViewSystem(
 					"adapter",
 					`system.adapter.${adapter || ""}`,
 					`system.adapter.${adapter || "\u9999"}`
