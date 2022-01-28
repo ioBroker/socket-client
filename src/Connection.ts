@@ -1347,6 +1347,13 @@ export class Connection<
 		});
 	}
 
+	/**
+	 * Read a file of an adapter.
+	 * @param {string} adapterName The adapter name.
+	 * @param {string} fileName The file name.
+	 * @param {boolean} base64 If it must be a base64 format
+	 * @returns {Promise<string>}
+	 */
 	readFile(
 		adapterName: string | null,
 		fileName: string,
