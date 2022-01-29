@@ -5,7 +5,12 @@ import type {
 	ListenEventHandler,
 	SocketClient,
 } from "./SocketClient.js";
-import { normalizeHostId, pattern2RegEx, wait } from "./tools.js";
+import {
+	getObjectViewResultToArray,
+	normalizeHostId,
+	pattern2RegEx,
+	wait,
+} from "./tools.js";
 
 /** Possible progress states. */
 export enum PROGRESS {
@@ -1884,6 +1889,56 @@ export class Connection<
 				} else {
 					resolve(adapterObjects);
 				}
+			},
+		});
+	}
+
+	/**
+	 * Get the list of all groups.
+	 * @param update Force update.
+	 */
+	getGroups(update?: boolean): Promise<ioBroker.GroupObject[]> {
+		return this.request({
+			cacheKey: "groups",
+			forceUpdate: update,
+			// TODO: check if this should time out
+			commandTimeout: false,
+			executor: (resolve, reject) => {
+				this._socket.emit(
+					"getObjectView",
+					"system",
+					"group",
+					{
+						startkey: "system.group.",
+						endkey: "system.group.\u9999",
+					},
+					(err, doc) => {
+						if (err) {
+							reject(err);
+						} else {
+							resolve(
+								getObjectViewResultToArray<ioBroker.GroupObject>(
+									doc,
+								),
+							);
+						}
+					},
+				);
+			},
+		});
+	}
+
+	/**
+	 * Logout current user
+	 * @returns {Promise<null>}
+	 */
+	logout(): Promise<string | null> {
+		return this.request({
+			commandTimeout: false,
+			executor: (resolve, reject) => {
+				this._socket.emit("logout", (err) => {
+					err ? reject(err) : resolve(null);
+				});
 			},
 		});
 	}

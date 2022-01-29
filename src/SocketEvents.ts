@@ -276,6 +276,8 @@ export interface IOEmitEvents {
 		command: string,
 		callback?: ErrorCallback,
 	): void;
+
+	logout(callback?: ErrorCallback): void;
 }
 
 // eslint-disable-next-line @typescript-eslint/ban-types

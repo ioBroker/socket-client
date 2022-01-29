@@ -1,9 +1,0 @@
-/**/*
-!/dist/*
-!/dist/**/*
-!/package.json
-!/package-lock.json
-!/LICENSE
-!/main.js
-!/inspect.js
-!/README.md
