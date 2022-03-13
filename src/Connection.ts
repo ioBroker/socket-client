@@ -239,7 +239,9 @@ export class Connection<
 			protocol = parsed.protocol.replace(":", "");
 		}
 
-		const url = port || port === '80' || port === '443' ? `${protocol}://${host}:${port}` : `${protocol}://${host}`;
+		const url = port
+			? `${protocol}://${host}:${port}`
+			: `${protocol}://${host}`;
 
 		this._socket = window.io.connect(url, {
 			query: protocol == "ws" || protocol == "wss" ? "ws=true" : "",
@@ -322,8 +324,10 @@ export class Connection<
 
 			if (_err.includes("User not authorized")) {
 				this.authenticate();
+			} else if (_err.includes("websocket error")) {
+				window.location.reload();
 			} else {
-				window.alert(`Socket Error: ${err}`);
+				console.error(`Socket Error: ${err}`);
 			}
 		});
 
