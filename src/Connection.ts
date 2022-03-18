@@ -325,6 +325,7 @@ export class Connection<
 			if (_err.includes("User not authorized")) {
 				this.authenticate();
 			} else if (_err.includes("websocket error")) {
+				console.error(`Socket Error => reload: ${err}`);
 				window.location.reload();
 			} else {
 				console.error(`Socket Error: ${err}`);
