@@ -39,6 +39,9 @@ console.log(await adminConnection.getHosts());
 	### **WORK IN PROGRESS**
 -->
 ## Changelog
+### **WORK IN PROGRESS**
+* (AlCalzone) corrected: reload on websocket error instead of alert()-ing
+
 ### 1.0.10 (2022-01-29)
 * (bluefox) Added `logout` command
 * (bluefox) Move `getGroups` to web connection
