@@ -1241,7 +1241,7 @@ export class Connection<
 						startkey: `enum.${_enum || ""}`,
 						endkey: _enum ? `enum.${_enum}.\u9999` : `enum.\u9999`,
 					},
-					(err, res) => {
+					(err, res: any) => {
 						if (err) reject(err);
 						const _res: Record<string, ioBroker.EnumObject> = {};
 						if (res) {
@@ -1286,7 +1286,7 @@ export class Connection<
 					"system",
 					type,
 					{ startkey: start, endkey: end },
-					(err, res) => {
+					(err, res: any) => {
 						if (err) reject(err);
 
 						const _res: Record<
@@ -1318,12 +1318,12 @@ export class Connection<
 					"system",
 					"meta",
 					{ startkey: "", endkey: "\u9999" },
-					(err, objs) => {
+					(err, objs: any) => {
 						if (err) reject(err);
 						resolve(
 							objs!.rows
-								?.map((obj) => obj.value)
-								.filter((val): val is ioBroker.Object => !!val),
+								?.map((obj: any) => obj.value)
+								.filter((val: any): val is ioBroker.Object => !!val),
 						);
 					},
 				);
@@ -1917,7 +1917,7 @@ export class Connection<
 						startkey: "system.group.",
 						endkey: "system.group.\u9999",
 					},
-					(err, doc) => {
+					(err, doc: any) => {
 						if (err) {
 							reject(err);
 						} else {
