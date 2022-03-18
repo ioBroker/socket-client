@@ -133,11 +133,18 @@ export interface IOEmitEvents {
 
 	getObjects(callback?: ErrorAsString<ioBroker.GetObjectsCallback>): void;
 	getAllObjects(callback?: ErrorAsString<ioBroker.GetObjectsCallback>): void;
-	getObjectView(
-		design: string,
-		search: string,
+	getObjectView<
+		Design extends string = string,
+		Search extends string = string,
+	>(
+		design: Design,
+		search: Search,
 		params: ioBroker.GetObjectViewParams | null | undefined,
-		callback: ErrorAsString<ioBroker.GetObjectViewCallback>,
+		callback: ErrorAsString<
+			ioBroker.GetObjectViewCallback<
+				ioBroker.InferGetObjectViewItemType<Design, Search>
+			>
+		>,
 	): void;
 
 	delObject:

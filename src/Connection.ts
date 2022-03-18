@@ -1323,7 +1323,9 @@ export class Connection<
 						resolve(
 							objs!.rows
 								?.map((obj: any) => obj.value)
-								.filter((val: any): val is ioBroker.Object => !!val),
+								.filter(
+									(val: any): val is ioBroker.Object => !!val,
+								),
 						);
 					},
 				);

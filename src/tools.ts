@@ -1,7 +1,7 @@
 export function getObjectViewResultToArray<T extends ioBroker.Object>(
 	doc:
 		| {
-				rows: ioBroker.GetObjectViewItem[];
+				rows: ioBroker.GetObjectViewItem<T>[];
 		  }
 		| undefined,
 ): T[] {
