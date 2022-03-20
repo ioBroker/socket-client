@@ -39,7 +39,7 @@ console.log(await adminConnection.getHosts());
 	### **WORK IN PROGRESS**
 -->
 ## Changelog
-### **WORK IN PROGRESS**
+### 1.0.11 (2022-03-20)
 * (AlCalzone) corrected: reload on websocket error instead of alert()-ing
 
 ### 1.0.10 (2022-01-29)
