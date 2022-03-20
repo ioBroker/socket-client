@@ -271,7 +271,7 @@ export class AdminConnection extends Connection<
 					"system",
 					"host",
 					{ startkey: "system.host.", endkey: "system.host.\u9999" },
-					(err, doc: any) => {
+					(err, doc) => {
 						if (err) {
 							reject(err);
 						} else {
@@ -303,7 +303,7 @@ export class AdminConnection extends Connection<
 					"system",
 					"user",
 					{ startkey: "system.user.", endkey: "system.user.\u9999" },
-					(err, doc: any) => {
+					(err, doc) => {
 						if (err) {
 							reject(err);
 						} else {
