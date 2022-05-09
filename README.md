@@ -39,6 +39,9 @@ console.log(await adminConnection.getHosts());
 	### **WORK IN PROGRESS**
 -->
 ## Changelog
+### **WORK IN PROGRESS**
+* (bluefox) Extended `getVersion` command with update
+
 ### 1.0.11 (2022-03-20)
 * (AlCalzone) corrected: reload on websocket error instead of alert()-ing
 

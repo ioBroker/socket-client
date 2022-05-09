@@ -1693,9 +1693,10 @@ export class Connection<
 	/**
 	 * Gets the version.
 	 */
-	getVersion(): Promise<{ version: string; serverName: string }> {
+	getVersion(update?: boolean): Promise<{ version: string; serverName: string }> {
 		return this.request({
 			cacheKey: "version",
+			forceUpdate: update,
 			// TODO: check if this should time out
 			commandTimeout: false,
 			executor: (resolve, reject) => {
