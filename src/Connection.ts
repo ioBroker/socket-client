@@ -76,6 +76,12 @@ export type BinaryStateChangeHandler = (
 	base64: string | null,
 ) => void;
 
+export type FileChangeHandler = (
+	id: string,
+	fileName: string,
+	size: number | null, // null if deleted
+) => void;
+
 export interface OldObject {
 	_id: string;
 	type: string;
@@ -141,6 +147,14 @@ export class Connection<
 		{
 			reg: RegExp;
 			cbs: (ioBroker.StateChangeHandler | BinaryStateChangeHandler)[];
+		}
+	> = {};
+	private readonly filesSubscribes: Record<
+		string,
+		{
+			regId: RegExp;
+			regFilePattern: RegExp;
+			cbs: FileChangeHandler[];
 		}
 	> = {};
 	private readonly objectsSubscribes: Record<
@@ -353,6 +367,10 @@ export class Connection<
 			setTimeout(() => this.stateChange(id, state), 0);
 		});
 
+		this._socket.on("fileChange", (id, fileName, size) => {
+			setTimeout(() => this.fileChange(id, fileName, size), 0);
+		});
+
 		this._socket.on("cmdStdout", (id, text) => {
 			this.onCmdStdoutHandler?.(id, text);
 		});
@@ -522,7 +540,6 @@ export class Connection<
 	 * @param binary Set to true if the given state is binary and requires Base64 decoding.
 	 * @param cb The callback.
 	 */
-
 	subscribeState(
 		id: string,
 		binary: true,
@@ -729,6 +746,81 @@ export class Connection<
 					// TODO: This might not be correct - check what happens if state is a binary state
 					cb(id, (state ?? null) as any);
 				}
+			}
+		}
+	}
+
+	/**
+	 * Called internally.
+	 * @param id
+	 * @param fileName
+	 * @param size
+	 */
+	private fileChange(id: string, fileName: string, size: number | null) {
+		for (const sub of Object.values(this.filesSubscribes)) {
+			if (sub.regId.test(id) && sub.regFilePattern.test(fileName)) {
+				for (const cb of sub.cbs) {
+					cb(id, fileName, size);
+				}
+			}
+		}
+	}
+
+	/**
+	 * Subscribe to changes of the files.
+	 * @param id The ioBroker state ID for meat object. Could be a pattern
+	 * @param filePattern Pattern or file name, like 'main/*' or 'main/visViews.json`
+	 * @param cb The callback.
+	 */
+	async subscribeFiles(
+		id: string,
+		filePattern: string,
+		cb: FileChangeHandler,
+	): Promise<void> {
+		if (typeof cb !== "function") {
+			throw new Error("The state change handler must be a function!");
+		}
+		const key = `${id}$%$${filePattern}`;
+
+		if (!this.filesSubscribes[key]) {
+			this.filesSubscribes[key] = {
+				regId: new RegExp(pattern2RegEx(id)),
+				regFilePattern: new RegExp(pattern2RegEx(filePattern)),
+				cbs: [cb],
+			};
+			this.connected &&
+				this._socket.emit("subscribeFiles", id, filePattern);
+		} else {
+			!this.filesSubscribes[key].cbs.includes(cb) &&
+				this.filesSubscribes[key].cbs.push(cb);
+		}
+	}
+
+	/**
+	 * Unsubscribes the given callback from changes of files.
+	 * @param id The ioBroker state ID.
+	 * @param filePattern Pattern or file name, like 'main/*' or 'main/visViews.json`
+	 * @param cb The callback.
+	 */
+	unsubscribeFiles(
+		id: string,
+		filePattern: string,
+		cb?: FileChangeHandler,
+	): void {
+		const key = `${id}$%$${filePattern}`;
+		if (this.filesSubscribes[key]) {
+			const sub = this.filesSubscribes[key];
+			if (cb) {
+				const pos = sub.cbs.indexOf(cb);
+				pos !== -1 && sub.cbs.splice(pos, 1);
+			} else {
+				sub.cbs = [];
+			}
+
+			if (!sub.cbs || !sub.cbs.length) {
+				delete this.filesSubscribes[key];
+				this.connected &&
+					this._socket.emit("unsubscribeFiles", id, filePattern);
 			}
 		}
 	}
@@ -958,6 +1050,11 @@ export class Connection<
 			Object.keys(this.statesSubscribes).forEach((id) =>
 				this._socket.emit("subscribe", id),
 			);
+			// re-subscribe files
+			Object.keys(this.filesSubscribes).forEach((key) => {
+				const [id, filePattern] = key.split("$%$");
+				this._socket.emit("subscribeFiles", id, filePattern);
+			});
 		} else if (!isEnable && this.subscribed) {
 			this.subscribed = false;
 			// un-subscribe objects
@@ -977,6 +1074,11 @@ export class Connection<
 			Object.keys(this.statesSubscribes).forEach((id) =>
 				this._socket.emit("unsubscribe", id),
 			);
+			// re-subscribe files
+			Object.keys(this.filesSubscribes).forEach((key) => {
+				const [id, filePattern] = key.split("$%$");
+				this._socket.emit("unsubscribeFiles", id, filePattern);
+			});
 		}
 	}
 
@@ -1693,7 +1795,9 @@ export class Connection<
 	/**
 	 * Gets the version.
 	 */
-	getVersion(update?: boolean): Promise<{ version: string; serverName: string }> {
+	getVersion(
+		update?: boolean,
+	): Promise<{ version: string; serverName: string }> {
 		return this.request({
 			cacheKey: "version",
 			forceUpdate: update,

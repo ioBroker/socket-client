@@ -4,6 +4,7 @@ import type { ERRORS } from "./Connection.js";
 export interface IOListenEvents {
 	objectChange: (id: string, obj: ioBroker.Object) => void;
 	stateChange: (id: string, obj: ioBroker.State) => void;
+	fileChange: (id: string, fileName: string, size: number | null) => void;
 	cmdStdout: (id: string, text: string) => void;
 	cmdStderr: (id: string, text: string) => void;
 	cmdExit: (id: string, exitCode: number) => void;
@@ -130,6 +131,16 @@ export interface IOEmitEvents {
 	unsubscribe(pattern: string, callback?: ErrorCallback): void;
 	subscribeObjects(pattern: string, callback?: ErrorCallback): void;
 	unsubscribeObjects(pattern: string, callback?: ErrorCallback): void;
+	subscribeFiles(
+		id: string,
+		filePattern: string,
+		callback?: ErrorCallback,
+	): void;
+	unsubscribeFiles(
+		id: string,
+		filePattern: string,
+		callback?: ErrorCallback,
+	): void;
 
 	getObjects(callback?: ErrorAsString<ioBroker.GetObjectsCallback>): void;
 	getAllObjects(callback?: ErrorAsString<ioBroker.GetObjectsCallback>): void;
