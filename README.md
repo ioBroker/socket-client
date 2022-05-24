@@ -39,7 +39,7 @@ console.log(await adminConnection.getHosts());
 	### **WORK IN PROGRESS**
 -->
 ## Changelog
-### **WORK IN PROGRESS**
+### 1.1.0 (2022-05-24)
 * (bluefox) Added methods: subscribeFiles, unsubscribeFiles
 
 ### 1.0.12 (2022-05-09)
