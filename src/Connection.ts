@@ -1926,7 +1926,7 @@ export class Connection<
 	 * @param update Force update.
 	 */
 	getAdapterInstances(
-		adapter?: string,
+		adapter?: string | boolean,
 		update?: boolean,
 	): Promise<ioBroker.InstanceObject[]> {
 		if (typeof adapter === "boolean") {
