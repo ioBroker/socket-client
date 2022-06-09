@@ -39,7 +39,7 @@ console.log(await adminConnection.getHosts());
 	### **WORK IN PROGRESS**
 -->
 ## Changelog
-### **WORK IN PROGRESS**
+### 1.1.1 (2022-06-09)
 * (bluefox) Allowed connections behind reverse proxy
 
 ### 1.1.0 (2022-05-24)
