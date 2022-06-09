@@ -39,6 +39,9 @@ console.log(await adminConnection.getHosts());
 	### **WORK IN PROGRESS**
 -->
 ## Changelog
+### **WORK IN PROGRESS**
+* (bluefox) Allowed connections behind reverse proxy
+
 ### 1.1.0 (2022-05-24)
 * (bluefox) Added methods: subscribeFiles, unsubscribeFiles
 

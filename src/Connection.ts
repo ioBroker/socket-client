@@ -252,10 +252,15 @@ export class Connection<
 			port = parsed.port;
 			protocol = parsed.protocol.replace(":", "");
 		}
-
+		// get current path
+		let path = window.location.pathname;
+		const pos = path.lastIndexOf("/");
+		if (pos !== -1) {
+			path = path.substring(0, pos + 1);
+		}
 		const url = port
-			? `${protocol}://${host}:${port}`
-			: `${protocol}://${host}`;
+			? `${protocol}://${host}:${port}${path}`
+			: `${protocol}://${host}${path}`;
 
 		this._socket = window.io.connect(url, {
 			query: protocol == "ws" || protocol == "wss" ? "ws=true" : "",
