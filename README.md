@@ -39,6 +39,9 @@ console.log(await adminConnection.getHosts());
 	### **WORK IN PROGRESS**
 -->
 ## Changelog
+### **WORK IN PROGRESS**
+* (bluefox) Corrected cache problem by `getInstalled` and `getRepository` commands
+
 ### 1.1.1 (2022-06-09)
 * (bluefox) Allowed connections behind reverse proxy
 

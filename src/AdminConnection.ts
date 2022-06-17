@@ -459,7 +459,7 @@ export class AdminConnection extends Connection<
 		timeoutMs?: number,
 	): Promise<any> {
 		return this.request({
-			cacheKey: "repo",
+			cacheKey: `repo_${host}`,
 			forceUpdate: update,
 			commandTimeout: timeoutMs,
 			executor: (resolve, reject, timeout) => {
@@ -498,7 +498,7 @@ export class AdminConnection extends Connection<
 		host = normalizeHostId(host);
 
 		return this.request({
-			cacheKey: "installed",
+			cacheKey: `installed_${host}`,
 			forceUpdate: update,
 			commandTimeout: cmdTimeout,
 			executor: (resolve, reject, timeout) => {
