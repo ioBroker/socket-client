@@ -39,6 +39,9 @@ console.log(await adminConnection.getHosts());
 	### **WORK IN PROGRESS**
 -->
 ## Changelog
+### **WORK IN PROGRESS**
+* (bluefox) Added functions to reset cache
+
 ### 1.1.2 (2022-06-17)
 * (bluefox) Corrected cache problem by `getInstalled` and `getRepository` commands
 

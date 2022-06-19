@@ -459,7 +459,7 @@ export class AdminConnection extends Connection<
 		timeoutMs?: number,
 	): Promise<any> {
 		return this.request({
-			cacheKey: `repo_${host}`,
+			cacheKey: `repository_${host}`,
 			forceUpdate: update,
 			commandTimeout: timeoutMs,
 			executor: (resolve, reject, timeout) => {
@@ -1046,6 +1046,13 @@ export class AdminConnection extends Connection<
 		});
 	}
 
+	// reset cached promise, so next time the information will be requested anew
+	getAdaptersResetCache(adapter?: string): void {
+		adapter = adapter ?? "";
+		this.resetCache(`adapter_${adapter}`);
+		this.resetCache(`compactAdapters`);
+	}
+
 	// returns very optimized information for adapters to minimize connection load
 	getCompactInstances(
 		update?: boolean,
@@ -1094,6 +1101,12 @@ export class AdminConnection extends Connection<
 		});
 	}
 
+	// reset cached promise, so next time the information will be requested anew
+	getInstalledResetCache(host: string): void {
+		this.resetCache(`installedCompact_${host}`);
+		this.resetCache(`installed_${host}`);
+	}
+
 	/**
 	 * Get the repository in compact form (only version and icon).
 	 * @param host
@@ -1126,6 +1139,12 @@ export class AdminConnection extends Connection<
 				});
 			},
 		});
+	}
+
+	// reset cached promise, so next time the information will be requested anew
+	getRepositoryResetCache(host: string): void {
+		this.resetCache(`repositoryCompact_${host}`);
+		this.resetCache(`repository_${host}`);
 	}
 
 	/**
