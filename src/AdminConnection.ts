@@ -1072,7 +1072,7 @@ export class AdminConnection extends Connection<
 	}
 
 	// reset cached promise, so next time the information will be requested anew
-	getAdapterInstancesResetCache(adapter: string): void {
+	getAdapterInstancesResetCache(adapter?: string): void {
 		adapter = adapter ?? "";
 		this.resetCache(`instances_${adapter}`);
 		this.resetCache(`compactInstances`);
