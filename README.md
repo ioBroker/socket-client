@@ -39,7 +39,7 @@ console.log(await adminConnection.getHosts());
 	### **WORK IN PROGRESS**
 -->
 ## Changelog
-### 1.1.3 (2022-06-19)
+### **WORK IN PROGRESS**
 * (bluefox) Added functions to reset cache
 
 ### 1.1.2 (2022-06-17)
