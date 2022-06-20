@@ -261,11 +261,14 @@ export class Connection<
 
 		if (Connection.isWeb()) {
 			// remove one level, like echarts, vis, .... We have here: '/echarts/'
-			const parts = path.split('/');
+			const parts = path.split("/");
 			if (parts.length > 2) {
 				parts.pop();
 				parts.pop();
-				path = parts.join('/');
+				path = parts.join("/");
+				if (!path.endsWith("/")) {
+					path += "/";
+				}
 			}
 		}
 
@@ -274,7 +277,8 @@ export class Connection<
 			: `${protocol}://${host}${path}`;
 
 		this._socket = window.io.connect(url, {
-			query: protocol == "ws" || protocol == "wss" ? "ws=true" : "",
+			path: path.endsWith("/") ? `${path}socket.io` : `${path}/socket.io`,
+			query: "ws=true",
 			name: this.props.name,
 			timeout: this.props.ioTimeout,
 		});
