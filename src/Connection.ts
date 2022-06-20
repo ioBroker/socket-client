@@ -258,6 +258,17 @@ export class Connection<
 		if (pos !== -1) {
 			path = path.substring(0, pos + 1);
 		}
+
+		if (Connection.isWeb()) {
+			// remove one level, like echarts, vis, .... We have here: '/echarts/'
+			const parts = path.split('/');
+			if (parts.length > 2) {
+				parts.pop();
+				parts.pop();
+				path = parts.join('/');
+			}
+		}
+
 		const url = port
 			? `${protocol}://${host}:${port}${path}`
 			: `${protocol}://${host}${path}`;
