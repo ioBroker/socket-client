@@ -555,7 +555,7 @@ export class Connection<
 	}
 
 	/**
-	 * Subscribe to changes of the given state.
+	 * Subscribe to the changes of the given state.
 	 * @param id The ioBroker state ID.
 	 * @param binary Set to true if the given state is binary and requires Base64 decoding.
 	 * @param cb The callback.
