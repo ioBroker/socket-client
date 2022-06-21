@@ -1110,8 +1110,13 @@ export class AdminConnection extends Connection<
 
 	// reset cached promise, so next time the information will be requested anew
 	getInstalledResetCache(host: string): void {
-		this.resetCache(`installedCompact_${host}`);
-		this.resetCache(`installed_${host}`);
+		if (!host) {
+			this.resetCache(`installedCompact_`, true);
+			this.resetCache(`installed_`, true);
+		} else {
+			this.resetCache(`installedCompact_${host}`);
+			this.resetCache(`installed_${host}`);
+		}
 	}
 
 	/**
@@ -1150,8 +1155,13 @@ export class AdminConnection extends Connection<
 
 	// reset cached promise, so next time the information will be requested anew
 	getRepositoryResetCache(host: string): void {
-		this.resetCache(`repositoryCompact_${host}`);
-		this.resetCache(`repository_${host}`);
+		if (!host) {
+			this.resetCache(`repositoryCompact_`, true);
+			this.resetCache(`repository_`, true);
+		} else {
+			this.resetCache(`repositoryCompact_${host}`);
+			this.resetCache(`repository_${host}`);
+		}
 	}
 
 	/**

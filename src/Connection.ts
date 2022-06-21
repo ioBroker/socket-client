@@ -919,8 +919,16 @@ export class Connection<
 	 * Deletes cached promise.
 	 * So next time the information will be requested anew
 	 */
-	resetCache(key: string): void {
-		delete this._promises[key];
+	resetCache(key: string, isAll?: boolean): void {
+		if (isAll) {
+			Object.keys(this._promises)
+				.filter((k) => k.startsWith(key))
+				.forEach((k) => {
+					delete this._promises[k];
+				});
+		} else {
+			delete this._promises[key];
+		}
 	}
 
 	/**
