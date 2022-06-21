@@ -42,7 +42,7 @@ console.log(await adminConnection.getHosts());
 ### 1.1.7 (2022-06-21)
 * (bluefox) Added functions to reset cache
 
-* ### 1.1.6 (2022-06-20)
+### 1.1.6 (2022-06-20)
 * (bluefox) Allowed connections behind reverse proxy
 
 ### 1.1.4 (2022-06-19)
