@@ -39,6 +39,9 @@ console.log(await adminConnection.getHosts());
 	### **WORK IN PROGRESS**
 -->
 ## Changelog
+### **WORK IN PROGRESS**
+* (bluefox) Added preparations for iobroker cloud
+
 ### 1.1.7 (2022-06-21)
 * (bluefox) Added functions to reset cache
 

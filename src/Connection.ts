@@ -244,30 +244,37 @@ export class Connection<
 		let host = this.props.host;
 		let port = this.props.port;
 		let protocol = this.props.protocol.replace(":", "");
-
-		// if web adapter, socket io could be on other port or even host
-		if (window.socketUrl) {
-			const parsed = new URL(window.socketUrl);
-			host = parsed.hostname;
-			port = parsed.port;
-			protocol = parsed.protocol.replace(":", "");
-		}
-		// get current path
 		let path = window.location.pathname;
-		const pos = path.lastIndexOf("/");
-		if (pos !== -1) {
-			path = path.substring(0, pos + 1);
-		}
 
-		if (Connection.isWeb()) {
-			// remove one level, like echarts, vis, .... We have here: '/echarts/'
-			const parts = path.split("/");
-			if (parts.length > 2) {
-				parts.pop();
-				parts.pop();
-				path = parts.join("/");
-				if (!path.endsWith("/")) {
-					path += "/";
+		if (
+			window.location.hostname === "iobroker.net" ||
+			window.location.hostname === "iobroker.pro"
+		) {
+			path = "";
+		} else {
+			// if web adapter, socket io could be on other port or even host
+			if (window.socketUrl) {
+				const parsed = new URL(window.socketUrl);
+				host = parsed.hostname;
+				port = parsed.port;
+				protocol = parsed.protocol.replace(":", "");
+			}
+			// get current path
+			const pos = path.lastIndexOf("/");
+			if (pos !== -1) {
+				path = path.substring(0, pos + 1);
+			}
+
+			if (Connection.isWeb()) {
+				// remove one level, like echarts, vis, .... We have here: '/echarts/'
+				const parts = path.split("/");
+				if (parts.length > 2) {
+					parts.pop();
+					parts.pop();
+					path = parts.join("/");
+					if (!path.endsWith("/")) {
+						path += "/";
+					}
 				}
 			}
 		}
