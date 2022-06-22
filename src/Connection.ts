@@ -1358,7 +1358,7 @@ export class Connection<
 
 	/**
 	 * Get all enums with the given name.
-	 * @param _enum The name of the enum
+	 * @param _enum The name of the enum, like `rooms` or `functions`
 	 * @param update Force update.
 	 */
 	getEnums(
