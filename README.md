@@ -39,8 +39,8 @@ console.log(await adminConnection.getHosts());
 	### **WORK IN PROGRESS**
 -->
 ## Changelog
-### **WORK IN PROGRESS**
-* (bluefox) Errors on connection are handled now 
+### 1.1.9 (2022-07-04)
+* (bluefox) Errors on connection are handled now
 
 ### 1.1.8 (2022-06-22)
 * (bluefox) Added preparations for iobroker cloud
