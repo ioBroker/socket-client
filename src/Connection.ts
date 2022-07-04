@@ -296,25 +296,32 @@ export class Connection<
 				this.connected = true;
 				setTimeout(
 					() =>
-						this.getVersion().then((info) => {
-							const [major, minor, patch] =
-								info.version.split(".");
-							const v =
-								parseInt(major, 10) * 10000 +
-								parseInt(minor, 10) * 100 +
-								parseInt(patch, 10);
-							if (v < 40102) {
-								this._authTimer = null;
-								// possible this is old version of admin
-								this.onPreConnect(false, false);
-							} else {
-								this._socket.emit(
-									"authenticate",
-									(isOk, isSecure) =>
-										this.onPreConnect(isOk, isSecure),
-								);
-							}
-						}),
+						this.getVersion()
+							.then((info) => {
+								const [major, minor, patch] =
+									info.version.split(".");
+								const v =
+									parseInt(major, 10) * 10000 +
+									parseInt(minor, 10) * 100 +
+									parseInt(patch, 10);
+								if (v < 40102) {
+									this._authTimer = null;
+									// possible this is old version of admin
+									this.onPreConnect(false, false);
+								} else {
+									this._socket.emit(
+										"authenticate",
+										(isOk, isSecure) =>
+											this.onPreConnect(isOk, isSecure),
+									);
+								}
+							})
+							.catch((e) =>
+								this.onError({
+									message: e.toString(),
+									operation: "getVersion",
+								}),
+							),
 					500,
 				);
 			} else {
