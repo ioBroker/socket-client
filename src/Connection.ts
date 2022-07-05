@@ -947,15 +947,16 @@ export class Connection<
 
 	/**
 	 * Gets all states.
-	 * @param disableProgressUpdate don't call onProgress() when done
+	 * @param pattern Pattern of states or array of IDs
 	 */
-	getStates(): // disableProgressUpdate?: boolean,
-	Promise<Record<string, ioBroker.State>> {
+	getStates(
+		pattern?: string | string[],
+	): Promise<Record<string, ioBroker.State>> {
 		return this.request({
 			// TODO: check if this should time out
 			commandTimeout: false,
 			executor: (resolve, reject) => {
-				this._socket.emit("getStates", (err, res) => {
+				this._socket.emit("getStates", pattern, (err, res) => {
 					this.states = res ?? {};
 
 					// if (!disableProgressUpdate) {

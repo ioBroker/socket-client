@@ -203,7 +203,11 @@ export interface IOEmitEvents {
 				callback: ErrorAsString<ioBroker.GetObjectsCallback>,
 		  ) => void);
 
-	getStates(callback?: ErrorAsString<ioBroker.GetStatesCallback>): void;
+	getStates(
+		pattern?: string | string[],
+		callback?: ErrorAsString<ioBroker.GetStatesCallback>,
+	): void;
+
 	getForeignStates(
 		pattern: string,
 		callback?: ErrorAsString<ioBroker.GetStatesCallback>,

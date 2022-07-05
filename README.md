@@ -39,6 +39,9 @@ console.log(await adminConnection.getHosts());
 	### **WORK IN PROGRESS**
 -->
 ## Changelog
+### **WORK IN PROGRESS**
+* (bluefox) Allowed call of getStates with pattern
+
 ### 1.1.9 (2022-07-04)
 * (bluefox) Errors on connection are handled now
 
