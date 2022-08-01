@@ -1025,11 +1025,17 @@ export class Connection<
 	 * Sets the given state value.
 	 * @param id The state ID.
 	 * @param val The state value.
+	 * @param ack Acknowledge flag.
 	 */
 	setState(
 		id: string,
 		val: ioBroker.State | ioBroker.StateValue | ioBroker.SettableState,
+		ack?: boolean,
 	): Promise<void> {
+		if (typeof ack === "boolean") {
+			val = { val: val as ioBroker.StateValue, ack };
+		}
+
 		return this.request({
 			// TODO: check if this should time out
 			commandTimeout: false,

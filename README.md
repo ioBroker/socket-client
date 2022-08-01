@@ -39,6 +39,9 @@ console.log(await adminConnection.getHosts());
 	### **WORK IN PROGRESS**
 -->
 ## Changelog
+### **WORK IN PROGRESS**
+* (bluefox) Added ack parameter to `setState` method.
+
 ### 1.1.10 (2022-07-05)
 * (bluefox) Allowed call of getStates with pattern
 
