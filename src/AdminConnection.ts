@@ -8,6 +8,7 @@ import type {
 	CompactInstalledInfo,
 	CompactInstanceInfo,
 	CompactRepository,
+	CompactSystemRepository,
 	LogFile,
 } from "./SocketEvents.js";
 import {
@@ -1179,6 +1180,29 @@ export class AdminConnection extends Connection<
 					if (err) reject(err);
 					resolve(systemConfig!);
 				});
+			},
+		});
+	}
+
+	/**
+	 * Get `system.repository` without big JSON
+	 */
+	getCompactSystemRepositories(
+		update?: boolean,
+	): Promise<CompactSystemRepository> {
+		return this.request({
+			cacheKey: "repositoriesCompact",
+			forceUpdate: update,
+			executor: (resolve, reject, timeout) => {
+				this._socket.emit(
+					"getCompactSystemRepositories",
+					(err, systemRepositories) => {
+						if (timeout.elapsed) return;
+						timeout.clearTimeout();
+						if (err) reject(err);
+						resolve(systemRepositories!);
+					},
+				);
 			},
 		});
 	}

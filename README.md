@@ -39,6 +39,9 @@ console.log(await adminConnection.getHosts());
 	### **WORK IN PROGRESS**
 -->
 ## Changelog
+### **WORK IN PROGRESS**
+* (bluefox) Added method getCompactSystemRepositories
+
 ### 1.1.11 (2022-08-01)
 * (bluefox) Added ack parameter to `setState` method.
 

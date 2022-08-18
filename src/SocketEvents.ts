@@ -113,6 +113,26 @@ export type CompactHost = {
 		};
 	};
 };
+export type CompactSystemRepositoryEntry = Record<
+	string,
+	{
+		link: string;
+		hash?: string;
+		stable?: boolean;
+		json: null | undefined;
+	}
+>;
+
+export type CompactSystemRepository = {
+	_id: ioBroker.HostObject["_id"];
+	common: {
+		name: ioBroker.HostCommon["name"];
+		dontDelete: boolean;
+	};
+	native: {
+		repositories: Record<string, CompactSystemRepositoryEntry>;
+	};
+};
 
 export interface LogFile {
 	fileName: string;
@@ -372,6 +392,9 @@ export interface AdminEmitEvents {
 		callback: GenericCallbackNoExtraError<CompactRepository>,
 	): void;
 	getCompactHosts(callback: GenericCallback<CompactHost[]>): void;
+	getCompactSystemRepositories(
+		callback: GenericCallback<CompactSystemRepository>,
+	): void;
 
 	readLogs(host: string, callback: GenericCallback<LogFile[]>): void;
 }
