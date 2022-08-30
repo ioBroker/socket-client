@@ -288,6 +288,7 @@ export class Connection<
 			query: "ws=true",
 			name: this.props.name,
 			timeout: this.props.ioTimeout,
+			uuid: this.props.uuid,
 		});
 
 		this._socket.on("connect", (noTimeout) => {

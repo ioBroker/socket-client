@@ -33,4 +33,6 @@ export interface ConnectionProps {
 	onLanguage?: (lang: ioBroker.Languages) => void;
 	/** Forces the use of the Compact Methods, wich only exists in admin 5 UI. */
 	admin5only?: boolean;
+	/** The device UUID with which the communication must be established */
+	uuid?: string;
 }

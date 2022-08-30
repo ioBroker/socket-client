@@ -39,6 +39,9 @@ console.log(await adminConnection.getHosts());
 	### **WORK IN PROGRESS**
 -->
 ## Changelog
+### **WORK IN PROGRESS**
+* (bluefox) Working on cloud connection
+
 ### 1.1.12 (2022-08-18)
 * (bluefox) Added method getCompactSystemRepositories
 
