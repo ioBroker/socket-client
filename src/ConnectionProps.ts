@@ -35,4 +35,6 @@ export interface ConnectionProps {
 	admin5only?: boolean;
 	/** The device UUID with which the communication must be established */
 	uuid?: string;
+	/** Authentication token (used only in cloud) */
+	token?: string;
 }

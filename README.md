@@ -39,6 +39,9 @@ console.log(await adminConnection.getHosts());
 	### **WORK IN PROGRESS**
 -->
 ## Changelog
+### **WORK IN PROGRESS**
+* (bluefox) Added support of authentication token
+
 ### 1.1.13 (2022-08-30)
 * (bluefox) Working on cloud connection
 

@@ -289,6 +289,7 @@ export class Connection<
 			name: this.props.name,
 			timeout: this.props.ioTimeout,
 			uuid: this.props.uuid,
+			token: this.props.token,
 		});
 
 		this._socket.on("connect", (noTimeout) => {
