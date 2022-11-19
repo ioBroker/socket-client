@@ -1434,6 +1434,7 @@ export class Connection<
 		start: string,
 		end: string,
 		type: T,
+		namespace: string = 'system'
 	): Promise<Record<string, ioBroker.AnyObject & { type: T }>> {
 		return this.request({
 			// TODO: check if this should time out
@@ -1444,7 +1445,7 @@ export class Connection<
 
 				this._socket.emit(
 					"getObjectView",
-					"system",
+					namespace,
 					type,
 					{ startkey: start, endkey: end },
 					(err, res) => {
