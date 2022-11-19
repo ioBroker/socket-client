@@ -1429,12 +1429,13 @@ export class Connection<
 	 * @param start The start ID.
 	 * @param end The end ID.
 	 * @param type The type of object.
+	 * @param {string} [design=system] design - 'system' or other designs like `custom`, but it must exist object `_design/custom`. Too 99,9% use `system` (Exception for example 'charts').
 	 */
 	getObjectView<T extends ioBroker.ObjectType>(
 		start: string,
 		end: string,
 		type: T,
-		namespace: string = 'system'
+		design: string = 'system'
 	): Promise<Record<string, ioBroker.AnyObject & { type: T }>> {
 		return this.request({
 			// TODO: check if this should time out
@@ -1445,7 +1446,7 @@ export class Connection<
 
 				this._socket.emit(
 					"getObjectView",
-					namespace,
+					design,
 					type,
 					{ startkey: start, endkey: end },
 					(err, res) => {
