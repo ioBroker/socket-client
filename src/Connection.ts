@@ -1425,15 +1425,47 @@ export class Connection<
 	}
 
 	/**
+	 * @deprecated since version 1.1.15, cause parameter order does not match backend
 	 * Query a predefined object view.
 	 * @param start The start ID.
 	 * @param end The end ID.
 	 * @param type The type of object.
+	 * @param {string} [design=system] design - 'system' or other designs like `custom`, but it must exist object `_design/custom`. Too 99,9% use `system` (Exception for example 'charts').
 	 */
 	getObjectView<T extends ioBroker.ObjectType>(
 		start: string,
 		end: string,
+		type: T
+	) {
+		return this.getObjectViewCustom('system', type, start, end);
+	}
+
+	/**
+	 * Query a predefined object view.
+   	 * @param type The type of object.
+	 * @param start The start ID.
+	 * @param [end] The end ID.
+	 */
+	getObjectViewSystem<T extends ioBroker.ObjectType>(
 		type: T,
+		start: string,
+		end?: string
+	) {
+		return this.getObjectViewCustom('system', type, start, end);
+	}
+
+	/**
+	 * Query a predefined object view.
+   	 * @param design design - 'system' or other designs like `custom`.
+	 * @param type The type of object.
+	 * @param start The start ID.
+	 * @param [end] The end ID.
+	 */
+	getObjectViewCustom<T extends ioBroker.ObjectType>(
+		design: string,
+		type: T,
+		start: string,
+		end?: string
 	): Promise<Record<string, ioBroker.AnyObject & { type: T }>> {
 		return this.request({
 			// TODO: check if this should time out
@@ -1444,7 +1476,7 @@ export class Connection<
 
 				this._socket.emit(
 					"getObjectView",
-					"system",
+					design,
 					type,
 					{ startkey: start, endkey: end },
 					(err, res) => {
