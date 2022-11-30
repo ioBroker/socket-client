@@ -39,7 +39,7 @@ console.log(await adminConnection.getHosts());
 	### **WORK IN PROGRESS**
 -->
 ## Changelog
-### 1.1.15 (2022-11-19)
+### **WORK IN PROGRESS**
 * (jogibear9988) Added getObjectViewSystem and getObjectViewCustom and deprecated getObjectView
 
 ### 1.1.14 (2022-09-12)

@@ -2037,10 +2037,10 @@ export class Connection<
 					: "system.adapter.";
 				const endKey = `${startKey}\u9999`;
 
-				const instances = await this.getObjectView(
+				const instances = await this.getObjectViewSystem(
+					"instance",
 					startKey,
 					endKey,
-					"instance",
 				);
 				const instanceObjects = Object.values(instances);
 				if (adapter) {
@@ -2077,10 +2077,10 @@ export class Connection<
 			// TODO: check if this should time out
 			commandTimeout: false,
 			executor: async (resolve) => {
-				const adapters = await this.getObjectView(
+				const adapters = await this.getObjectViewSystem(
+					"adapter",
 					`system.adapter.${adapter || ""}`,
 					`system.adapter.${adapter || "\u9999"}`,
-					"adapter",
 				);
 				const adapterObjects = Object.values(adapters);
 				if (adapter) {
