@@ -320,6 +320,8 @@ export interface IOEmitEvents {
 	): void;
 
 	logout(callback?: ErrorCallback): void;
+
+	log(text: string, level?: string): void;
 }
 
 // eslint-disable-next-line @typescript-eslint/ban-types

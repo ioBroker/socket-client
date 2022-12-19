@@ -2143,4 +2143,22 @@ export class Connection<
 			},
 		});
 	}
+
+	/**
+	 * Send log to ioBroker log
+	 * @param {string} [text] Log text
+	 * @param {string} [level] `info`, `debug`, `warn`, `error` or `silly`
+	 * @returns {Promise<null>}
+	 */
+	log(text: string, level?: string): Promise<null> {
+		return text
+			? this.request({
+					commandTimeout: false,
+					executor: (resolve) => {
+						this._socket.emit("log", text, level);
+						return resolve(null);
+					},
+			  })
+			: Promise.resolve(null);
+	}
 }
