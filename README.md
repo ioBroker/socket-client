@@ -39,7 +39,7 @@ console.log(await adminConnection.getHosts());
 	### **WORK IN PROGRESS**
 -->
 ## Changelog
-### **WORK IN PROGRESS**
+### 2.0.1 (2022-12-19)
 * (bluefox) Added `log` command
 
 ### 2.0.0 (2022-11-30)
