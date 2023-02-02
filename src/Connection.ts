@@ -136,11 +136,13 @@ export class Connection<
 
 	private readonly props: ConnectionProps;
 
+	private ignoreState: string = "";
 	private connected: boolean = false;
 	private subscribed: boolean = false;
 	private firstConnect: boolean = true;
 	public waitForRestart: boolean = false;
 	public loaded: boolean = false;
+	private simStates: Record<string, ioBroker.State> = {};
 
 	private readonly statesSubscribes: Record<
 		string,
@@ -615,7 +617,9 @@ export class Connection<
 				reg: new RegExp(pattern2RegEx(id)),
 				cbs: [cb],
 			};
-			if (this.connected) this._socket.emit("subscribe", id);
+			if (this.connected && id !== this.ignoreState) {
+				this._socket.emit("subscribe", id);
+			}
 		} else {
 			!this.statesSubscribes[id].cbs.includes(cb) &&
 				this.statesSubscribes[id].cbs.push(cb);
@@ -671,7 +675,9 @@ export class Connection<
 
 			if (!sub.cbs || !sub.cbs.length) {
 				delete this.statesSubscribes[id];
-				this.connected && this._socket.emit("unsubscribe", id);
+				if (this.connected && id !== this.ignoreState) {
+					this._socket.emit("unsubscribe", id);
+				}
 			}
 		}
 	}
@@ -762,7 +768,15 @@ export class Connection<
 		// Notify all subscribed listeners
 		for (const [_id, sub] of Object.entries(this.objectsSubscribes)) {
 			if (_id === id || sub.reg.test(id)) {
-				sub.cbs.forEach((cb) => cb(id, obj, oldObj));
+				sub.cbs.forEach((cb) => {
+					try {
+						cb(id, obj, oldObj);
+					} catch (e) {
+						console.error(
+							`Error by callback of objectChange: ${e}`,
+						);
+					}
+				});
 			}
 		}
 
@@ -779,8 +793,14 @@ export class Connection<
 		for (const sub of Object.values(this.statesSubscribes)) {
 			if (sub.reg.test(id)) {
 				for (const cb of sub.cbs) {
-					// TODO: This might not be correct - check what happens if state is a binary state
-					cb(id, (state ?? null) as any);
+					try {
+						// TODO: This might not be correct - check what happens if state is a binary state
+						cb(id, (state ?? null) as any);
+					} catch (e) {
+						console.error(
+							`Error by callback of stateChanged: ${e}`,
+						);
+					}
 				}
 			}
 		}
@@ -796,7 +816,11 @@ export class Connection<
 		for (const sub of Object.values(this.filesSubscribes)) {
 			if (sub.regId.test(id) && sub.regFilePattern.test(fileName)) {
 				for (const cb of sub.cbs) {
-					cb(id, fileName, size);
+					try {
+						cb(id, fileName, size);
+					} catch (e) {
+						console.error(`Error by callback of fileChange: ${e}`);
+					}
 				}
 			}
 		}
@@ -980,6 +1004,10 @@ export class Connection<
 			// TODO: check if this should time out
 			commandTimeout: false,
 			executor: (resolve, reject) => {
+				if (id && id === this.ignoreState) {
+					resolve(this.simStates[id] || { val: null, ack: true });
+					return;
+				}
 				this._socket.emit("getState", id, (err, state) => {
 					if (err) reject(err);
 					resolve(state);
@@ -990,6 +1018,7 @@ export class Connection<
 
 	/**
 	 * Gets the given binary state Base64 encoded.
+	 * @deprecated since js-controller 5.0. Use files instead.
 	 * @param id The state ID.
 	 */
 	getBinaryState(id: string): Promise<string | undefined> {
@@ -1007,6 +1036,7 @@ export class Connection<
 
 	/**
 	 * Sets the given binary state.
+	 * @deprecated since js-controller 5.0. Use files instead.
 	 * @param id The state ID.
 	 * @param base64 The Base64 encoded binary data.
 	 */
@@ -1042,6 +1072,44 @@ export class Connection<
 			// TODO: check if this should time out
 			commandTimeout: false,
 			executor: (resolve, reject) => {
+				// extra handling for "nothing_selected" state for vis
+				if (id && id === this.ignoreState) {
+					let state: ioBroker.State;
+
+					if (typeof ack === "boolean") {
+						state = val as ioBroker.State;
+					} else if (
+						typeof val === "object" &&
+						(val as ioBroker.State).val !== undefined
+					) {
+						state = val as ioBroker.State;
+					} else {
+						state = {
+							val: val as ioBroker.StateValue,
+							ack: false,
+							ts: Date.now(),
+							lc: Date.now(),
+							from: "system.adapter.vis.0",
+						};
+					}
+
+					this.simStates[id] = state;
+
+					// inform subscribers about changes
+					if (this.statesSubscribes[id]) {
+						for (const cb of this.statesSubscribes[id].cbs) {
+							try {
+								cb(id, state as any);
+							} catch (e) {
+								console.error(
+									`Error by callback of stateChanged: ${e}`,
+								);
+							}
+						}
+					}
+					resolve();
+					return;
+				}
 				this._socket.emit("setState", id, val, (err) => {
 					if (err) reject(err);
 					resolve();
@@ -1231,6 +1299,17 @@ export class Connection<
 			// TODO: check if this should time out
 			commandTimeout: false,
 			executor: (resolve, reject) => {
+				if (id && id === this.ignoreState) {
+					resolve({
+						_id: this.ignoreState,
+						type: "state",
+						common: {
+							name: "ignored state",
+							type: "mixed",
+						},
+					} as any);
+					return;
+				}
 				this._socket.emit("getObject", id, (err, obj) => {
 					if (err) reject(err);
 					resolve(obj as any);
@@ -1435,28 +1514,28 @@ export class Connection<
 	getObjectView<T extends ioBroker.ObjectType>(
 		start: string,
 		end: string,
-		type: T
+		type: T,
 	) {
-		return this.getObjectViewCustom('system', type, start, end);
+		return this.getObjectViewCustom("system", type, start, end);
 	}
 
 	/**
 	 * Query a predefined object view.
-   	 * @param type The type of object.
+	 * @param type The type of object.
 	 * @param start The start ID.
 	 * @param [end] The end ID.
 	 */
 	getObjectViewSystem<T extends ioBroker.ObjectType>(
 		type: T,
 		start: string,
-		end?: string
+		end?: string,
 	) {
-		return this.getObjectViewCustom('system', type, start, end);
+		return this.getObjectViewCustom("system", type, start, end);
 	}
 
 	/**
 	 * Query a predefined object view.
-   	 * @param design design - 'system' or other designs like `custom`.
+	 * @param design design - 'system' or other designs like `custom`.
 	 * @param type The type of object.
 	 * @param start The start ID.
 	 * @param [end] The end ID.
@@ -1465,7 +1544,7 @@ export class Connection<
 		design: string,
 		type: T,
 		start: string,
-		end?: string
+		end?: string,
 	): Promise<Record<string, ioBroker.AnyObject & { type: T }>> {
 		return this.request({
 			// TODO: check if this should time out
@@ -2160,5 +2239,14 @@ export class Connection<
 					},
 			  })
 			: Promise.resolve(null);
+	}
+
+	/**
+	 * This is special method for vis.
+	 * It is used to not send to server the changes about "nothing_selected" state
+	 * @param id The state that has to be ignored by communication
+	 */
+	setStateToIgnore(id: string): void {
+		this.ignoreState = id;
 	}
 }

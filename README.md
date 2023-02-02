@@ -39,6 +39,10 @@ console.log(await adminConnection.getHosts());
 	### **WORK IN PROGRESS**
 -->
 ## Changelog
+### **WORK IN PROGRESS**
+* (bluefox) Caught errors on state/object changes
+* (bluefox) Special changes for vis and "nothing_selected" ID
+
 ### 2.0.1 (2022-12-19)
 * (bluefox) Added `log` command
 
@@ -126,4 +130,4 @@ console.log(await adminConnection.getHosts());
 ## License
 The MIT License (MIT)
 
-Copyright (c) 2014-2022 bluefox <dogafox@gmail.com>,
+Copyright (c) 2021-2023 Jochen Kühner
