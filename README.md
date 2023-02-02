@@ -39,7 +39,7 @@ console.log(await adminConnection.getHosts());
 	### **WORK IN PROGRESS**
 -->
 ## Changelog
-### **WORK IN PROGRESS**
+### 2.0.2 (2023-02-02)
 * (bluefox) Caught errors on state/object changes
 * (bluefox) Special changes for vis and "nothing_selected" ID
 
