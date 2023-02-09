@@ -532,10 +532,10 @@ export class Connection<
 				window.navigator.language) as any;
 			// Browsers may report languages like "de-DE", "en-US", etc.
 			// ioBroker expects "de", "en", ...
-			if (/^(en|de|ru|pt|nl|fr|it|es|pl)\-?/.test(this._systemLang)) {
+			if (/^(en|de|ru|pt|nl|fr|it|es|pl|uk)-?/.test(this._systemLang)) {
 				this._systemLang = this._systemLang.substr(0, 2) as any;
 			} else if (
-				!/^(en|de|ru|pt|nl|fr|it|es|pl|zh-cn)$/.test(this._systemLang)
+				!/^(en|de|ru|pt|nl|fr|it|es|pl|uk|zh-cn)$/.test(this._systemLang)
 			) {
 				this._systemLang = "en";
 			}
