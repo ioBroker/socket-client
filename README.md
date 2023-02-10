@@ -39,7 +39,7 @@ console.log(await adminConnection.getHosts());
 	### **WORK IN PROGRESS**
 -->
 ## Changelog
-### **WORK IN PROGRESS**
+### 2.0.3 (2023-02-10)
 * (bluefox) Made the fix for `material`
 
 ### 2.0.2 (2023-02-02)
