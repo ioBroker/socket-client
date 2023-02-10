@@ -273,6 +273,10 @@ export class Connection<
 				if (parts.length > 2) {
 					parts.pop();
 					parts.pop();
+					// material can have paths like this '/material/1.3.0/', so remove one more level
+					if (parts[parts.length - 1] === "material") {
+						parts.pop();
+					}
 					path = parts.join("/");
 					if (!path.endsWith("/")) {
 						path += "/";
