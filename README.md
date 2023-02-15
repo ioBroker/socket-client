@@ -39,7 +39,7 @@ console.log(await adminConnection.getHosts());
 	### **WORK IN PROGRESS**
 -->
 ## Changelog
-### **WORK IN PROGRESS**
+### 2.0.4 (2023-02-15)
 * (bluefox) Made the fix for `material` and `echarts`
 
 ### 2.0.2 (2023-02-02)
