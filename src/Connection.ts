@@ -93,6 +93,8 @@ export type ObjectChangeHandler = (
 	oldObj?: OldObject,
 ) => void | Promise<void>;
 
+const ADAPTERS = ["material", "echarts", "vis"];
+
 export class Connection<
 	CustomListenEvents extends Record<
 		keyof CustomListenEvents,
@@ -274,7 +276,7 @@ export class Connection<
 					parts.pop();
 					parts.pop();
 					// material can have paths like this '/material/1.3.0/', so remove one more level
-					if (parts[parts.length - 1] === "material") {
+					if (ADAPTERS.includes(parts[parts.length - 1])) {
 						parts.pop();
 					}
 					path = parts.join("/");

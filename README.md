@@ -39,8 +39,8 @@ console.log(await adminConnection.getHosts());
 	### **WORK IN PROGRESS**
 -->
 ## Changelog
-### 2.0.3 (2023-02-10)
-* (bluefox) Made the fix for `material`
+### **WORK IN PROGRESS**
+* (bluefox) Made the fix for `material` and `echarts`
 
 ### 2.0.2 (2023-02-02)
 * (bluefox) Caught errors on state/object changes
