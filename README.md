@@ -39,6 +39,9 @@ console.log(await adminConnection.getHosts());
 	### **WORK IN PROGRESS**
 -->
 ## Changelog
+### **WORK IN PROGRESS**
+* (bluefox) Added `rename` and `renameFile` methods
+
 ### 2.0.4 (2023-02-15)
 * (bluefox) Made the fix for `material` and `echarts`
 

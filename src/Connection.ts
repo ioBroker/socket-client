@@ -541,7 +541,9 @@ export class Connection<
 			if (/^(en|de|ru|pt|nl|fr|it|es|pl|uk)-?/.test(this._systemLang)) {
 				this._systemLang = this._systemLang.substr(0, 2) as any;
 			} else if (
-				!/^(en|de|ru|pt|nl|fr|it|es|pl|uk|zh-cn)$/.test(this._systemLang)
+				!/^(en|de|ru|pt|nl|fr|it|es|pl|uk|zh-cn)$/.test(
+					this._systemLang,
+				)
 			) {
 				this._systemLang = "en";
 			}
@@ -1521,7 +1523,7 @@ export class Connection<
 		start: string,
 		end: string,
 		type: T,
-	) {
+	): Promise<Record<string, ioBroker.AnyObject & { type: T }>> {
 		return this.getObjectViewCustom("system", type, start, end);
 	}
 
@@ -1535,7 +1537,7 @@ export class Connection<
 		type: T,
 		start: string,
 		end?: string,
-	) {
+	): Promise<Record<string, ioBroker.AnyObject & { type: T }>> {
 		return this.getObjectViewCustom("system", type, start, end);
 	}
 
@@ -1745,6 +1747,60 @@ export class Connection<
 					"deleteFolder",
 					adapter,
 					folderName,
+					(err) => {
+						if (err) reject(err);
+						resolve();
+					},
+				);
+			},
+		});
+	}
+
+	/**
+	 * Rename file or folder in ioBroker DB
+	 * @param adapter instance name
+	 * @param oldName current file name, e.g main/vis-views.json
+	 * @param newName new file name, e.g main/vis-views-new.json
+	 */
+	rename(adapter: string, oldName: string, newName: string): Promise<void> {
+		return this.request({
+			// TODO: check if this should time out
+			commandTimeout: false,
+			executor: (resolve, reject) => {
+				this._socket.emit(
+					"rename",
+					adapter,
+					oldName,
+					newName,
+					(err) => {
+						if (err) reject(err);
+						resolve();
+					},
+				);
+			},
+		});
+	}
+
+	/**
+	 * Rename file in ioBroker DB
+	 * @param adapter instance name
+	 * @param oldName current file name, e.g main/vis-views.json
+	 * @param newName new file name, e.g main/vis-views-new.json
+	 */
+	renameFile(
+		adapter: string,
+		oldName: string,
+		newName: string,
+	): Promise<void> {
+		return this.request({
+			// TODO: check if this should time out
+			commandTimeout: false,
+			executor: (resolve, reject) => {
+				this._socket.emit(
+					"renameFile",
+					adapter,
+					oldName,
+					newName,
 					(err) => {
 						if (err) reject(err);
 						resolve();

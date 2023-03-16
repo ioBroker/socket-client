@@ -255,6 +255,59 @@ export class AdminConnection extends Connection<
 			},
 		});
 	}
+	/**
+	 * Rename file or folder in ioBroker DB
+	 * @param adapter instance name
+	 * @param oldName current file name, e.g main/vis-views.json
+	 * @param newName new file name, e.g main/vis-views-new.json
+	 */
+	rename(adapter: string, oldName: string, newName: string): Promise<void> {
+		return this.request({
+			// TODO: check if this should time out
+			commandTimeout: false,
+			executor: (resolve, reject) => {
+				this._socket.emit(
+					"rename",
+					adapter,
+					oldName,
+					newName,
+					(err) => {
+						if (err) reject(err);
+						resolve();
+					},
+				);
+			},
+		});
+	}
+
+	/**
+	 * Rename file in ioBroker DB
+	 * @param adapter instance name
+	 * @param oldName current file name, e.g main/vis-views.json
+	 * @param newName new file name, e.g main/vis-views-new.json
+	 */
+	renameFile(
+		adapter: string,
+		oldName: string,
+		newName: string,
+	): Promise<void> {
+		return this.request({
+			// TODO: check if this should time out
+			commandTimeout: false,
+			executor: (resolve, reject) => {
+				this._socket.emit(
+					"renameFile",
+					adapter,
+					oldName,
+					newName,
+					(err) => {
+						if (err) reject(err);
+						resolve();
+					},
+				);
+			},
+		});
+	}
 
 	/**
 	 * Get the list of all hosts.

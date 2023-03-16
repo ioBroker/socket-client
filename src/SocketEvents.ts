@@ -288,6 +288,18 @@ export interface IOEmitEvents {
 		path: string,
 		callback: GenericCallback<boolean>,
 	): void;
+	renameFile(
+		adapterName: string | null,
+		oldFile: string,
+		newFile: string,
+		callback: ErrorCallback,
+	): void;
+	rename(
+		adapterName: string | null,
+		oldFile: string,
+		newFile: string,
+		callback: ErrorCallback,
+	): void;
 
 	getHistory(
 		id: string,
