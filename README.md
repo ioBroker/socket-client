@@ -39,6 +39,9 @@ console.log(await adminConnection.getHosts());
 	### **WORK IN PROGRESS**
 -->
 ## Changelog
+### **WORK IN PROGRESS**
+* (bluefox) packages updated
+
 ### 2.0.5 (2023-03-16)
 * (bluefox) Added `rename` and `renameFile` methods
 

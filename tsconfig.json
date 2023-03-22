@@ -6,7 +6,7 @@
 
 		// What to output where
 		"outDir": "./dist/esm",
-		"module":"ES2020", // will be transpiled to CommonJS in the postbuild step
+		"module":"ES2020", // will be transpiled to CommonJS in the post-build step
 
 		"declaration": true,
 		"removeComments": false,
@@ -15,6 +15,7 @@
 
 		// Strictness flags - check the base config before adding something here
 		"importsNotUsedAsValues": "error",
+		"ignoreDeprecations": "5.0",
 		"noUnusedLocals": true,
 		"noImplicitReturns": true,
 		"noFallthroughCasesInSwitch": true,
