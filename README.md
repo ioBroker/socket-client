@@ -39,7 +39,7 @@ console.log(await adminConnection.getHosts());
 	### **WORK IN PROGRESS**
 -->
 ## Changelog
-### **WORK IN PROGRESS**
+### 2.0.7 (2023-03-24)
 * (bluefox) better detection of chained certificates
 
 ### 2.0.6 (2023-03-22)
