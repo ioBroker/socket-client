@@ -39,6 +39,10 @@ function parseCertificate(name: string, cert: string): Certificate | void {
 			type = "public";
 		} else if (cert.toLowerCase().includes("public")) {
 			type = "public";
+		} else if (name.toLowerCase().includes("chain")) {
+			type = "chained";
+		} else if (cert.toLowerCase().includes("chain")) {
+			type = "chained";
 		} else {
 			// TODO: is this correct?
 			return;
