@@ -39,7 +39,7 @@ console.log(await adminConnection.getHosts());
 	### **WORK IN PROGRESS**
 -->
 ## Changelog
-### **WORK IN PROGRESS**
+### 2.1.0 (2023-06-14)
 * (rovo89) Typescript types tuning
 * (bluefox) The path was removed from `socket.io` URL
 
