@@ -1888,7 +1888,7 @@ export class Connection<
 	 * @param pattern
 	 */
 	getForeignStates(
-		pattern?: string | null | undefined,
+		pattern?: string | string[] | null | undefined,
 	): ioBroker.GetStatesPromise {
 		return this.request({
 			// TODO: check if this should time out
