@@ -288,8 +288,8 @@ export class Connection<
 		}
 
 		const url = port
-			? `${protocol}://${host}:${port}${path}`
-			: `${protocol}://${host}${path}`;
+			? `${protocol}://${host}:${port}`
+			: `${protocol}://${host}`;
 
 		this._socket = window.io.connect(url, {
 			path: path.endsWith("/") ? `${path}socket.io` : `${path}/socket.io`,
@@ -2074,7 +2074,7 @@ export class Connection<
 	/**
 	 * Check if the file exists
 	 * @param adapter adapter name
-	 * @param filename file name with full path. it could be like vis.0/*
+	 * @param filename file name with the full path. it could be like vis.0/*
 	 */
 	fileExists(adapter: string, filename: string): Promise<boolean> {
 		return this.request({

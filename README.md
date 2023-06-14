@@ -39,6 +39,10 @@ console.log(await adminConnection.getHosts());
 	### **WORK IN PROGRESS**
 -->
 ## Changelog
+### **WORK IN PROGRESS**
+* (rovo89) Typescript types tuning
+* (bluefox) The path was removed from `socket.io` URL
+
 ### 2.0.7 (2023-03-24)
 * (bluefox) better detection of chained certificates
 

@@ -229,7 +229,7 @@ export interface IOEmitEvents {
 	): void;
 
 	getForeignStates(
-		pattern: string,
+		pattern: string | string[] | null | undefined,
 		callback?: ErrorAsString<ioBroker.GetStatesCallback>,
 	): void;
 
