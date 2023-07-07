@@ -39,7 +39,7 @@ console.log(await adminConnection.getHosts());
 	### **WORK IN PROGRESS**
 -->
 ## Changelog
-### **WORK IN PROGRESS**
+### 2.2.0 (2023-07-07)
 * (bluefox) added new method - `getObjectsById`
 
 ### 2.1.0 (2023-06-14)
