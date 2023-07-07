@@ -163,6 +163,10 @@ export interface IOEmitEvents {
 	): void;
 
 	getObjects(callback?: ErrorAsString<ioBroker.GetObjectsCallback>): void;
+	getObjects(
+		list: string[],
+		callback?: ErrorAsString<ioBroker.GetObjectsCallback>,
+	): void;
 	getAllObjects(callback?: ErrorAsString<ioBroker.GetObjectsCallback>): void;
 	getObjectView<
 		Design extends string = string,

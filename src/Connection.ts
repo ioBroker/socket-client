@@ -1163,6 +1163,22 @@ export class Connection<
 	}
 
 	/**
+	 * Gets the list of objects by ID.
+	 * @param list array of IDs to retrieve
+	 */
+	getObjectsById(list: string[]): Promise<Record<string, ioBroker.Object> | undefined> {
+		return this.request({
+			commandTimeout: false,
+			executor: (resolve, reject) => {
+				this._socket.emit("getObjects", list, (err, res) => {
+					if (err) reject(err);
+					resolve(res);
+				});
+			},
+		});
+	}
+
+	/**
 	 * Called internally.
 	 * @param isEnable
 	 */
