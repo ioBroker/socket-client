@@ -26,7 +26,7 @@ function parseCertificate(name: string, cert: string): Certificate | void {
 	if (!cert) return;
 
 	let type: Certificate["type"];
-	// If it is filename, it could be everything
+	// If it is a filename, it could be everything
 	if (
 		cert.length < 700 &&
 		(cert.indexOf("/") !== -1 || cert.indexOf("\\") !== -1)
@@ -262,8 +262,8 @@ export class AdminConnection extends Connection<
 	/**
 	 * Rename file or folder in ioBroker DB
 	 * @param adapter instance name
-	 * @param oldName current file name, e.g main/vis-views.json
-	 * @param newName new file name, e.g main/vis-views-new.json
+	 * @param oldName current file name, e.g., main/vis-views.json
+	 * @param newName new file name, e.g., main/vis-views-new.json
 	 */
 	rename(adapter: string, oldName: string, newName: string): Promise<void> {
 		return this.request({
@@ -287,8 +287,8 @@ export class AdminConnection extends Connection<
 	/**
 	 * Rename file in ioBroker DB
 	 * @param adapter instance name
-	 * @param oldName current file name, e.g main/vis-views.json
-	 * @param newName new file name, e.g main/vis-views-new.json
+	 * @param oldName current file name, e.g., main/vis-views.json
+	 * @param newName new file name, e.g., main/vis-views-new.json
 	 */
 	renameFile(
 		adapter: string,
@@ -417,7 +417,7 @@ export class AdminConnection extends Connection<
 						parentGroup.common.name = newName as any;
 					}
 
-					// Create new object, then delete the old one if it worked
+					// Create a new object, then delete the old one if it worked
 					await this.setObject(newId, parentGroup);
 					await this.delObject(oldGroupId);
 				}
@@ -827,7 +827,7 @@ export class AdminConnection extends Connection<
 	/**
 	 * Change access rights for file
 	 * @param adapter adapter name
-	 * @param filename file name with full path. it could be like vis.0/*
+	 * @param path file name with a full path. It could be like 'vis.0/*'
 	 * @param options like {mode: 0x644}
 	 */
 	chmodFile(
@@ -856,8 +856,8 @@ export class AdminConnection extends Connection<
 	/**
 	 * Change owner or/and owner group for file
 	 * @param adapter adapter name
-	 * @param filename file name with full path. it could be like vis.0/*
-	 * @param options like {owner: 'newOwner', ownerGroup: 'newGroup'}
+	 * @param filename file name with a full path. it could be like vis.0/*
+	 * @param options like {owner: "newOwner", ownerGroup: "newGroup"}
 	 */
 	chownFile(
 		adapter: string,
@@ -929,7 +929,7 @@ export class AdminConnection extends Connection<
 	}
 
 	/**
-	 * Read if only easy mode is allowed  (only for admin connection).
+	 * Read if only easy mode is allowed (only for admin connection).
 	 */
 	getIsEasyModeStrict(): Promise<boolean> {
 		return this.request({
@@ -1136,8 +1136,8 @@ export class AdminConnection extends Connection<
 		this.resetCache(`compactInstances`);
 	}
 
-	// returns very optimized information for adapters to minimize connection load
-	// reads only version of installed adapter
+	// returns very optimized information for adapters to minimize a connection load
+	// reads only a version of installed adapter
 	getCompactInstalled(
 		host: string,
 		update?: boolean,

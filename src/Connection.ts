@@ -224,7 +224,7 @@ export class Connection<
 				if (typeof window.registerSocketOnLoad === "function") {
 					window.registerSocketOnLoad(() => resolve());
 				} else {
-					// otherwise we need to poll
+					// otherwise, we need to poll
 					for (let i = 1; i <= 30; i++) {
 						if (window.io) return resolve();
 						await wait(100);
@@ -256,14 +256,14 @@ export class Connection<
 		) {
 			path = "";
 		} else {
-			// if web adapter, socket io could be on other port or even host
+			// if web adapter, socket io could be on another port or even host
 			if (window.socketUrl) {
 				const parsed = new URL(window.socketUrl);
 				host = parsed.hostname;
 				port = parsed.port;
 				protocol = parsed.protocol.replace(":", "");
 			}
-			// get current path
+			// get a current path
 			const pos = path.lastIndexOf("/");
 			if (pos !== -1) {
 				path = path.substring(0, pos + 1);
@@ -301,7 +301,7 @@ export class Connection<
 		});
 
 		this._socket.on("connect", (noTimeout) => {
-			// If the user is not admin it takes some time to install the handlers, because all rights must be checked
+			// If the user is not admin, it takes some time to install the handlers, because all rights must be checked
 			if (noTimeout !== true) {
 				this.connected = true;
 				setTimeout(
@@ -836,7 +836,7 @@ export class Connection<
 
 	/**
 	 * Subscribe to changes of the files.
-	 * @param id The ioBroker state ID for meat object. Could be a pattern
+	 * @param id The ioBroker state ID for a "meta" object. Could be a pattern
 	 * @param filePattern Pattern or file name, like 'main/*' or 'main/visViews.json`
 	 * @param cb The callback.
 	 */
@@ -1065,7 +1065,7 @@ export class Connection<
 	 * Sets the given state value.
 	 * @param id The state ID.
 	 * @param val The state value.
-	 * @param ack Acknowledge flag.
+	 * @param ack Acknowledgement flag.
 	 */
 	setState(
 		id: string,
@@ -1533,7 +1533,7 @@ export class Connection<
 	 * @param start The start ID.
 	 * @param end The end ID.
 	 * @param type The type of object.
-	 * @param {string} [design=system] design - 'system' or other designs like `custom`, but it must exist object `_design/custom`. Too 99,9% use `system` (Exception for example 'charts').
+	 * @param {string} [design=system] design - 'system' or other designs like `custom`, but it must exist an object `_design/custom`. Too 99,9% use `system` (Exception for example, 'charts').
 	 */
 	getObjectView<T extends ioBroker.ObjectType>(
 		start: string,
@@ -1775,8 +1775,8 @@ export class Connection<
 	/**
 	 * Rename file or folder in ioBroker DB
 	 * @param adapter instance name
-	 * @param oldName current file name, e.g main/vis-views.json
-	 * @param newName new file name, e.g main/vis-views-new.json
+	 * @param oldName current file name, e.g., main/vis-views.json
+	 * @param newName new file name, e.g., main/vis-views-new.json
 	 */
 	rename(adapter: string, oldName: string, newName: string): Promise<void> {
 		return this.request({
@@ -1800,8 +1800,8 @@ export class Connection<
 	/**
 	 * Rename file in ioBroker DB
 	 * @param adapter instance name
-	 * @param oldName current file name, e.g main/vis-views.json
-	 * @param newName new file name, e.g main/vis-views-new.json
+	 * @param oldName current file name, e.g., main/vis-views.json
+	 * @param newName new file name, e.g., main/vis-views-new.json
 	 */
 	renameFile(
 		adapter: string,
@@ -2320,7 +2320,7 @@ export class Connection<
 	}
 
 	/**
-	 * This is special method for vis.
+	 * This is a special method for vis.
 	 * It is used to not send to server the changes about "nothing_selected" state
 	 * @param id The state that has to be ignored by communication
 	 */
