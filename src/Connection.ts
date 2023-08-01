@@ -101,7 +101,6 @@ export type InstanceMessageCallback = (
 
 export type InstanceSubscribe = {
 	messageType: string;
-	targetInstance: string;
 	callback: InstanceMessageCallback;
 };
 
@@ -2390,8 +2389,6 @@ export class Connection<
 										(subscription) =>
 											subscription.messageType ===
 												messageType &&
-											subscription.targetInstance ===
-												targetInstance &&
 											subscription.callback === callback,
 									)
 								) {
@@ -2399,7 +2396,6 @@ export class Connection<
 										targetInstance
 									].push({
 										messageType,
-										targetInstance,
 										callback,
 									});
 								}
@@ -2427,40 +2423,64 @@ export class Connection<
 			targetInstance = `system.adapter.${targetInstance}`;
 		}
 
-		const index = this._instanceSubscriptions[targetInstance]?.findIndex(
-			(sub) =>
-				sub.messageType === messageType && sub.callback === callback,
-		);
+		let deleted;
+		const promiseResults = [];
+		do {
+			deleted = false;
+			const index = this._instanceSubscriptions[
+				targetInstance
+			]?.findIndex(
+				(sub) =>
+					(!messageType || sub.messageType === messageType) &&
+					(!callback || sub.callback === callback),
+			);
 
-		if (index !== undefined && index !== null && index !== -1) {
-			const _messageType =
-				this._instanceSubscriptions[targetInstance][index].messageType;
-			this._instanceSubscriptions[targetInstance].splice(index, 1);
-			if (!this._instanceSubscriptions[targetInstance].length) {
-				delete this._instanceSubscriptions[targetInstance];
-			}
+			if (index !== undefined && index !== null && index !== -1) {
+				deleted = true;
+				// remember messageType
+				const _messageType =
+					this._instanceSubscriptions[targetInstance][index]
+						.messageType;
 
-			// try to find another subscription for this instance and messageType
-			const found =
-				this._instanceSubscriptions[targetInstance] &&
-				this._instanceSubscriptions[targetInstance].find(
-					(sub) => sub.messageType === _messageType,
-				);
-			if (!found) {
-				return this.request({
-					commandTimeout: false,
-					executor: (resolve, reject) => {
-						this._socket.emit(
-							"clientUnsubscribe",
-							targetInstance,
-							messageType,
-							(err, wasSubscribed) =>
-								err ? reject(err) : resolve(wasSubscribed),
-						);
-					},
-				});
+				this._instanceSubscriptions[targetInstance].splice(index, 1);
+				if (!this._instanceSubscriptions[targetInstance].length) {
+					delete this._instanceSubscriptions[targetInstance];
+				}
+
+				// try to find another subscription for this instance and messageType
+				const found =
+					this._instanceSubscriptions[targetInstance] &&
+					this._instanceSubscriptions[targetInstance].find(
+						(sub) => sub.messageType === _messageType,
+					);
+
+				if (!found) {
+					promiseResults.push(
+						this.request({
+							commandTimeout: false,
+							executor: (resolve, reject) => {
+								this._socket.emit(
+									"clientUnsubscribe",
+									targetInstance,
+									messageType,
+									(err, wasSubscribed) =>
+										err
+											? reject(err)
+											: resolve(wasSubscribed),
+								);
+							},
+						}),
+					);
+				}
 			}
+		} while (deleted && (!callback || !messageType));
+
+		if (promiseResults.length) {
+			return Promise.all(promiseResults).then(
+				(results) => !!results.find((result) => result),
+			);
 		}
+
 		return Promise.resolve(false);
 	}
 
