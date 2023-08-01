@@ -2370,6 +2370,13 @@ export class Connection<
 							if (subscribeResult.error) {
 								reject(subscribeResult.error);
 							} else {
+								if (
+									!targetInstance.startsWith(
+										"system.adapter.",
+									)
+								) {
+									targetInstance = `system.adapter.${targetInstance}`;
+								}
 								// save callback
 								this._instanceSubscriptions[targetInstance] =
 									this._instanceSubscriptions[
@@ -2416,6 +2423,10 @@ export class Connection<
 		messageType: string,
 		callback: InstanceMessageCallback,
 	): Promise<boolean> {
+		if (!targetInstance.startsWith("system.adapter.")) {
+			targetInstance = `system.adapter.${targetInstance}`;
+		}
+
 		const index = this._instanceSubscriptions[targetInstance]?.findIndex(
 			(sub) =>
 				sub.messageType === messageType && sub.callback === callback,
