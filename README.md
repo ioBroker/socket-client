@@ -39,6 +39,9 @@ console.log(await adminConnection.getHosts());
 	### **WORK IN PROGRESS**
 -->
 ## Changelog
+### **WORK IN PROGRESS**
+* (bluefox) Added the subscribing on the specific instance messages
+
 ### 2.2.1 (2023-07-31)
 * (bluefox) Update packages
 

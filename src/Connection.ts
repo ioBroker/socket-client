@@ -93,6 +93,18 @@ export type ObjectChangeHandler = (
 	oldObj?: OldObject,
 ) => void | Promise<void>;
 
+export type InstanceMessageCallback = (
+	data: any,
+	sourceInstance: string,
+	messageType: string,
+) => void | Promise<void>;
+
+export type InstanceSubscribe = {
+	messageType: string;
+	targetInstance: string;
+	callback: InstanceMessageCallback;
+};
+
 const ADAPTERS = ["material", "echarts", "vis"];
 
 export class Connection<
@@ -187,6 +199,9 @@ export class Connection<
 
 	private _waitForSocketPromise?: Promise<void>;
 	private readonly _waitForFirstConnectionPromise = createDeferredPromise();
+
+	/** array with all subscriptions to instances */
+	private _instanceSubscriptions: Record<string, InstanceSubscribe[]> = {};
 
 	/** Cache for server requests */
 	private readonly _promises: Record<string, Promise<any>> = {};
@@ -409,6 +424,11 @@ export class Connection<
 
 		this._socket.on("stateChange", (id, state) => {
 			setTimeout(() => this.stateChange(id, state), 0);
+		});
+
+		// instance message
+		this._socket.on("im", (messageType, from, data) => {
+			setTimeout(() => this.instanceMessage(messageType, from, data), 0);
 		});
 
 		this._socket.on("fileChange", (id, fileName, size) => {
@@ -816,6 +836,24 @@ export class Connection<
 
 	/**
 	 * Called internally.
+	 * @param messageType
+	 * @param sourceInstance
+	 * @param data
+	 */
+	private instanceMessage(
+		messageType: string,
+		sourceInstance: string,
+		data: any,
+	) {
+		this._instanceSubscriptions[sourceInstance]?.forEach((sub) => {
+			if (sub.messageType === messageType) {
+				sub.callback(data, sourceInstance, messageType);
+			}
+		});
+	}
+
+	/**
+	 * Called internally.
 	 * @param id
 	 * @param fileName
 	 * @param size
@@ -1166,7 +1204,9 @@ export class Connection<
 	 * Gets the list of objects by ID.
 	 * @param list array of IDs to retrieve
 	 */
-	getObjectsById(list: string[]): Promise<Record<string, ioBroker.Object> | undefined> {
+	getObjectsById(
+		list: string[],
+	): Promise<Record<string, ioBroker.Object> | undefined> {
 		return this.request({
 			commandTimeout: false,
 			executor: (resolve, reject) => {
@@ -2299,6 +2339,113 @@ export class Connection<
 				});
 			},
 		});
+	}
+
+	/**
+	 * Subscribe on instance message
+	 * @param {string} [targetInstance] instance, like 'cameras.0'
+	 * @param {string} [messageType] message type like 'startCamera/cam3'
+	 * @param {object} [data] optional data object
+	 * @param {function} [callback] message handler
+	 * @returns {Promise<null>}
+	 */
+	subscribeOnInstance(
+		targetInstance: string,
+		messageType: string,
+		data: any | null,
+		callback: InstanceMessageCallback,
+	): Promise<string | null> {
+		return this.request({
+			commandTimeout: false,
+			executor: (resolve, reject) => {
+				this._socket.emit(
+					"clientSubscribe",
+					targetInstance,
+					messageType,
+					data,
+					(err, subscribeResult) => {
+						if (err) {
+							reject(err);
+						} else if (subscribeResult) {
+							if (subscribeResult.error) {
+								reject(subscribeResult.error);
+							} else {
+								// save callback
+								this._instanceSubscriptions[targetInstance] =
+									this._instanceSubscriptions[
+										targetInstance
+									] || {};
+
+								if (
+									!this._instanceSubscriptions[
+										targetInstance
+									].find(
+										(subscription) =>
+											subscription.messageType ===
+												messageType &&
+											subscription.targetInstance ===
+												targetInstance &&
+											subscription.callback === callback,
+									)
+								) {
+									this._instanceSubscriptions[
+										targetInstance
+									].push({
+										messageType,
+										targetInstance,
+										callback,
+									});
+								}
+							}
+						}
+					},
+				);
+			},
+		});
+	}
+
+	/**
+	 * Unsubscribe from instance message
+	 * @param {string} [targetInstance] instance, like 'cameras.0'
+	 * @param {string} [messageType] message type like 'startCamera/cam3'
+	 * @param {function} [callback] message handler
+	 * @returns {Promise<boolean>}
+	 */
+	unsubscribeFromInstance(
+		targetInstance: string,
+		messageType: string,
+		callback: InstanceMessageCallback,
+	): Promise<boolean> {
+		const index = this._instanceSubscriptions[targetInstance]?.findIndex(
+			(sub) =>
+				sub.messageType === messageType && sub.callback === callback,
+		);
+
+		if (index !== undefined && index !== -1) {
+			const _messageType =
+				this._instanceSubscriptions[targetInstance][index].messageType;
+			this._instanceSubscriptions[targetInstance].splice(index, 1);
+
+			// try to find another subscription for this instance and messageType
+			const found = this._instanceSubscriptions[targetInstance].find(
+				(sub) => sub.messageType === _messageType,
+			);
+			if (!found) {
+				return this.request({
+					commandTimeout: false,
+					executor: (resolve, reject) => {
+						this._socket.emit(
+							"clientUnsubscribe",
+							targetInstance,
+							messageType,
+							(err, wasSubscribed) =>
+								err ? reject(err) : resolve(wasSubscribed),
+						);
+					},
+				});
+			}
+		}
+		return Promise.resolve(false);
 	}
 
 	/**

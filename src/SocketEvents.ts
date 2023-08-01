@@ -8,6 +8,7 @@ export interface IOListenEvents {
 	cmdStdout: (id: string, text: string) => void;
 	cmdStderr: (id: string, text: string) => void;
 	cmdExit: (id: string, exitCode: number) => void;
+	im: (messageType: string, from: string, data: any) => void; // message from instance
 
 	connect: (noTimeout: boolean) => void;
 	reconnect: () => void;
@@ -27,6 +28,15 @@ export type ErrorCallback = ErrorAsString<ioBroker.ErrorCallback>;
 export type AuthenticateCallback = (isOk: boolean, isSecure: boolean) => void;
 export type AuthEnabledCallback = (isSecure: boolean, user: string) => void;
 export type GetUserPermissionsCallback = (err?: string, acl?: any) => void;
+export type SubscribeOnInstanceCallback = (
+	err: string | null,
+	result?: any,
+) => void;
+export type UnsubscribeFromInstanceCallback = (
+	err: string | null,
+	wasSubscribed: boolean,
+) => void;
+
 export type ErrorAsString<T extends (...args: any[]) => void> = T extends (
 	err: Error | null,
 	...args: infer U
@@ -333,6 +343,19 @@ export interface IOEmitEvents {
 		commandId: string,
 		command: string,
 		callback?: ErrorCallback,
+	): void;
+
+	clientSubscribe(
+		targetInstance: string,
+		messageType: string,
+		data: any,
+		callback?: SubscribeOnInstanceCallback,
+	): void;
+
+	clientUnsubscribe(
+		targetInstance: string,
+		messageType: string,
+		callback?: UnsubscribeFromInstanceCallback,
 	): void;
 
 	logout(callback?: ErrorCallback): void;
