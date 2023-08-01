@@ -2374,7 +2374,7 @@ export class Connection<
 								this._instanceSubscriptions[targetInstance] =
 									this._instanceSubscriptions[
 										targetInstance
-									] || {};
+									] || [];
 
 								if (
 									!this._instanceSubscriptions[
@@ -2421,15 +2421,20 @@ export class Connection<
 				sub.messageType === messageType && sub.callback === callback,
 		);
 
-		if (index !== undefined && index !== -1) {
+		if (index !== undefined && index !== null && index !== -1) {
 			const _messageType =
 				this._instanceSubscriptions[targetInstance][index].messageType;
 			this._instanceSubscriptions[targetInstance].splice(index, 1);
+			if (!this._instanceSubscriptions[targetInstance].length) {
+				delete this._instanceSubscriptions[targetInstance];
+			}
 
 			// try to find another subscription for this instance and messageType
-			const found = this._instanceSubscriptions[targetInstance].find(
-				(sub) => sub.messageType === _messageType,
-			);
+			const found =
+				this._instanceSubscriptions[targetInstance] &&
+				this._instanceSubscriptions[targetInstance].find(
+					(sub) => sub.messageType === _messageType,
+				);
 			if (!found) {
 				return this.request({
 					commandTimeout: false,
