@@ -39,6 +39,9 @@ console.log(await adminConnection.getHosts());
 	### **WORK IN PROGRESS**
 -->
 ## Changelog
+### **WORK IN PROGRESS**
+* (bluefox) Added `subscribeStateAsync` method for legacy compatibility
+
 ### 2.3.3 (2023-08-01)
 * (bluefox) Added the subscribing on the specific instance messages
 

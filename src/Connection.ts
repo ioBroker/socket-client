@@ -686,6 +686,18 @@ export class Connection<
 	}
 
 	/**
+	 * Subscribe to the changes of the given state and wait for answer.
+	 * @param id The ioBroker state ID.
+	 * @param cb The callback.
+	 */
+	async subscribeStateAsync(
+		id: string,
+		cb: ioBroker.StateChangeHandler,
+	): Promise<void> {
+		return this.subscribeState(id, cb);
+	}
+
+	/**
 	 * Unsubscribes the given callback from changes of the given state.
 	 * @param id The ioBroker state ID.
 	 * @param cb The callback.
