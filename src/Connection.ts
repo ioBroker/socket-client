@@ -1680,11 +1680,11 @@ export class Connection<
 
 	/**
 	 * Read the directory of an adapter.
-	 * @param adapterName The adapter name.
+	 * @param {string} namespace (this may be the adapter name, the instance name or the name of a storage object within the adapter).
 	 * @param path The directory name.
 	 */
 	readDir(
-		adapterName: string | null,
+		namespace: string | null,
 		path: string,
 	): Promise<ioBroker.ReadDirResult[]> {
 		return this.request({
@@ -1693,7 +1693,7 @@ export class Connection<
 			executor: (resolve, reject) => {
 				this._socket.emit(
 					"readDir",
-					adapterName,
+					namespace,
 					path,
 					(err, files) => {
 						if (err) reject(err);
@@ -1706,13 +1706,13 @@ export class Connection<
 
 	/**
 	 * Read a file of an adapter.
-	 * @param {string} adapterName The adapter name.
+	 * @param {string} namespace (this may be the adapter name, the instance name or the name of a storage object within the adapter).
 	 * @param {string} fileName The file name.
 	 * @param {boolean} base64 If it must be a base64 format
 	 * @returns {Promise<string>}
 	 */
 	readFile(
-		adapterName: string | null,
+		namespace: string | null,
 		fileName: string,
 		base64?: boolean,
 	): Promise<{ file: string; mimeType: string }> {
@@ -1722,7 +1722,7 @@ export class Connection<
 			executor: (resolve, reject) => {
 				this._socket.emit(
 					base64 ? "readFile64" : "readFile",
-					adapterName,
+					namespace,
 					fileName,
 					(err, data, type) => {
 						if (err) reject(err);
@@ -1735,12 +1735,12 @@ export class Connection<
 
 	/**
 	 * Write a file of an adapter.
-	 * @param adapter The adapter name.
-	 * @param fileName The file name.
+	 * @param {string} namespace (this may be the adapter name, the instance name or the name of a storage object within the adapter).
+	 * @param {string} fileName The file name.
 	 * @param data The data (if it's a Buffer, it will be converted to Base64).
 	 */
 	writeFile64(
-		adapter: string,
+		namespace: string,
 		fileName: string,
 		data: Buffer | string,
 	): Promise<void> {
@@ -1751,7 +1751,7 @@ export class Connection<
 				if (typeof data === "string") {
 					this._socket.emit(
 						"writeFile",
-						adapter,
+						namespace,
 						fileName,
 						data,
 						(err) => {
@@ -1769,7 +1769,7 @@ export class Connection<
 
 					this._socket.emit(
 						"writeFile64",
-						adapter,
+						namespace,
 						fileName,
 						base64,
 						(err) => {
@@ -1784,15 +1784,15 @@ export class Connection<
 
 	/**
 	 * Delete a file of an adapter.
-	 * @param adapter The adapter name.
-	 * @param fileName The file name.
+	 * @param {string} namespace (this may be the adapter name, the instance name or the name of a storage object within the adapter).
+	 * @param fileName {string} The file name.
 	 */
-	deleteFile(adapter: string, fileName: string): Promise<void> {
+	deleteFile(namespace: string, fileName: string): Promise<void> {
 		return this.request({
 			// TODO: check if this should time out
 			commandTimeout: false,
 			executor: (resolve, reject) => {
-				this._socket.emit("deleteFile", adapter, fileName, (err) => {
+				this._socket.emit("deleteFile", namespace, fileName, (err) => {
 					if (err) reject(err);
 					resolve();
 				});
@@ -1802,17 +1802,17 @@ export class Connection<
 
 	/**
 	 * Delete a folder of an adapter.
-	 * @param adapter The adapter name.
-	 * @param folderName The folder name.
+	 * @param {string} namespace (this may be the adapter name, the instance name or the name of a storage object within the adapter).
+	 * @param folderName {string} The folder name.
 	 */
-	deleteFolder(adapter: string, folderName: string): Promise<void> {
+	deleteFolder(namespace: string, folderName: string): Promise<void> {
 		return this.request({
 			// TODO: check if this should time out
 			commandTimeout: false,
 			executor: (resolve, reject) => {
 				this._socket.emit(
 					"deleteFolder",
-					adapter,
+					namespace,
 					folderName,
 					(err) => {
 						if (err) reject(err);
@@ -1825,18 +1825,18 @@ export class Connection<
 
 	/**
 	 * Rename file or folder in ioBroker DB
-	 * @param adapter instance name
-	 * @param oldName current file name, e.g., main/vis-views.json
-	 * @param newName new file name, e.g., main/vis-views-new.json
+	 * @param {string} namespace (this may be the adapter name, the instance name or the name of a storage object within the adapter).
+	 * @param oldName {string} current file name, e.g., main/vis-views.json
+	 * @param newName {string} new file name, e.g., main/vis-views-new.json
 	 */
-	rename(adapter: string, oldName: string, newName: string): Promise<void> {
+	rename(namespace: string, oldName: string, newName: string): Promise<void> {
 		return this.request({
 			// TODO: check if this should time out
 			commandTimeout: false,
 			executor: (resolve, reject) => {
 				this._socket.emit(
 					"rename",
-					adapter,
+					namespace,
 					oldName,
 					newName,
 					(err) => {
@@ -1850,12 +1850,12 @@ export class Connection<
 
 	/**
 	 * Rename file in ioBroker DB
-	 * @param adapter instance name
-	 * @param oldName current file name, e.g., main/vis-views.json
-	 * @param newName new file name, e.g., main/vis-views-new.json
+	 * @param {string} namespace (this may be the adapter name, the instance name or the name of a storage object within the adapter).
+	 * @param oldName {string} current file name, e.g., main/vis-views.json
+	 * @param newName {string} new file name, e.g., main/vis-views-new.json
 	 */
 	renameFile(
-		adapter: string,
+		namespace: string,
 		oldName: string,
 		newName: string,
 	): Promise<void> {
@@ -1865,7 +1865,7 @@ export class Connection<
 			executor: (resolve, reject) => {
 				this._socket.emit(
 					"renameFile",
-					adapter,
+					namespace,
 					oldName,
 					newName,
 					(err) => {
