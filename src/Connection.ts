@@ -1735,8 +1735,8 @@ export class Connection<
 
 	/**
 	 * Write a file of an adapter.
-	 * @param {string} namespace (this may be the adapter name, the instance name or the name of a storage object within the adapter).
-	 * @param {string} fileName The file name.
+	 * @param namespace (this may be the adapter name, the instance name or the name of a storage object within the adapter).
+	 * @param fileName The file name.
 	 * @param data The data (if it's a Buffer, it will be converted to Base64).
 	 */
 	writeFile64(
