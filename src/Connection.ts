@@ -1680,7 +1680,7 @@ export class Connection<
 
 	/**
 	 * Read the directory of an adapter.
-	 * @param {string} namespace (this may be the adapter name, the instance name or the name of a storage object within the adapter).
+	 * @param namespace (this may be the adapter name, the instance name or the name of a storage object within the adapter).
 	 * @param path The directory name.
 	 */
 	readDir(
