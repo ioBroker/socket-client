@@ -60,14 +60,14 @@
     "@alcalzone/release-script": "~3.6.0",
     "@alcalzone/release-script-plugin-license": "~3.5.9",
     "@tsconfig/node12": "^12.1.0",
-    "@types/iobroker": "^4.0.5",
-    "@typescript-eslint/eslint-plugin": "^6.3.0",
-    "@typescript-eslint/parser": "^6.3.0",
-    "eslint": "^8.46.0",
+    "@types/iobroker": "^5.0.6",
+    "@typescript-eslint/eslint-plugin": "^6.5.0",
+    "@typescript-eslint/parser": "^6.5.0",
+    "eslint": "^8.48.0",
     "eslint-config-prettier": "^9.0.0",
     "eslint-plugin-prettier": "^5.0.0",
-    "prettier": "^3.0.1",
+    "prettier": "^3.0.3",
     "prettier-plugin-organize-imports": "^3.2.3",
-    "typescript": "~5.1.6"
+    "typescript": "~5.2.2"
   }
 }

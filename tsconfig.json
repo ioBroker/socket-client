@@ -6,7 +6,7 @@
 
 		// What to output where
 		"outDir": "./dist/esm",
-		"module":"ES2020", // will be transpiled to CommonJS in the post-build step
+		"module": "Node16", // will be transpiled to CommonJS in the post-build step
 
 		"declaration": true,
 		"removeComments": false,

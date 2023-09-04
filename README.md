@@ -39,6 +39,9 @@ console.log(await adminConnection.getHosts());
 	### **WORK IN PROGRESS**
 -->
 ## Changelog
+### **WORK IN PROGRESS**
+* (jogibear9988) Updated Connection api documentation
+ 
 ### 2.3.4 (2023-08-10)
 * (bluefox) Added `subscribeStateAsync` method for legacy compatibility
 

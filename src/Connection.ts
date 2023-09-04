@@ -220,7 +220,7 @@ export class Connection<
 
 	/**
 	 * Checks if this connection is running in a web adapter and not in an admin.
-	 * @returns {boolean} True if running in a web adapter or in a socketio adapter.
+	 * @returns True if running in a web adapter or in a socketio adapter.
 	 */
 	static isWeb(): boolean {
 		return window.socketUrl !== undefined;
@@ -477,7 +477,7 @@ export class Connection<
 
 	/**
 	 * Checks if the socket is connected.
-	 * @returns {boolean} true if connected.
+	 * @returns true if connected.
 	 */
 	isConnected(): boolean {
 		return this.connected;
@@ -1367,7 +1367,7 @@ export class Connection<
 	/**
 	 * Gets the object with the given id from the server.
 	 * @param id The object ID.
-	 * @returns {ioBroker.GetObjectPromise} The object.
+	 * @returns The object.
 	 */
 	getObject<T extends string>(id: T): ioBroker.GetObjectPromise<T> {
 		return this.request({
@@ -1584,7 +1584,7 @@ export class Connection<
 	 * @param start The start ID.
 	 * @param end The end ID.
 	 * @param type The type of object.
-	 * @param {string} [design=system] design - 'system' or other designs like `custom`, but it must exist an object `_design/custom`. Too 99,9% use `system` (Exception for example, 'charts').
+	 * @param [design=system] design - 'system' or other designs like `custom`, but it must exist an object `_design/custom`. Too 99,9% use `system` (Exception for example, 'charts').
 	 */
 	getObjectView<T extends ioBroker.ObjectType>(
 		start: string,
@@ -1691,25 +1691,19 @@ export class Connection<
 			// TODO: check if this should time out
 			commandTimeout: false,
 			executor: (resolve, reject) => {
-				this._socket.emit(
-					"readDir",
-					namespace,
-					path,
-					(err, files) => {
-						if (err) reject(err);
-						resolve(files!);
-					},
-				);
+				this._socket.emit("readDir", namespace, path, (err, files) => {
+					if (err) reject(err);
+					resolve(files!);
+				});
 			},
 		});
 	}
 
 	/**
 	 * Read a file of an adapter.
-	 * @param {string} namespace (this may be the adapter name, the instance name or the name of a storage object within the adapter).
-	 * @param {string} fileName The file name.
-	 * @param {boolean} base64 If it must be a base64 format
-	 * @returns {Promise<string>}
+	 * @param namespace (this may be the adapter name, the instance name or the name of a storage object within the adapter).
+	 * @param fileName The file name.
+	 * @param base64 If it must be a base64 format
 	 */
 	readFile(
 		namespace: string | null,
@@ -1784,8 +1778,8 @@ export class Connection<
 
 	/**
 	 * Delete a file of an adapter.
-	 * @param {string} namespace (this may be the adapter name, the instance name or the name of a storage object within the adapter).
-	 * @param fileName {string} The file name.
+	 * @param namespace (this may be the adapter name, the instance name or the name of a storage object within the adapter).
+	 * @param fileName The file name.
 	 */
 	deleteFile(namespace: string, fileName: string): Promise<void> {
 		return this.request({
@@ -1802,8 +1796,8 @@ export class Connection<
 
 	/**
 	 * Delete a folder of an adapter.
-	 * @param {string} namespace (this may be the adapter name, the instance name or the name of a storage object within the adapter).
-	 * @param folderName {string} The folder name.
+	 * @param namespace (this may be the adapter name, the instance name or the name of a storage object within the adapter).
+	 * @param folderName The folder name.
 	 */
 	deleteFolder(namespace: string, folderName: string): Promise<void> {
 		return this.request({
@@ -1825,9 +1819,9 @@ export class Connection<
 
 	/**
 	 * Rename file or folder in ioBroker DB
-	 * @param {string} namespace (this may be the adapter name, the instance name or the name of a storage object within the adapter).
-	 * @param oldName {string} current file name, e.g., main/vis-views.json
-	 * @param newName {string} new file name, e.g., main/vis-views-new.json
+	 * @param namespace (this may be the adapter name, the instance name or the name of a storage object within the adapter).
+	 * @param oldName current file name, e.g., main/vis-views.json
+	 * @param newName new file name, e.g., main/vis-views-new.json
 	 */
 	rename(namespace: string, oldName: string, newName: string): Promise<void> {
 		return this.request({
@@ -1850,9 +1844,9 @@ export class Connection<
 
 	/**
 	 * Rename file in ioBroker DB
-	 * @param {string} namespace (this may be the adapter name, the instance name or the name of a storage object within the adapter).
-	 * @param oldName {string} current file name, e.g., main/vis-views.json
-	 * @param newName {string} new file name, e.g., main/vis-views-new.json
+	 * @param namespace (this may be the adapter name, the instance name or the name of a storage object within the adapter).
+	 * @param oldName current file name, e.g., main/vis-views.json
+	 * @param newName new file name, e.g., main/vis-views-new.json
 	 */
 	renameFile(
 		namespace: string,
@@ -2339,7 +2333,6 @@ export class Connection<
 
 	/**
 	 * Logout current user
-	 * @returns {Promise<null>}
 	 */
 	logout(): Promise<string | null> {
 		return this.request({
@@ -2354,11 +2347,10 @@ export class Connection<
 
 	/**
 	 * Subscribe on instance message
-	 * @param {string} [targetInstance] instance, like 'cameras.0'
-	 * @param {string} [messageType] message type like 'startCamera/cam3'
-	 * @param {object} [data] optional data object
-	 * @param {function} [callback] message handler
-	 * @returns {Promise<null>}
+	 * @param targetInstance instance, like 'cameras.0'
+	 * @param messageType message type like 'startCamera/cam3'
+	 * @param data optional data object
+	 * @param callback message handler
 	 */
 	subscribeOnInstance(
 		targetInstance: string,
@@ -2421,10 +2413,9 @@ export class Connection<
 
 	/**
 	 * Unsubscribe from instance message
-	 * @param {string} [targetInstance] instance, like 'cameras.0'
-	 * @param {string} [messageType] message type like 'startCamera/cam3'
-	 * @param {function} [callback] message handler
-	 * @returns {Promise<boolean>}
+	 * @param targetInstance instance, like 'cameras.0'
+	 * @param messageType message type like 'startCamera/cam3'
+	 * @param callback message handler
 	 */
 	unsubscribeFromInstance(
 		targetInstance: string,
@@ -2498,9 +2489,8 @@ export class Connection<
 
 	/**
 	 * Send log to ioBroker log
-	 * @param {string} [text] Log text
-	 * @param {string} [level] `info`, `debug`, `warn`, `error` or `silly`
-	 * @returns {Promise<null>}
+	 * @param text Log text
+	 * @param level `info`, `debug`, `warn`, `error` or `silly`
 	 */
 	log(text: string, level?: string): Promise<null> {
 		return text
