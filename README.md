@@ -39,7 +39,7 @@ console.log(await adminConnection.getHosts());
 	### **WORK IN PROGRESS**
 -->
 ## Changelog
-### **WORK IN PROGRESS**
+### 2.3.7 (2023-09-28)
 * (bluefox) Added implicit export of AdminConnection
 
 ### 2.3.6 (2023-09-28)
