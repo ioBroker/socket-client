@@ -80,9 +80,8 @@ jobs:
     # - name: Create a clean build
     #   run: npx gulp build
 
-    - name: Publish package to npm
-      run: |
-        npm ci
+    - name: Install packages
+      run: npm ci
 
     - name: Publish package to npm
       run: |
