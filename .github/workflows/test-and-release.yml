@@ -19,7 +19,7 @@ jobs:
 # ... your other jobs go here ...
 #
 
-  # Deploys the final package to NPM and Github Actions
+  # Deploys the final package to NPM and GitHub Actions
   deploy:
     # Trigger this step only when a commit on master is tagged with a version number
     if: |
