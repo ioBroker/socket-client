@@ -39,7 +39,7 @@ console.log(await adminConnection.getHosts());
 	### **WORK IN PROGRESS**
 -->
 ## Changelog
-### **WORK IN PROGRESS**
+### 2.3.6 (2023-09-28)
 * (jogibear9988) Updated Connection api documentation
 
 ### 2.3.4 (2023-08-10)
