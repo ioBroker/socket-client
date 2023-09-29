@@ -39,7 +39,7 @@ console.log(await adminConnection.getHosts());
 	### **WORK IN PROGRESS**
 -->
 ## Changelog
-### **WORK IN PROGRESS**
+### 2.3.8 (2023-09-29)
 * (foxriver76) Corrected import of modules
 
 ### 2.3.7 (2023-09-28)
