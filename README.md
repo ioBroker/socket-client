@@ -39,6 +39,9 @@ console.log(await adminConnection.getHosts());
 	### **WORK IN PROGRESS**
 -->
 ## Changelog
+### **WORK IN PROGRESS**
+* (foxriver76) Corrected import of modules
+
 ### 2.3.7 (2023-09-28)
 * (bluefox) Added implicit export of AdminConnection
 

@@ -3,10 +3,10 @@
 	"compilerOptions": {
 		// Don't output anything when the build fails
 		"noEmitOnError": true,
-
+		"moduleResolution": "classic",
 		// What to output where
 		"outDir": "./dist/esm",
-		"module": "Node16", // will be transpiled to CommonJS in the post-build step
+		"module": "ES2020", // will be transpiled to CommonJS in the post-build step
 
 		"declaration": true,
 		"removeComments": false,
@@ -27,7 +27,7 @@
 			"es2020.promise",
 			"es2020.bigint",
 			"es2020.string"
-		],
+		]
 	},
 	"include": [
 		"./src/**/*"
