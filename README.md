@@ -39,7 +39,7 @@ console.log(await adminConnection.getHosts());
 	### **WORK IN PROGRESS**
 -->
 ## Changelog
-### **WORK IN PROGRESS**
+### 2.3.10 (2023-10-19)
 * (bluefox) Added return value for `subscribeOnInstance`
 
 ### 2.3.9 (2023-09-29)
