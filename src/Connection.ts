@@ -2403,6 +2403,7 @@ export class Connection<
 										callback,
 									});
 								}
+								resolve(subscribeResult);
 							}
 						}
 					},
