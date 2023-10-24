@@ -652,35 +652,45 @@ export class Connection<
 				this.statesSubscribes[id].cbs.push(cb);
 		}
 
-		if (this.connected) {
-			// Try to get the current value(s) of the state(s) and call the change handlers
-			if (binary) {
-				let base64: string | undefined;
-				try {
-					base64 = await this.getBinaryState(id);
-				} catch (e) {
-					console.error(
-						`Cannot getBinaryState "${id}": ${JSON.stringify(e)}`,
-					);
+		if (!this.connected) {
+			return;
+		}
+
+		// Try to get the current value(s) of the state(s) and call the change handlers
+		if (binary) {
+			let base64: string | undefined;
+			try {
+				base64 = await this.getBinaryState(id);
+			} catch (e) {
+				console.error(
+					`Cannot getBinaryState "${id}": ${JSON.stringify(e)}`,
+				);
+			}
+			if (base64 != undefined) {
+				(cb as BinaryStateChangeHandler)(id, base64);
+			}
+		} else if (id.includes("*")) {
+			let states: Record<string, ioBroker.State> | undefined;
+			try {
+				states = await this.getForeignStates(id);
+			} catch (e) {
+				console.error(
+					`Cannot getForeignStates "${id}": ${JSON.stringify(e)}`,
+				);
+				return;
+			}
+			if (states) {
+				for (const [id, state] of Object.entries(states)) {
+					(cb as ioBroker.StateChangeHandler)(id, state);
 				}
-				if (base64 != undefined) {
-					(cb as BinaryStateChangeHandler)(id, base64);
-				}
-			} else {
-				let states: Record<string, ioBroker.State> | undefined;
-				try {
-					states = await this.getForeignStates(id);
-				} catch (e) {
-					console.error(
-						`Cannot getForeignStates "${id}": ${JSON.stringify(e)}`,
-					);
-					return;
-				}
-				if (states) {
-					for (const [id, state] of Object.entries(states)) {
-						(cb as ioBroker.StateChangeHandler)(id, state);
-					}
-				}
+			}
+		} else {
+			try {
+				const state = await this.getState(id);
+				(cb as ioBroker.StateChangeHandler)(id, state);
+			} catch (e) {
+				console.error(`Cannot getState "${id}": ${e.message}`);
+				return;
 			}
 		}
 	}
