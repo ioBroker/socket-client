@@ -39,6 +39,9 @@ console.log(await adminConnection.getHosts());
 	### **WORK IN PROGRESS**
 -->
 ## Changelog
+### **WORK IN PROGRESS**
+* (foxriver76) improve performance on `subscribeState` without wildcard
+
 ### 2.3.10 (2023-10-19)
 * (bluefox) Added return value for `subscribeOnInstance`
 
