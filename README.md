@@ -39,7 +39,7 @@ console.log(await adminConnection.getHosts());
 	### **WORK IN PROGRESS**
 -->
 ## Changelog
-### **WORK IN PROGRESS**
+### 2.3.12 (2023-12-04)
 * (foxriver76) port to `@iobroker/types`
 
 ### 2.3.11 (2023-10-24)
