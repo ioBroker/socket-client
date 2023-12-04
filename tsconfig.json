@@ -1,6 +1,7 @@
 {
 	"extends": "@tsconfig/node12/tsconfig.json",
 	"compilerOptions": {
+		"types": ["@iobroker/types"],
 		// Don't output anything when the build fails
 		"noEmitOnError": true,
 		"moduleResolution": "classic",

@@ -39,6 +39,9 @@ console.log(await adminConnection.getHosts());
 	### **WORK IN PROGRESS**
 -->
 ## Changelog
+### **WORK IN PROGRESS**
+* (foxriver76) port to `@iobroker/types`
+
 ### 2.3.11 (2023-10-24)
 * (foxriver76) improve performance on `subscribeState` without wildcard
 

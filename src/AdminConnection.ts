@@ -400,7 +400,10 @@ export class AdminConnection extends Connection<
 				// First do this for all sub groups
 				for (const group of subGroups) {
 					const oldGroupId = group._id;
-					const newGroupId = newId + group._id.substring(id.length);
+					const newGroupId = (newId +
+						group._id.substring(
+							id.length,
+						)) as ioBroker.ObjectIDs.Group;
 					group._id = newGroupId;
 
 					// Create new object, then delete the old one if it worked
@@ -411,7 +414,7 @@ export class AdminConnection extends Connection<
 				const parentGroup = groups.find((g) => g._id === id);
 				if (parentGroup) {
 					const oldGroupId = parentGroup._id;
-					parentGroup._id = newId;
+					parentGroup._id = newId as ioBroker.ObjectIDs.Group;
 					if (newName !== undefined) {
 						(parentGroup.common as any) ??= {};
 						parentGroup.common.name = newName as any;
