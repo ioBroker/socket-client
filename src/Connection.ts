@@ -499,8 +499,11 @@ export class Connection<
 			commandTimeout: false,
 			executor: (resolve, reject) => {
 				this._socket.emit("getUserPermissions", (err, acl) => {
-					if (err) reject(err);
-					resolve(acl!);
+					if (err) {
+						reject(err);
+					} else {
+						resolve(acl!);
+					}
 				});
 			},
 		});
@@ -1055,8 +1058,11 @@ export class Connection<
 					// if (!disableProgressUpdate) {
 					// 	this.props.onProgress?.(PROGRESS.STATES_LOADED);
 					// }
-					if (err) reject(err);
-					resolve(this.states);
+					if (err) {
+						reject(err);
+					} else {
+						resolve(this.states);
+					}
 				});
 			},
 		});
@@ -1076,8 +1082,11 @@ export class Connection<
 					return;
 				}
 				this._socket.emit("getState", id, (err, state) => {
-					if (err) reject(err);
-					resolve(state);
+					if (err) {
+						reject(err);
+					} else {
+						resolve(state);
+					}
 				});
 			},
 		});
@@ -1094,8 +1103,11 @@ export class Connection<
 			commandTimeout: false,
 			executor: (resolve, reject) => {
 				this._socket.emit("getBinaryState", id, (err, state) => {
-					if (err) reject(err);
-					resolve(state);
+					if (err) {
+						reject(err);
+					} else {
+						resolve(state);
+					}
 				});
 			},
 		});
@@ -1113,8 +1125,11 @@ export class Connection<
 			commandTimeout: false,
 			executor: (resolve, reject) => {
 				this._socket.emit("setBinaryState", id, base64, (err) => {
-					if (err) reject(err);
-					resolve();
+					if (err) {
+						reject(err);
+					} else {
+						resolve();
+					}
 				});
 			},
 		});
@@ -1178,8 +1193,11 @@ export class Connection<
 					return;
 				}
 				this._socket.emit("setState", id, val, (err) => {
-					if (err) reject(err);
-					resolve();
+					if (err) {
+						reject(err);
+					} else {
+						resolve();
+					}
 				});
 			},
 		});
@@ -1210,11 +1228,15 @@ export class Connection<
 				this._socket.emit(
 					Connection.isWeb() ? "getObjects" : "getAllObjects",
 					(err, res) => {
-						if (!disableProgressUpdate)
+						if (!disableProgressUpdate) {
 							this.props.onProgress?.(PROGRESS.OBJECTS_LOADED);
-						if (err) reject(err);
-						this.objects = res ?? {};
-						resolve(this.objects);
+						}
+						if (err) {
+							reject(err);
+						} else {
+							this.objects = res ?? {};
+							resolve(this.objects);
+						}
 					},
 				);
 			},
@@ -1232,8 +1254,11 @@ export class Connection<
 			commandTimeout: false,
 			executor: (resolve, reject) => {
 				this._socket.emit("getObjects", list, (err, res) => {
-					if (err) reject(err);
-					resolve(res);
+					if (err) {
+						reject(err);
+					} else {
+						resolve(res);
+					}
 				});
 			},
 		});
@@ -1304,8 +1329,11 @@ export class Connection<
 			commandTimeout: false,
 			executor: (resolve, reject) => {
 				this._socket.emit("requireLog", isEnabled, (err) => {
-					if (err) reject(err);
-					resolve();
+					if (err) {
+						reject(err);
+					} else {
+						resolve();
+					}
 				});
 			},
 		});
@@ -1322,8 +1350,11 @@ export class Connection<
 			commandTimeout: false,
 			executor: (resolve, reject) => {
 				this._socket.emit("delObject", id, { maintenance }, (err) => {
-					if (err) reject(err);
-					resolve();
+					if (err) {
+						reject(err);
+					} else {
+						resolve();
+					}
 				});
 			},
 		});
@@ -1340,8 +1371,11 @@ export class Connection<
 			commandTimeout: false,
 			executor: (resolve, reject) => {
 				this._socket.emit("delObjects", id, { maintenance }, (err) => {
-					if (err) reject(err);
-					resolve();
+					if (err) {
+						reject(err);
+					} else {
+						resolve();
+					}
 				});
 			},
 		});
@@ -1367,8 +1401,11 @@ export class Connection<
 			commandTimeout: false,
 			executor: (resolve, reject) => {
 				this._socket.emit("setObject", id, obj, (err) => {
-					if (err) reject(err);
-					resolve();
+					if (err) {
+						reject(err);
+					} else {
+						resolve();
+					}
 				});
 			},
 		});
@@ -1396,8 +1433,11 @@ export class Connection<
 					return;
 				}
 				this._socket.emit("getObject", id, (err, obj) => {
-					if (err) reject(err);
-					resolve(obj as any);
+					if (err) {
+						reject(err);
+					} else {
+						resolve(obj as any);
+					}
 				});
 			},
 		});
@@ -1447,8 +1487,11 @@ export class Connection<
 			commandTimeout: false,
 			executor: (resolve, reject) => {
 				this._socket.emit("extendObject", id, obj, (err) => {
-					if (err) reject(err);
-					resolve();
+					if (err) {
+						reject(err);
+					} else {
+						resolve();
+					}
 				});
 			},
 		});
@@ -1567,21 +1610,25 @@ export class Connection<
 						endkey: _enum ? `enum.${_enum}.\u9999` : `enum.\u9999`,
 					},
 					(err, res) => {
-						if (err) reject(err);
-						const _res: Record<string, ioBroker.EnumObject> = {};
-						if (res) {
-							for (let i = 0; i < res.rows.length; i++) {
-								if (
-									_enum &&
-									res.rows[i].id === `enum.${_enum}`
-								) {
-									continue;
+						if (err) {
+							reject(err);
+						} else {
+							const _res: Record<string, ioBroker.EnumObject> =
+								{};
+							if (res) {
+								for (let i = 0; i < res.rows.length; i++) {
+									if (
+										_enum &&
+										res.rows[i].id === `enum.${_enum}`
+									) {
+										continue;
+									}
+									_res[res.rows[i].id] = res.rows[i]
+										.value as ioBroker.EnumObject;
 								}
-								_res[res.rows[i].id] = res.rows[i]
-									.value as ioBroker.EnumObject;
 							}
+							resolve(_res);
 						}
-						resolve(_res);
 					},
 				);
 			},
@@ -1644,18 +1691,21 @@ export class Connection<
 					type,
 					{ startkey: start, endkey: end },
 					(err, res) => {
-						if (err) reject(err);
-
-						const _res: Record<
-							string,
-							ioBroker.AnyObject & { type: T }
-						> = {};
-						if (res && res.rows) {
-							for (let i = 0; i < res.rows.length; i++) {
-								_res[res.rows[i].id] = res.rows[i].value as any;
+						if (err) {
+							reject(err);
+						} else {
+							const _res: Record<
+								string,
+								ioBroker.AnyObject & { type: T }
+							> = {};
+							if (res && res.rows) {
+								for (let i = 0; i < res.rows.length; i++) {
+									_res[res.rows[i].id] = res.rows[i]
+										.value as any;
+								}
 							}
+							resolve(_res);
 						}
-						resolve(_res);
 					},
 				);
 			},
@@ -1676,12 +1726,17 @@ export class Connection<
 					"meta",
 					{ startkey: "", endkey: "\u9999" },
 					(err, objs) => {
-						if (err) reject(err);
-						resolve(
-							objs!.rows
-								?.map((obj) => obj.value)
-								.filter((val): val is ioBroker.Object => !!val),
-						);
+						if (err) {
+							reject(err);
+						} else {
+							resolve(
+								objs!.rows
+									?.map((obj) => obj.value)
+									.filter(
+										(val): val is ioBroker.Object => !!val,
+									),
+							);
+						}
 					},
 				);
 			},
@@ -1702,8 +1757,11 @@ export class Connection<
 			commandTimeout: false,
 			executor: (resolve, reject) => {
 				this._socket.emit("readDir", namespace, path, (err, files) => {
-					if (err) reject(err);
-					resolve(files!);
+					if (err) {
+						reject(err);
+					} else {
+						resolve(files!);
+					}
 				});
 			},
 		});
@@ -1729,8 +1787,11 @@ export class Connection<
 					namespace,
 					fileName,
 					(err, data, type) => {
-						if (err) reject(err);
-						resolve({ file: data as string, mimeType: type! });
+						if (err) {
+							reject(err);
+						} else {
+							resolve({ file: data as string, mimeType: type! });
+						}
 					},
 				);
 			},
@@ -1759,8 +1820,11 @@ export class Connection<
 						fileName,
 						data,
 						(err) => {
-							if (err) reject(err);
-							resolve();
+							if (err) {
+								reject(err);
+							} else {
+								resolve();
+							}
 						},
 					);
 				} else {
@@ -1777,8 +1841,11 @@ export class Connection<
 						fileName,
 						base64,
 						(err) => {
-							if (err) reject(err);
-							resolve();
+							if (err) {
+								reject(err);
+							} else {
+								resolve();
+							}
 						},
 					);
 				}
@@ -1797,8 +1864,11 @@ export class Connection<
 			commandTimeout: false,
 			executor: (resolve, reject) => {
 				this._socket.emit("deleteFile", namespace, fileName, (err) => {
-					if (err) reject(err);
-					resolve();
+					if (err) {
+						reject(err);
+					} else {
+						resolve();
+					}
 				});
 			},
 		});
@@ -1819,8 +1889,11 @@ export class Connection<
 					namespace,
 					folderName,
 					(err) => {
-						if (err) reject(err);
-						resolve();
+						if (err) {
+							reject(err);
+						} else {
+							resolve();
+						}
 					},
 				);
 			},
@@ -1844,8 +1917,11 @@ export class Connection<
 					oldName,
 					newName,
 					(err) => {
-						if (err) reject(err);
-						resolve();
+						if (err) {
+							reject(err);
+						} else {
+							resolve();
+						}
 					},
 				);
 			},
@@ -1873,8 +1949,11 @@ export class Connection<
 					oldName,
 					newName,
 					(err) => {
-						if (err) reject(err);
-						resolve();
+						if (err) {
+							reject(err);
+						} else {
+							resolve();
+						}
 					},
 				);
 			},
@@ -1903,8 +1982,11 @@ export class Connection<
 					if (timeout.elapsed) return;
 					timeout.clearTimeout();
 
-					if (err) reject(err);
-					resolve();
+					if (err) {
+						reject(err);
+					} else {
+						resolve();
+					}
 				});
 			},
 		});
@@ -1943,11 +2025,14 @@ export class Connection<
 				this._socket.emit(
 					"getCompactSystemConfig",
 					(err, systemConfig) => {
-						if (err) reject(err);
-						(systemConfig as any) ??= {};
-						(systemConfig as any).common ??= {};
-						(systemConfig as any).native ??= {};
-						resolve(systemConfig!);
+						if (err) {
+							reject(err);
+						} else {
+							(systemConfig as any) ??= {};
+							(systemConfig as any).common ??= {};
+							(systemConfig as any).native ??= {};
+							resolve(systemConfig!);
+						}
 					},
 				);
 			},
@@ -1969,8 +2054,11 @@ export class Connection<
 					"getForeignStates",
 					pattern || "*",
 					(err, states) => {
-						if (err) reject(err);
-						resolve(states ?? {});
+						if (err) {
+							reject(err);
+						} else {
+							resolve(states ?? {});
+						}
 					},
 				);
 			},
@@ -1995,8 +2083,11 @@ export class Connection<
 					pattern || "*",
 					type,
 					(err, objects) => {
-						if (err) reject(err);
-						resolve(objects as any);
+						if (err) {
+							reject(err);
+						} else {
+							resolve(objects as any);
+						}
 					},
 				);
 			},
@@ -2034,8 +2125,11 @@ export class Connection<
 			commandTimeout: false,
 			executor: (resolve, reject) => {
 				this._socket.emit("getHistory", id, options, (err, values) => {
-					if (err) reject(err);
-					resolve(values!);
+					if (err) {
+						reject(err);
+					} else {
+						resolve(values!);
+					}
 				});
 			},
 		});
@@ -2063,13 +2157,16 @@ export class Connection<
 					id,
 					options,
 					(err, values, stepIgnore, sessionId) => {
-						if (err) reject(err);
-						resolve({
-							values: values!,
-							sessionId: sessionId!,
-							// TODO: WTF is up with the ignore thing?
-							stepIgnore: stepIgnore!,
-						});
+						if (err) {
+							reject(err);
+						} else {
+							resolve({
+								values: values!,
+								sessionId: sessionId!,
+								// TODO: WTF is up with the ignore thing?
+								stepIgnore: stepIgnore!,
+							});
+						}
 					},
 				);
 			},
@@ -2117,8 +2214,14 @@ export class Connection<
 					) {
 						resolve({ version: err, serverName: "socketio" });
 					} else {
-						if (err) reject(err);
-						resolve({ version: version!, serverName: serverName! });
+						if (err) {
+							reject(err);
+						} else {
+							resolve({
+								version: version!,
+								serverName: serverName!,
+							});
+						}
 					}
 				});
 			},
@@ -2135,8 +2238,11 @@ export class Connection<
 			commandTimeout: false,
 			executor: (resolve, reject) => {
 				this._socket.emit("getAdapterName", (err, name) => {
-					if (err) reject(err);
-					resolve(name!);
+					if (err) {
+						reject(err);
+					} else {
+						resolve(name!);
+					}
 				});
 			},
 		});
@@ -2157,8 +2263,11 @@ export class Connection<
 					adapter,
 					filename,
 					(err, exists) => {
-						if (err) reject(err);
-						resolve(!!exists);
+						if (err) {
+							reject(err);
+						} else {
+							resolve(!!exists);
+						}
 					},
 				);
 			},
@@ -2211,8 +2320,11 @@ export class Connection<
 					"checkFeatureSupported",
 					feature,
 					(err, features) => {
-						if (err) reject(err);
-						resolve(features);
+						if (err) {
+							reject(err);
+						} else {
+							resolve(features);
+						}
 					},
 				);
 			},
@@ -2511,7 +2623,7 @@ export class Connection<
 						this._socket.emit("log", text, level);
 						return resolve(null);
 					},
-			  })
+				})
 			: Promise.resolve(null);
 	}
 
