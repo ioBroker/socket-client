@@ -39,6 +39,9 @@ console.log(await adminConnection.getHosts());
 	### **WORK IN PROGRESS**
 -->
 ## Changelog
+### **WORK IN PROGRESS**
+* (bluefox) updated packages
+
 ### 2.3.12 (2023-12-04)
 * (foxriver76) port to `@iobroker/types`
 
