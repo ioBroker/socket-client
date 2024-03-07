@@ -182,4 +182,4 @@ console.log(await adminConnection.getHosts());
 ## License
 The MIT License (MIT)
 
-Copyright (c) 2021-2023 Jochen Kühner
+Copyright (c) 2021-2024 Jochen Kühner
