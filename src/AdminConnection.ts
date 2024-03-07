@@ -890,7 +890,10 @@ export class AdminConnection extends Connection<
 	 * @param host
 	 * @param category - optional
 	 */
-	getNotifications(host: string, category: string): Promise<any> {
+	getNotifications(
+		host: string,
+		category?: string,
+	): Promise<void | ioBroker.Notification[]> {
 		return this.request({
 			executor: (resolve, reject, timeout) => {
 				this._socket.emit(
@@ -901,7 +904,7 @@ export class AdminConnection extends Connection<
 					(notifications) => {
 						if (timeout.elapsed) return;
 						timeout.clearTimeout();
-						resolve(notifications);
+						resolve(notifications as ioBroker.Notification[]);
 					},
 				);
 			},
@@ -1170,7 +1173,7 @@ export class AdminConnection extends Connection<
 	}
 
 	// reset cached promise, so next time the information will be requested anew
-	getInstalledResetCache(host: string): void {
+	getInstalledResetCache(host?: string): void {
 		if (!host) {
 			this.resetCache(`installedCompact_`, true);
 			this.resetCache(`installed_`, true);

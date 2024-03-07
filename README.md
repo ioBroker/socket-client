@@ -39,6 +39,9 @@ console.log(await adminConnection.getHosts());
 	### **WORK IN PROGRESS**
 -->
 ## Changelog
+### **WORK IN PROGRESS**
+* (bluefox) Better typing for getNotifications
+
 ### 2.3.13 (2023-12-14)
 * (bluefox) updated packages
 
