@@ -160,10 +160,11 @@ export class AdminConnection extends Connection<
 
 	/**
 	 * Get the logs from a host (only for admin connection).
-	 * @param host
-	 * @param linesNumber
 	 */
-	getLogs(host: string, linesNumber: number = 200): Promise<string[]> {
+	getLogs(
+		host: string,
+		linesNumber: number = 200,
+	): Promise<(string | number)[] | string | { error: string }> {
 		return this.request({
 			// TODO: check if this should time out
 			commandTimeout: false,
