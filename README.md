@@ -40,6 +40,7 @@ console.log(await adminConnection.getHosts());
 -->
 ## Changelog
 ### **WORK IN PROGRESS**
+* (foxriver76) fix `cjs` types export
 * (bluefox) Better typing for getLogs
 
 ### 2.3.14 (2024-03-07)
