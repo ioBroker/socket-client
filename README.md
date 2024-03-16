@@ -39,7 +39,7 @@ console.log(await adminConnection.getHosts());
 	### **WORK IN PROGRESS**
 -->
 ## Changelog
-### **WORK IN PROGRESS**
+### 2.3.16 (2024-03-16)
 * (bluefox) Changed systemLang to writable, as it can be changed on the fly
 
 ### 2.3.15 (2024-03-08)
