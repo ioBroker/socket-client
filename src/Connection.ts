@@ -213,10 +213,8 @@ export class Connection<
 		return this._systemConfig;
 	}
 
-	private _systemLang: ioBroker.Languages = "en";
-	public get systemLang(): ioBroker.Languages {
-		return this._systemLang;
-	}
+	/** System language. It could be changed during runtime */
+	public systemLang: ioBroker.Languages = "en";
 
 	/**
 	 * Checks if this connection is running in a web adapter and not in an admin.
@@ -554,22 +552,20 @@ export class Connection<
 		}
 
 		// Detect the system language
-		this._systemLang = this._systemConfig.common?.language;
-		if (!this._systemLang) {
-			this._systemLang = (window.navigator.userLanguage ||
+		this.systemLang = this._systemConfig.common?.language;
+		if (!this.systemLang) {
+			this.systemLang = (window.navigator.userLanguage ||
 				window.navigator.language) as any;
 			// Browsers may report languages like "de-DE", "en-US", etc.
 			// ioBroker expects "de", "en", ...
-			if (/^(en|de|ru|pt|nl|fr|it|es|pl|uk)-?/.test(this._systemLang)) {
-				this._systemLang = this._systemLang.substr(0, 2) as any;
+			if (/^(en|de|ru|pt|nl|fr|it|es|pl|uk)-?/.test(this.systemLang)) {
+				this.systemLang = this.systemLang.substr(0, 2) as any;
 			} else if (
-				!/^(en|de|ru|pt|nl|fr|it|es|pl|uk|zh-cn)$/.test(
-					this._systemLang,
-				)
+				!/^(en|de|ru|pt|nl|fr|it|es|pl|uk|zh-cn)$/.test(this.systemLang)
 			) {
-				this._systemLang = "en";
+				this.systemLang = "en";
 			}
-			this._systemConfig.common.language = this._systemLang;
+			this._systemConfig.common.language = this.systemLang;
 		}
 		this.props.onLanguage?.(this.systemLang);
 
