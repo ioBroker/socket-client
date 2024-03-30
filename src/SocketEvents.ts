@@ -1,4 +1,4 @@
-import type { ERRORS } from "./Connection.js";
+import type { ERRORS } from "./Connection";
 
 /** Defines which events are emitted by the server and can be listened on the client */
 export interface IOListenEvents {

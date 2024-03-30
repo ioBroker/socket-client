@@ -1,4 +1,4 @@
-import type { SocketClient } from "./SocketClient.js";
+import type { SocketClient } from "./SocketClient";
 
 declare global {
 	interface Window {

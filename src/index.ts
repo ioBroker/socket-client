@@ -1,10 +1,10 @@
-export * from "./AdminConnection.js";
-export { AdminConnection, IPAddress } from "./AdminConnection.js";
+export * from "./AdminConnection";
+export { AdminConnection, IPAddress } from "./AdminConnection";
 
-export * from "./Connection.js";
-export { PROGRESS, ERRORS, Connection, SystemConfig } from "./Connection.js";
+export * from "./Connection";
+export { PROGRESS, ERRORS, Connection, SystemConfig } from "./Connection";
 
-export * from "./ConnectionProps.js";
-export { ConnectionProps } from "./ConnectionProps.js";
+export * from "./ConnectionProps";
+export { ConnectionProps } from "./ConnectionProps";
 
-export type { EmitEventHandler, ListenEventHandler } from "./SocketClient.js";
+export type { EmitEventHandler, ListenEventHandler } from "./SocketClient";
