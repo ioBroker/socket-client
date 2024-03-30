@@ -39,7 +39,7 @@ console.log(await adminConnection.getHosts());
 	### **WORK IN PROGRESS**
 -->
 ## Changelog
-### **WORK IN PROGRESS**
+### 2.4.0 (2024-03-30)
 * (bluefox) Allowed subscribing and unsubscribing on arrays of IDs
 
 ### 2.3.16 (2024-03-16)
