@@ -600,31 +600,42 @@ export class Connection<
 
 	/**
 	 * Subscribe to the changes of the given state.
-	 * @param id The ioBroker state ID.
+	 * @param id The ioBroker state ID or array of state IDs..
 	 * @param binary Set to true if the given state is binary and requires Base64 decoding.
 	 * @param cb The callback.
 	 */
 	subscribeState(
-		id: string,
+		id: string | string[],
 		binary: true,
 		cb: BinaryStateChangeHandler,
 	): Promise<void>;
 
 	subscribeState(
-		id: string,
+		id: string | string[],
 		binary: false,
 		cb: ioBroker.StateChangeHandler,
 	): Promise<void>;
 
-	subscribeState(id: string, cb: ioBroker.StateChangeHandler): Promise<void>;
+	subscribeState(
+		id: string | string[],
+		cb: ioBroker.StateChangeHandler,
+	): Promise<void>;
 
 	async subscribeState(
 		...args:
-			| [id: string, binary: true, cb: BinaryStateChangeHandler]
-			| [id: string, binary: false, cb: ioBroker.StateChangeHandler]
-			| [id: string, cb: ioBroker.StateChangeHandler]
+			| [
+					id: string | string[],
+					binary: true,
+					cb: BinaryStateChangeHandler,
+			  ]
+			| [
+					id: string | string[],
+					binary: false,
+					cb: ioBroker.StateChangeHandler,
+			  ]
+			| [id: string | string[], cb: ioBroker.StateChangeHandler]
 	): Promise<void> {
-		let id: string;
+		let id: string | string[];
 		let binary: boolean;
 		let cb: ioBroker.StateChangeHandler | BinaryStateChangeHandler;
 		if (args.length === 3) {
@@ -633,62 +644,88 @@ export class Connection<
 			[id, cb] = args;
 			binary = false;
 		}
+		let ids: string[];
+		if (!Array.isArray(id)) {
+			ids = [id];
+		} else {
+			ids = id;
+		}
 
 		if (typeof cb !== "function") {
 			throw new Error("The state change handler must be a function!");
 		}
-
-		if (!this.statesSubscribes[id]) {
-			this.statesSubscribes[id] = {
-				reg: new RegExp(pattern2RegEx(id)),
-				cbs: [cb],
-			};
-			if (this.connected && id !== this.ignoreState) {
-				this._socket.emit("subscribe", id);
+		const toSubscribe = [];
+		for (let i = 0; i < ids.length; i++) {
+			const _id = ids[i];
+			if (!this.statesSubscribes[_id]) {
+				this.statesSubscribes[_id] = {
+					reg: new RegExp(pattern2RegEx(_id)),
+					cbs: [cb],
+				};
+				if (this.connected && id !== this.ignoreState) {
+					toSubscribe.push(_id);
+				}
+			} else {
+				!this.statesSubscribes[_id].cbs.includes(cb) &&
+					this.statesSubscribes[_id].cbs.push(cb);
 			}
-		} else {
-			!this.statesSubscribes[id].cbs.includes(cb) &&
-				this.statesSubscribes[id].cbs.push(cb);
 		}
 
 		if (!this.connected) {
 			return;
 		}
 
+		if (toSubscribe.length && this.connected) {
+			// no answer from server required
+			this._socket.emit("subscribe", toSubscribe);
+		}
+
 		// Try to get the current value(s) of the state(s) and call the change handlers
 		if (binary) {
 			let base64: string | undefined;
-			try {
-				base64 = await this.getBinaryState(id);
-			} catch (e) {
-				console.error(
-					`Cannot getBinaryState "${id}": ${JSON.stringify(e)}`,
-				);
+			for (let i = 0; i < ids.length; i++) {
+				try {
+					base64 = await this.getBinaryState(ids[i]);
+				} catch (e) {
+					console.error(
+						`Cannot getBinaryState "${ids[i]}": ${JSON.stringify(e)}`,
+					);
+				}
+				if (base64 != undefined) {
+					(cb as BinaryStateChangeHandler)(ids[i], base64);
+				}
 			}
-			if (base64 != undefined) {
-				(cb as BinaryStateChangeHandler)(id, base64);
-			}
-		} else if (id.includes("*")) {
+		} else if (ids.find((_id) => _id.includes("*"))) {
 			let states: Record<string, ioBroker.State> | undefined;
-			try {
-				states = await this.getForeignStates(id);
-			} catch (e) {
-				console.error(
-					`Cannot getForeignStates "${id}": ${JSON.stringify(e)}`,
-				);
-				return;
-			}
-			if (states) {
-				for (const [id, state] of Object.entries(states)) {
-					(cb as ioBroker.StateChangeHandler)(id, state);
+			for (let i = 0; i < ids.length; i++) {
+				try {
+					states = await this.getForeignStates(ids[i]);
+				} catch (e) {
+					console.error(
+						`Cannot getForeignStates "${ids[i]}": ${JSON.stringify(e)}`,
+					);
+					return;
+				}
+				if (states) {
+					for (const [id, state] of Object.entries(states)) {
+						(cb as ioBroker.StateChangeHandler)(id, state);
+					}
 				}
 			}
 		} else {
 			try {
-				const state = await this.getState(id);
-				(cb as ioBroker.StateChangeHandler)(id, state);
+				const states = await (Connection.isWeb()
+					? this.getStates(ids)
+					: this.getForeignStates(ids));
+				if (states) {
+					for (const [id, state] of Object.entries(states)) {
+						(cb as ioBroker.StateChangeHandler)(id, state);
+					}
+				}
 			} catch (e) {
-				console.error(`Cannot getState "${id}": ${e.message}`);
+				console.error(
+					`Cannot getState "${ids.join(", ")}": ${e.message}`,
+				);
 				return;
 			}
 		}
@@ -700,7 +737,7 @@ export class Connection<
 	 * @param cb The callback.
 	 */
 	async subscribeStateAsync(
-		id: string,
+		id: string | string[],
 		cb: ioBroker.StateChangeHandler,
 	): Promise<void> {
 		return this.subscribeState(id, cb);
@@ -708,25 +745,42 @@ export class Connection<
 
 	/**
 	 * Unsubscribes the given callback from changes of the given state.
-	 * @param id The ioBroker state ID.
+	 * @param id The ioBroker state ID or array of state IDs.
 	 * @param cb The callback.
 	 */
-	unsubscribeState(id: string, cb?: ioBroker.StateChangeHandler): void {
-		if (this.statesSubscribes[id]) {
-			const sub = this.statesSubscribes[id];
-			if (cb) {
-				const pos = sub.cbs.indexOf(cb);
-				pos !== -1 && sub.cbs.splice(pos, 1);
-			} else {
-				sub.cbs = [];
-			}
+	unsubscribeState(
+		id: string | string[],
+		cb?: ioBroker.StateChangeHandler,
+	): void {
+		let ids: string[];
+		if (!Array.isArray(id)) {
+			ids = [id];
+		} else {
+			ids = id;
+		}
+		const toUnsubscribe = [];
+		for (let i = 0; i < ids.length; i++) {
+			const _id = ids[i];
 
-			if (!sub.cbs || !sub.cbs.length) {
-				delete this.statesSubscribes[id];
-				if (this.connected && id !== this.ignoreState) {
-					this._socket.emit("unsubscribe", id);
+			if (this.statesSubscribes[_id]) {
+				const sub = this.statesSubscribes[_id];
+				if (cb) {
+					const pos = sub.cbs.indexOf(cb);
+					pos !== -1 && sub.cbs.splice(pos, 1);
+				} else {
+					sub.cbs = [];
+				}
+
+				if (!sub.cbs?.length) {
+					delete this.statesSubscribes[_id];
+					if (_id !== this.ignoreState) {
+						toUnsubscribe.push(_id);
+					}
 				}
 			}
+		}
+		if (this.connected && toUnsubscribe.length) {
+			this._socket.emit("unsubscribe", ids);
 		}
 	}
 
@@ -735,17 +789,34 @@ export class Connection<
 	 * @param id The ioBroker object ID.
 	 * @param cb The callback.
 	 */
-	subscribeObject(id: string, cb: ObjectChangeHandler): Promise<void> {
-		if (!this.objectsSubscribes[id]) {
-			this.objectsSubscribes[id] = {
-				reg: new RegExp(pattern2RegEx(id)),
-				cbs: [cb],
-			};
-			this.connected && this._socket.emit("subscribeObjects", id);
+	subscribeObject(
+		id: string | string[],
+		cb: ObjectChangeHandler,
+	): Promise<void> {
+		let ids: string[];
+		if (!Array.isArray(id)) {
+			ids = [id];
 		} else {
-			!this.objectsSubscribes[id].cbs.includes(cb) &&
-				this.objectsSubscribes[id].cbs.push(cb);
+			ids = id;
 		}
+		const toSubscribe: string[] = [];
+		for (let i = 0; i < ids.length; i++) {
+			const _id = ids[i];
+			if (!this.objectsSubscribes[_id]) {
+				this.objectsSubscribes[_id] = {
+					reg: new RegExp(pattern2RegEx(_id)),
+					cbs: [cb],
+				};
+			} else {
+				!this.objectsSubscribes[_id].cbs.includes(cb) &&
+					this.objectsSubscribes[_id].cbs.push(cb);
+			}
+		}
+
+		if (this.connected && toSubscribe.length) {
+			this._socket.emit("subscribeObjects", toSubscribe);
+		}
+
 		return Promise.resolve();
 	}
 
@@ -758,20 +829,35 @@ export class Connection<
 	 * @param id The ioBroker object ID.
 	 * @param cb The callback.
 	 */
-	unsubscribeObject(id: string, cb: ObjectChangeHandler): Promise<void> {
-		if (this.objectsSubscribes[id]) {
-			const sub = this.objectsSubscribes[id];
-			if (cb) {
-				const pos = sub.cbs.indexOf(cb);
-				pos !== -1 && sub.cbs.splice(pos, 1);
-			} else {
-				sub.cbs = [];
-			}
+	unsubscribeObject(
+		id: string | string[],
+		cb: ObjectChangeHandler,
+	): Promise<void> {
+		let ids: string[];
+		if (!Array.isArray(id)) {
+			ids = [id];
+		} else {
+			ids = id;
+		}
+		const toUnsubscribe: string[] = [];
+		for (let i = 0; i < ids.length; i++) {
+			const _id = ids[i];
+			if (this.objectsSubscribes[_id]) {
+				const sub = this.objectsSubscribes[_id];
+				if (cb) {
+					const pos = sub.cbs.indexOf(cb);
+					pos !== -1 && sub.cbs.splice(pos, 1);
+				} else {
+					sub.cbs = [];
+				}
 
-			if (this.connected && (!sub.cbs || !sub.cbs.length)) {
-				delete this.objectsSubscribes[id];
-				this.connected && this._socket.emit("unsubscribeObjects", id);
+				if (!sub.cbs?.length) {
+					delete this.objectsSubscribes[_id];
+				}
 			}
+		}
+		if (this.connected && toUnsubscribe.length) {
+			this._socket.emit("unsubscribeObjects", toUnsubscribe);
 		}
 		return Promise.resolve();
 	}
@@ -900,25 +986,39 @@ export class Connection<
 	 */
 	async subscribeFiles(
 		id: string,
-		filePattern: string,
+		filePattern: string | string[],
 		cb: FileChangeHandler,
 	): Promise<void> {
 		if (typeof cb !== "function") {
 			throw new Error("The state change handler must be a function!");
 		}
-		const key = `${id}$%$${filePattern}`;
 
-		if (!this.filesSubscribes[key]) {
-			this.filesSubscribes[key] = {
-				regId: new RegExp(pattern2RegEx(id)),
-				regFilePattern: new RegExp(pattern2RegEx(filePattern)),
-				cbs: [cb],
-			};
-			this.connected &&
-				this._socket.emit("subscribeFiles", id, filePattern);
+		let filePatterns: string[];
+		if (Array.isArray(filePattern)) {
+			filePatterns = filePattern;
 		} else {
-			!this.filesSubscribes[key].cbs.includes(cb) &&
-				this.filesSubscribes[key].cbs.push(cb);
+			filePatterns = [filePattern];
+		}
+
+		const toSubscribe = [];
+		for (let f = 0; f < filePatterns.length; f++) {
+			const pattern = filePatterns[f];
+			const key = `${id}$%$${pattern}`;
+
+			if (!this.filesSubscribes[key]) {
+				this.filesSubscribes[key] = {
+					regId: new RegExp(pattern2RegEx(id)),
+					regFilePattern: new RegExp(pattern2RegEx(pattern)),
+					cbs: [cb],
+				};
+				toSubscribe.push(pattern);
+			} else {
+				!this.filesSubscribes[key].cbs.includes(cb) &&
+					this.filesSubscribes[key].cbs.push(cb);
+			}
+		}
+		if (this.connected && toSubscribe.length) {
+			this._socket.emit("subscribeFiles", id, toSubscribe);
 		}
 	}
 
@@ -930,24 +1030,36 @@ export class Connection<
 	 */
 	unsubscribeFiles(
 		id: string,
-		filePattern: string,
+		filePattern: string | string[],
 		cb?: FileChangeHandler,
 	): void {
-		const key = `${id}$%$${filePattern}`;
-		if (this.filesSubscribes[key]) {
-			const sub = this.filesSubscribes[key];
-			if (cb) {
-				const pos = sub.cbs.indexOf(cb);
-				pos !== -1 && sub.cbs.splice(pos, 1);
-			} else {
-				sub.cbs = [];
-			}
+		let filePatterns: string[];
+		if (Array.isArray(filePattern)) {
+			filePatterns = filePattern;
+		} else {
+			filePatterns = [filePattern];
+		}
+		const toUnsubscribe = [];
+		for (let f = 0; f < filePatterns.length; f++) {
+			const pattern = filePatterns[f];
+			const key = `${id}$%$${pattern}`;
+			if (this.filesSubscribes[key]) {
+				const sub = this.filesSubscribes[key];
+				if (cb) {
+					const pos = sub.cbs.indexOf(cb);
+					pos !== -1 && sub.cbs.splice(pos, 1);
+				} else {
+					sub.cbs = [];
+				}
 
-			if (!sub.cbs || !sub.cbs.length) {
-				delete this.filesSubscribes[key];
-				this.connected &&
-					this._socket.emit("unsubscribeFiles", id, filePattern);
+				if (!sub.cbs || !sub.cbs.length) {
+					delete this.filesSubscribes[key];
+					toUnsubscribe.push(pattern);
+				}
 			}
+		}
+		if (this.connected && toUnsubscribe.length) {
+			this._socket.emit("unsubscribeFiles", id, toUnsubscribe);
 		}
 	}
 
@@ -1267,12 +1379,17 @@ export class Connection<
 	private _subscribe(isEnable: boolean) {
 		if (isEnable && !this.subscribed) {
 			this.subscribed = true;
-			if (this.props.autoSubscribes) {
-				this.props.autoSubscribes.forEach((id) =>
-					this._socket.emit("subscribeObjects", id),
+			if (this.props.autoSubscribes?.length) {
+				this._socket.emit(
+					"subscribeObjects",
+					this.props.autoSubscribes,
 				);
 			}
 			// re subscribe objects
+			const ids = Object.keys(this.objectsSubscribes);
+			if (ids.length) {
+				this._socket.emit("subscribeObjects", ids);
+			}
 			Object.keys(this.objectsSubscribes).forEach((id) =>
 				this._socket.emit("subscribeObjects", id),
 			);
@@ -1291,14 +1408,16 @@ export class Connection<
 		} else if (!isEnable && this.subscribed) {
 			this.subscribed = false;
 			// un-subscribe objects
-			if (this.props.autoSubscribes) {
-				this.props.autoSubscribes.forEach((id) =>
-					this._socket.emit("unsubscribeObjects", id),
+			if (this.props.autoSubscribes?.length) {
+				this._socket.emit(
+					"unsubscribeObjects",
+					this.props.autoSubscribes,
 				);
 			}
-			Object.keys(this.objectsSubscribes).forEach((id) =>
-				this._socket.emit("unsubscribeObjects", id),
-			);
+			const ids = Object.keys(this.objectsSubscribes);
+			if (ids.length) {
+				this._socket.emit("unsubscribeObjects", ids);
+			}
 			// un-subscribe logs
 			this.props.autoSubscribeLog &&
 				this._socket.emit("requireLog", false);

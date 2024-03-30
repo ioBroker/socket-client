@@ -43,8 +43,8 @@ export type ErrorAsString<T extends (...args: any[]) => void> = T extends (
 ) => void
 	? (err: string | null | undefined, ...args: U) => void
 	: T extends (err?: Error | null | undefined, ...args: infer U) => void
-	? (err: string | null | undefined, ...args: U) => void
-	: never;
+		? (err: string | null | undefined, ...args: U) => void
+		: never;
 
 export type GetBinaryStateCallback = (
 	err?: string | null,
@@ -157,18 +157,24 @@ export interface IOEmitEvents {
 
 	requireLog(enabled: boolean, callback?: ErrorCallback): void;
 
-	subscribe(pattern: string, callback?: ErrorCallback): void;
-	unsubscribe(pattern: string, callback?: ErrorCallback): void;
-	subscribeObjects(pattern: string, callback?: ErrorCallback): void;
-	unsubscribeObjects(pattern: string, callback?: ErrorCallback): void;
+	subscribe(pattern: string | string[], callback?: ErrorCallback): void;
+	unsubscribe(pattern: string | string[], callback?: ErrorCallback): void;
+	subscribeObjects(
+		pattern: string | string[],
+		callback?: ErrorCallback,
+	): void;
+	unsubscribeObjects(
+		pattern: string | string[],
+		callback?: ErrorCallback,
+	): void;
 	subscribeFiles(
 		id: string,
-		filePattern: string,
+		filePattern: string | string[],
 		callback?: ErrorCallback,
 	): void;
 	unsubscribeFiles(
 		id: string,
-		filePattern: string,
+		filePattern: string | string[],
 		callback?: ErrorCallback,
 	): void;
 
