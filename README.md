@@ -39,7 +39,7 @@ console.log(await adminConnection.getHosts());
 	### **WORK IN PROGRESS**
 -->
 ## Changelog
-### 2.4.1 (2024-04-01)
+### **WORK IN PROGRESS**
 * (bluefox) Do not inform about the established connection two times
 
 ### 2.4.0 (2024-03-30)
