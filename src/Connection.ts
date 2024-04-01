@@ -1,16 +1,16 @@
-import type { ConnectionProps } from "./ConnectionProps";
-import { createDeferredPromise } from "./DeferredPromise";
+import type { ConnectionProps } from "./ConnectionProps.js";
+import { createDeferredPromise } from "./DeferredPromise.js";
 import type {
 	EmitEventHandler,
 	ListenEventHandler,
 	SocketClient,
-} from "./SocketClient";
+} from "./SocketClient.js";
 import {
 	getObjectViewResultToArray,
 	normalizeHostId,
 	pattern2RegEx,
 	wait,
-} from "./tools";
+} from "./tools.js";
 
 /** Possible progress states. */
 export enum PROGRESS {
