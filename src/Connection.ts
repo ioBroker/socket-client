@@ -478,6 +478,9 @@ export class Connection<
 		this._waitForFirstConnectionPromise.resolve();
 	}
 
+	/**
+	 * Checks if running in ioBroker cloud
+	 */
 	static isCloud(): boolean {
 		if (
 			window.location.hostname.includes("amazonaws.com") ||
