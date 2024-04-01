@@ -39,6 +39,9 @@ console.log(await adminConnection.getHosts());
 	### **WORK IN PROGRESS**
 -->
 ## Changelog
+### **WORK IN PROGRESS**
+* (bluefox) Do not inform about the established connection two times
+
 ### 2.4.0 (2024-03-30)
 * (bluefox) Allowed subscribing and unsubscribing on arrays of IDs
 

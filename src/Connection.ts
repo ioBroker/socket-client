@@ -181,6 +181,8 @@ export class Connection<
 
 	public acl: any = null;
 	public isSecure: boolean = false;
+	// Do not inform about readiness two times
+	public onReadyDone: boolean = false;
 
 	private readonly onConnectionHandlers: ((connected: boolean) => void)[] =
 		[];
@@ -313,6 +315,7 @@ export class Connection<
 		});
 
 		this._socket.on("connect", (noTimeout) => {
+			this.onReadyDone = false;
 			// If the user is not admin, it takes some time to install the handlers, because all rights must be checked
 			if (noTimeout !== true) {
 				this.connected = true;
@@ -355,6 +358,7 @@ export class Connection<
 		});
 
 		this._socket.on("reconnect", () => {
+			this.onReadyDone = false;
 			this.props.onProgress?.(PROGRESS.READY);
 			this.connected = true;
 
@@ -367,6 +371,7 @@ export class Connection<
 		});
 
 		this._socket.on("disconnect", () => {
+			this.onReadyDone = false;
 			this.connected = false;
 			this.subscribed = false;
 			this.props.onProgress?.(PROGRESS.CONNECTING);
@@ -473,6 +478,22 @@ export class Connection<
 		this._waitForFirstConnectionPromise.resolve();
 	}
 
+	static isCloud(): boolean {
+		if (
+			window.location.hostname.includes("amazonaws.com") ||
+			window.location.hostname.includes("iobroker.in")
+		) {
+			return true;
+		}
+		if (typeof window.socketUrl === "undefined") {
+			return false;
+		}
+		return (
+			window.socketUrl.includes("iobroker.in") ||
+			window.socketUrl.includes("amazonaws")
+		);
+	}
+
 	/**
 	 * Checks if the socket is connected.
 	 * @returns true if connected.
@@ -513,8 +534,11 @@ export class Connection<
 		const maxAttempts = 10;
 		for (let i = 1; i <= maxAttempts; i++) {
 			this.doLoadData();
-			if (this.loaded) return;
-			await wait(1000);
+			if (this.loaded) {
+				return;
+			}
+			// give more time via remote connection
+			await wait(Connection.isCloud() ? 5000 : 1000);
 		}
 	}
 
@@ -522,7 +546,9 @@ export class Connection<
 	 * Called after the socket is connected. Loads the necessary data.
 	 */
 	private async doLoadData() {
-		if (this.loaded) return;
+		if (this.loaded) {
+			return;
+		}
 
 		// Load ACL if not disabled
 		if (!this.props.doNotLoadACL) {
@@ -584,7 +610,10 @@ export class Connection<
 		}
 
 		this.props.onProgress?.(PROGRESS.READY);
-		this.props.onReady?.(this.objects);
+		if (!this.onReadyDone) {
+			this.onReadyDone = true;
+			this.props.onReady?.(this.objects);
+		}
 	}
 
 	/**

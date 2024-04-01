@@ -1158,7 +1158,9 @@ export class AdminConnection extends Connection<
 			commandTimeout: cmdTimeout,
 			executor: (resolve, reject, timeout) => {
 				this._socket.emit("getCompactInstalled", host, (data) => {
-					if (timeout.elapsed) return;
+					if (timeout.elapsed) {
+						return;
+					}
 					timeout.clearTimeout();
 
 					if (data === ERRORS.PERMISSION_ERROR) {
@@ -1203,7 +1205,9 @@ export class AdminConnection extends Connection<
 			commandTimeout: timeoutMs,
 			executor: (resolve, reject, timeout) => {
 				this._socket.emit("getCompactRepository", host, (data) => {
-					if (timeout.elapsed) return;
+					if (timeout.elapsed) {
+						return;
+					}
 					timeout.clearTimeout();
 
 					if (data === ERRORS.PERMISSION_ERROR) {
