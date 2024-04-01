@@ -39,8 +39,8 @@ console.log(await adminConnection.getHosts());
 	### **WORK IN PROGRESS**
 -->
 ## Changelog
-### **WORK IN PROGRESS**
-* (bluefox) Corrected types 
+### 2.4.3 (2024-04-01)
+* (bluefox) Corrected types
 
 ### 2.4.0 (2024-03-30)
 * (bluefox) Allowed subscribing and unsubscribing on arrays of IDs
