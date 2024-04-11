@@ -81,7 +81,7 @@ jobs:
     #   run: npx gulp build
 
     - name: Install packages
-      run: npm ci
+      run: npm ci -f
 
     - name: Publish package to npm
       run: |
