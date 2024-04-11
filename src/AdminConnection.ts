@@ -398,7 +398,7 @@ export class AdminConnection extends Connection<
 				const subGroups = groups.filter((g) =>
 					g._id.startsWith(`${id}.`),
 				);
-				// First do this for all sub groups
+				// First, do this for all sub-groups
 				for (const group of subGroups) {
 					const oldGroupId = group._id;
 					const newGroupId = (newId +
@@ -407,7 +407,7 @@ export class AdminConnection extends Connection<
 						)) as ioBroker.ObjectIDs.Group;
 					group._id = newGroupId;
 
-					// Create new object, then delete the old one if it worked
+					// Create a new object, then delete the old one if it worked
 					await this.setObject(newGroupId, group);
 					await this.delObject(oldGroupId);
 				}
@@ -570,7 +570,9 @@ export class AdminConnection extends Connection<
 					"getInstalled",
 					null,
 					(data) => {
-						if (timeout.elapsed) return;
+						if (timeout.elapsed) {
+							return;
+						}
 						timeout.clearTimeout();
 						if (data === ERRORS.PERMISSION_ERROR) {
 							reject('May not read "getInstalled"');
@@ -1033,26 +1035,32 @@ export class AdminConnection extends Connection<
 	 * @param update Force update.
 	 */
 	getAdapterInstances(
-		adapter?: string,
+		adapter?: string | boolean,
 		update?: boolean,
 	): Promise<ioBroker.InstanceObject[]> {
+		let adapterStr: string;
 		if (typeof adapter === "boolean") {
 			update = adapter;
-			adapter = "";
+			adapterStr = "";
+		} else {
+			adapterStr = adapter || "";
 		}
-		adapter = adapter ?? "";
 
 		return this.request({
-			cacheKey: `instances_${adapter}`,
+			cacheKey: `instances_${adapterStr}`,
 			forceUpdate: update,
 			executor: (resolve, reject, timeout) => {
 				this._socket.emit(
 					"getAdapterInstances",
-					adapter,
+					adapterStr,
 					(err, instances) => {
-						if (timeout.elapsed) return;
+						if (timeout.elapsed) {
+							return;
+						}
 						timeout.clearTimeout();
-						if (err) reject(err);
+						if (err) {
+							reject(err);
+						}
 						resolve(instances!);
 					},
 				);
@@ -1070,20 +1078,22 @@ export class AdminConnection extends Connection<
 	 * @param update Force update.
 	 */
 	getAdapters(
-		adapter?: string,
+		adapter?: string | boolean,
 		update?: boolean,
 	): Promise<ioBroker.AdapterObject[]> {
+		let adapterStr: string;
 		if (typeof adapter === "boolean") {
 			update = adapter;
-			adapter = "";
+			adapterStr = "";
+		} else {
+			adapterStr = adapter || "";
 		}
-		adapter = adapter ?? "";
 
 		return this.request({
-			cacheKey: `adapter_${adapter}`,
+			cacheKey: `adapter_${adapterStr}`,
 			forceUpdate: update,
 			executor: (resolve, reject, timeout) => {
-				this._socket.emit("getAdapters", adapter, (err, adapters) => {
+				this._socket.emit("getAdapters", adapterStr, (err, adapters) => {
 					if (timeout.elapsed) return;
 					timeout.clearTimeout();
 					if (err) reject(err);
@@ -1093,7 +1103,7 @@ export class AdminConnection extends Connection<
 		});
 	}
 
-	// returns very optimized information for adapters to minimize connection load
+	// returns very optimized information for adapters to minimize a connection load
 	getCompactAdapters(
 		update?: boolean,
 	): Promise<Record<string, CompactAdapterInfo>> {
@@ -1118,7 +1128,7 @@ export class AdminConnection extends Connection<
 		this.resetCache(`compactAdapters`);
 	}
 
-	// returns very optimized information for adapters to minimize connection load
+	// returns very optimized information for adapters to minimize a connection load
 	getCompactInstances(
 		update?: boolean,
 	): Promise<Record<string, CompactInstanceInfo>> {

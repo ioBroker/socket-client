@@ -632,7 +632,9 @@ export class Connection<
 
 	/**
 	 * Subscribe to the changes of the given state.
-	 * @param id The ioBroker state ID or array of state IDs..
+	 * In compare to the subscribeObject method,
+	 * this method calls the handler with the current state value immediately after subscribing.
+	 * @param id The ioBroker state ID or array of state IDs.
 	 * @param binary Set to true if the given state is binary and requires Base64 decoding.
 	 * @param cb The callback.
 	 */
@@ -686,7 +688,7 @@ export class Connection<
 		if (typeof cb !== "function") {
 			throw new Error("The state change handler must be a function!");
 		}
-		const toSubscribe = [];
+		const toSubscribe: string[] = [];
 		for (let i = 0; i < ids.length; i++) {
 			const _id = ids[i];
 			if (!this.statesSubscribes[_id]) {
@@ -694,7 +696,7 @@ export class Connection<
 					reg: new RegExp(pattern2RegEx(_id)),
 					cbs: [cb],
 				};
-				if (this.connected && id !== this.ignoreState) {
+				if (id !== this.ignoreState) {
 					toSubscribe.push(_id);
 				}
 			} else {
@@ -707,7 +709,7 @@ export class Connection<
 			return;
 		}
 
-		if (toSubscribe.length && this.connected) {
+		if (toSubscribe.length) {
 			// no answer from server required
 			this._socket.emit("subscribe", toSubscribe);
 		}
@@ -818,6 +820,10 @@ export class Connection<
 
 	/**
 	 * Subscribe to changes of the given object.
+	 * In compare to the subscribeState method,
+	 * this method does not call the handler with the current value immediately after subscribe.
+	 *
+	 * the current value.
 	 * @param id The ioBroker object ID.
 	 * @param cb The callback.
 	 */
@@ -831,6 +837,11 @@ export class Connection<
 		} else {
 			ids = id;
 		}
+
+		if (typeof cb !== "function") {
+			throw new Error("The object change handler must be a function!");
+		}
+
 		const toSubscribe: string[] = [];
 		for (let i = 0; i < ids.length; i++) {
 			const _id = ids[i];
@@ -839,9 +850,10 @@ export class Connection<
 					reg: new RegExp(pattern2RegEx(_id)),
 					cbs: [cb],
 				};
+				toSubscribe.push(_id);
 			} else {
 				!this.objectsSubscribes[_id].cbs.includes(cb) &&
-					this.objectsSubscribes[_id].cbs.push(cb);
+				this.objectsSubscribes[_id].cbs.push(cb);
 			}
 		}
 
@@ -863,7 +875,7 @@ export class Connection<
 	 */
 	unsubscribeObject(
 		id: string | string[],
-		cb: ObjectChangeHandler,
+		cb?: ObjectChangeHandler,
 	): Promise<void> {
 		let ids: string[];
 		if (!Array.isArray(id)) {
@@ -885,6 +897,7 @@ export class Connection<
 
 				if (!sub.cbs?.length) {
 					delete this.objectsSubscribes[_id];
+					toUnsubscribe.push(_id);
 				}
 			}
 		}
@@ -1084,7 +1097,7 @@ export class Connection<
 					sub.cbs = [];
 				}
 
-				if (!sub.cbs || !sub.cbs.length) {
+				if (!sub.cbs?.length) {
 					delete this.filesSubscribes[key];
 					toUnsubscribe.push(pattern);
 				}
@@ -1788,7 +1801,6 @@ export class Connection<
 	 * @param start The start ID.
 	 * @param end The end ID.
 	 * @param type The type of object.
-	 * @param [design=system] design - 'system' or other designs like `custom`, but it must exist an object `_design/custom`. Too 99,9% use `system` (Exception for example, 'charts').
 	 */
 	getObjectView<T extends ioBroker.ObjectType>(
 		start: string,
