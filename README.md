@@ -39,7 +39,7 @@ console.log(await adminConnection.getHosts());
 	### **WORK IN PROGRESS**
 -->
 ## Changelog
-### **WORK IN PROGRESS**
+### 2.4.5 (2024-04-11)
 * (bluefox) Corrected the object subscribing
 
 ### 2.4.3 (2024-04-01)
