@@ -853,7 +853,7 @@ export class Connection<
 				toSubscribe.push(_id);
 			} else {
 				!this.objectsSubscribes[_id].cbs.includes(cb) &&
-				this.objectsSubscribes[_id].cbs.push(cb);
+					this.objectsSubscribes[_id].cbs.push(cb);
 			}
 		}
 
