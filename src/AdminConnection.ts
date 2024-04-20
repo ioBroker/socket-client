@@ -22,6 +22,33 @@ interface Certificate {
 	type: "public" | "private" | "chained";
 }
 
+// taken from "@iobroker/js-controller-common-db/build/lib/common/notificationHandler"
+export type MultilingualObject = Exclude<ioBroker.StringOrTranslated, string>;
+export type Severity = "info" | "notify" | "alert";
+export interface NotificationMessageObject {
+	message: string;
+	ts: number;
+}
+
+export interface FilteredNotificationInformation {
+	[scope: string]: {
+		description: MultilingualObject;
+		name: MultilingualObject;
+		categories: {
+			[category: string]: {
+				description: MultilingualObject;
+				name: MultilingualObject;
+				severity: Severity;
+				instances: {
+					[instance: string]: {
+						messages: NotificationMessageObject[];
+					};
+				};
+			};
+		};
+	};
+}
+
 function parseCertificate(name: string, cert: string): Certificate | void {
 	if (!cert) return;
 
@@ -454,7 +481,9 @@ export class AdminConnection extends Connection<
 					"getHostInfo",
 					null,
 					(data) => {
-						if (timeout.elapsed) return;
+						if (timeout.elapsed) {
+							return;
+						}
 						timeout.clearTimeout();
 						if (data === ERRORS.PERMISSION_ERROR) {
 							reject('May not read "getHostInfo"');
@@ -492,7 +521,9 @@ export class AdminConnection extends Connection<
 					"getHostInfoShort",
 					null,
 					(data) => {
-						if (timeout.elapsed) return;
+						if (timeout.elapsed) {
+							return;
+						}
 						timeout.clearTimeout();
 						if (data === ERRORS.PERMISSION_ERROR) {
 							reject('May not read "getHostInfoShort"');
@@ -531,7 +562,9 @@ export class AdminConnection extends Connection<
 					"getRepository",
 					args,
 					(data) => {
-						if (timeout.elapsed) return;
+						if (timeout.elapsed) {
+							return;
+						}
 						timeout.clearTimeout();
 						if (data === ERRORS.PERMISSION_ERROR) {
 							reject('May not read "getRepository"');
@@ -606,7 +639,9 @@ export class AdminConnection extends Connection<
 				host = normalizeHostId(host);
 
 				this._socket.emit("cmdExec", host, cmdId, cmd, (err) => {
-					if (timeout.elapsed) return;
+					if (timeout.elapsed) {
+							return;
+						}
 					timeout.clearTimeout();
 
 					if (err) reject(err);
@@ -633,7 +668,9 @@ export class AdminConnection extends Connection<
 					"readBaseSettings",
 					null,
 					(data) => {
-						if (timeout.elapsed) return;
+						if (timeout.elapsed) {
+							return;
+						}
 						timeout.clearTimeout();
 
 						if (data === ERRORS.PERMISSION_ERROR) {
@@ -667,7 +704,9 @@ export class AdminConnection extends Connection<
 					"writeBaseSettings",
 					config,
 					(data) => {
-						if (timeout.elapsed) return;
+						if (timeout.elapsed) {
+							return;
+						}
 						timeout.clearTimeout();
 
 						if (data === ERRORS.PERMISSION_ERROR) {
@@ -699,7 +738,9 @@ export class AdminConnection extends Connection<
 					"restartController",
 					null,
 					(error) => {
-						if (timeout.elapsed) return;
+						if (timeout.elapsed) {
+							return;
+						}
 						timeout.clearTimeout();
 						if (error) reject(error);
 						resolve(true);
@@ -726,7 +767,9 @@ export class AdminConnection extends Connection<
 					"getDiagData",
 					typeOfDiag,
 					(result) => {
-						if (timeout.elapsed) return;
+						if (timeout.elapsed) {
+							return;
+						}
 						timeout.clearTimeout();
 						resolve(result);
 					},
@@ -744,7 +787,9 @@ export class AdminConnection extends Connection<
 		return this.request({
 			executor: (resolve, reject, timeout) => {
 				this._socket.emit("changePassword", user, password, (err) => {
-					if (timeout.elapsed) return;
+					if (timeout.elapsed) {
+							return;
+						}
 					timeout.clearTimeout();
 					if (err) reject(err);
 					resolve();
@@ -786,7 +831,9 @@ export class AdminConnection extends Connection<
 			forceUpdate: update,
 			executor: (resolve, reject, timeout) => {
 				this._socket.emit("getHostByIp", ipOrHostName, (ip, host) => {
-					if (timeout.elapsed) return;
+					if (timeout.elapsed) {
+							return;
+						}
 					timeout.clearTimeout();
 
 					const { IPs4, IPs6 } = parseIPAddresses(host);
@@ -804,7 +851,9 @@ export class AdminConnection extends Connection<
 		return this.request({
 			executor: (resolve, reject, timeout) => {
 				this._socket.emit("encrypt", plaintext, (err, ciphertext) => {
-					if (timeout.elapsed) return;
+					if (timeout.elapsed) {
+							return;
+						}
 					timeout.clearTimeout();
 					if (err) reject(err);
 					resolve(ciphertext!);
@@ -821,7 +870,9 @@ export class AdminConnection extends Connection<
 		return this.request({
 			executor: (resolve, reject, timeout) => {
 				this._socket.emit("decrypt", ciphertext, (err, plaintext) => {
-					if (timeout.elapsed) return;
+					if (timeout.elapsed) {
+							return;
+						}
 					timeout.clearTimeout();
 					if (err) reject(err);
 					resolve(plaintext!);
@@ -849,7 +900,9 @@ export class AdminConnection extends Connection<
 					path,
 					options,
 					(err, processed) => {
-						if (timeout.elapsed) return;
+						if (timeout.elapsed) {
+							return;
+						}
 						timeout.clearTimeout();
 						if (err) reject(err);
 						resolve(processed!);
@@ -878,7 +931,9 @@ export class AdminConnection extends Connection<
 					filename,
 					options,
 					(err, processed) => {
-						if (timeout.elapsed) return;
+						if (timeout.elapsed) {
+							return;
+						}
 						timeout.clearTimeout();
 						if (err) reject(err);
 						resolve(processed!);
@@ -896,7 +951,7 @@ export class AdminConnection extends Connection<
 	getNotifications(
 		host: string,
 		category?: string,
-	): Promise<void | ioBroker.Notification[]> {
+	): Promise<void | { result: FilteredNotificationInformation }> {
 		return this.request({
 			executor: (resolve, reject, timeout) => {
 				this._socket.emit(
@@ -905,9 +960,11 @@ export class AdminConnection extends Connection<
 					"getNotifications",
 					{ category },
 					(notifications) => {
-						if (timeout.elapsed) return;
+						if (timeout.elapsed) {
+							return;
+						}
 						timeout.clearTimeout();
-						resolve(notifications as ioBroker.Notification[]);
+						resolve(notifications as { result: FilteredNotificationInformation });
 					},
 				);
 			},
@@ -928,7 +985,9 @@ export class AdminConnection extends Connection<
 					"clearNotifications",
 					{ category },
 					(notifications) => {
-						if (timeout.elapsed) return;
+						if (timeout.elapsed) {
+							return;
+						}
 						timeout.clearTimeout();
 						resolve(notifications);
 					},
@@ -944,7 +1003,9 @@ export class AdminConnection extends Connection<
 		return this.request({
 			executor: (resolve, reject, timeout) => {
 				this._socket.emit("getIsEasyModeStrict", (err, isStrict) => {
-					if (timeout.elapsed) return;
+					if (timeout.elapsed) {
+							return;
+						}
 					timeout.clearTimeout();
 					if (err) reject(err);
 					resolve(!!isStrict);
@@ -960,7 +1021,9 @@ export class AdminConnection extends Connection<
 		return this.request({
 			executor: (resolve, reject, timeout) => {
 				this._socket.emit("getEasyMode", (err, config) => {
-					if (timeout.elapsed) return;
+					if (timeout.elapsed) {
+							return;
+						}
 					timeout.clearTimeout();
 					if (err) reject(err);
 					resolve(config);
@@ -976,7 +1039,9 @@ export class AdminConnection extends Connection<
 		return this.request({
 			executor: (resolve, reject, timeout) => {
 				this._socket.emit("getRatings", !!update, (err, ratings) => {
-					if (timeout.elapsed) return;
+					if (timeout.elapsed) {
+							return;
+						}
 					timeout.clearTimeout();
 					if (err) reject(err);
 					resolve(ratings);
@@ -998,7 +1063,9 @@ export class AdminConnection extends Connection<
 					const res = await fetch("./session", {
 						signal: controller.signal,
 					});
-					if (timeout.elapsed) return;
+					if (timeout.elapsed) {
+							return;
+						}
 					timeout.clearTimeout();
 					resolve(res.json());
 				} catch (e) {
@@ -1016,7 +1083,9 @@ export class AdminConnection extends Connection<
 			cacheKey: "currentInstance",
 			executor: (resolve, reject, timeout) => {
 				this._socket.emit("getCurrentInstance", (err, namespace) => {
-					if (timeout.elapsed) return;
+					if (timeout.elapsed) {
+							return;
+						}
 					timeout.clearTimeout();
 					if (err) reject(err);
 					resolve(namespace!);
@@ -1094,7 +1163,9 @@ export class AdminConnection extends Connection<
 			forceUpdate: update,
 			executor: (resolve, reject, timeout) => {
 				this._socket.emit("getAdapters", adapterStr, (err, adapters) => {
-					if (timeout.elapsed) return;
+					if (timeout.elapsed) {
+							return;
+						}
 					timeout.clearTimeout();
 					if (err) reject(err);
 					resolve(adapters!);
@@ -1112,7 +1183,9 @@ export class AdminConnection extends Connection<
 			forceUpdate: update,
 			executor: (resolve, reject, timeout) => {
 				this._socket.emit("getCompactAdapters", (err, adapters) => {
-					if (timeout.elapsed) return;
+					if (timeout.elapsed) {
+							return;
+						}
 					timeout.clearTimeout();
 					if (err) reject(err);
 					resolve(adapters!);
@@ -1137,7 +1210,9 @@ export class AdminConnection extends Connection<
 			forceUpdate: update,
 			executor: (resolve, reject, timeout) => {
 				this._socket.emit("getCompactInstances", (err, instances) => {
-					if (timeout.elapsed) return;
+					if (timeout.elapsed) {
+							return;
+						}
 					timeout.clearTimeout();
 					if (err) reject(err);
 					resolve(instances!);
@@ -1253,7 +1328,9 @@ export class AdminConnection extends Connection<
 			forceUpdate: update,
 			executor: (resolve, reject, timeout) => {
 				this._socket.emit("getCompactHosts", (err, systemConfig) => {
-					if (timeout.elapsed) return;
+					if (timeout.elapsed) {
+							return;
+						}
 					timeout.clearTimeout();
 					if (err) reject(err);
 					resolve(systemConfig!);
@@ -1275,7 +1352,9 @@ export class AdminConnection extends Connection<
 				this._socket.emit(
 					"getCompactSystemRepositories",
 					(err, systemRepositories) => {
-						if (timeout.elapsed) return;
+						if (timeout.elapsed) {
+							return;
+						}
 						timeout.clearTimeout();
 						if (err) reject(err);
 						resolve(systemRepositories!);
