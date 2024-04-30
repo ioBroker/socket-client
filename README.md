@@ -39,7 +39,7 @@ console.log(await adminConnection.getHosts());
 	### **WORK IN PROGRESS**
 -->
 ## Changelog
-### **WORK IN PROGRESS**
+### 2.4.8 (2024-04-30)
 * (bluefox) Allowed calling getObjectView, getObjectViewSystem and getObjectViewCustom without options
 
 ### 2.4.7 (2024-04-20)
