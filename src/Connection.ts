@@ -1803,8 +1803,8 @@ export class Connection<
 	 * @param type The type of object.
 	 */
 	getObjectView<T extends ioBroker.ObjectType>(
-		start: string,
-		end: string,
+		start: string | undefined,
+		end: string | undefined,
 		type: T,
 	): Promise<Record<string, ioBroker.AnyObject & { type: T }>> {
 		return this.getObjectViewCustom("system", type, start, end);
@@ -1818,7 +1818,7 @@ export class Connection<
 	 */
 	getObjectViewSystem<T extends ioBroker.ObjectType>(
 		type: T,
-		start: string,
+		start?: string,
 		end?: string,
 	): Promise<Record<string, ioBroker.AnyObject & { type: T }>> {
 		return this.getObjectViewCustom("system", type, start, end);
@@ -1834,7 +1834,7 @@ export class Connection<
 	getObjectViewCustom<T extends ioBroker.ObjectType>(
 		design: string,
 		type: T,
-		start: string,
+		start?: string,
 		end?: string,
 	): Promise<Record<string, ioBroker.AnyObject & { type: T }>> {
 		return this.request({
