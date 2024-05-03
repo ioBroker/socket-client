@@ -1327,13 +1327,15 @@ export class AdminConnection extends Connection<
 			cacheKey: "hostsCompact",
 			forceUpdate: update,
 			executor: (resolve, reject, timeout) => {
-				this._socket.emit("getCompactHosts", (err, systemConfig) => {
+				this._socket.emit("getCompactHosts", (err, compactHostsInfo) => {
 					if (timeout.elapsed) {
-							return;
-						}
+						return;
+					}
 					timeout.clearTimeout();
-					if (err) reject(err);
-					resolve(systemConfig!);
+					if (err) {
+						reject(err);
+					}
+					resolve(compactHostsInfo!);
 				});
 			},
 		});

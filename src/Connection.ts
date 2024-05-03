@@ -68,9 +68,6 @@ export interface RequestOptions<T> {
 	) => void | Promise<void>;
 }
 
-export type SystemConfig = NonNullable<
-	ioBroker.ObjectIdToObjectType<"system.config">
->;
 export type BinaryStateChangeHandler = (
 	id: string,
 	base64: string | null,
@@ -209,9 +206,9 @@ export class Connection<
 
 	protected _authTimer: any;
 
-	protected _systemConfig?: SystemConfig;
+	protected _systemConfig?: ioBroker.SystemConfigObject;
 	/** The "system.config" object */
-	public get systemConfig(): Readonly<SystemConfig> | undefined {
+	public get systemConfig(): Readonly<ioBroker.SystemConfigObject> | undefined {
 		return this._systemConfig;
 	}
 
@@ -581,20 +578,22 @@ export class Connection<
 		}
 
 		// Detect the system language
-		this.systemLang = this._systemConfig.common?.language;
-		if (!this.systemLang) {
-			this.systemLang = (window.navigator.userLanguage ||
-				window.navigator.language) as any;
-			// Browsers may report languages like "de-DE", "en-US", etc.
-			// ioBroker expects "de", "en", ...
-			if (/^(en|de|ru|pt|nl|fr|it|es|pl|uk)-?/.test(this.systemLang)) {
-				this.systemLang = this.systemLang.substr(0, 2) as any;
-			} else if (
-				!/^(en|de|ru|pt|nl|fr|it|es|pl|uk|zh-cn)$/.test(this.systemLang)
-			) {
-				this.systemLang = "en";
+		if (this._systemConfig) {
+			this.systemLang = this._systemConfig.common?.language;
+			if (!this.systemLang) {
+				this.systemLang = (window.navigator.userLanguage ||
+					window.navigator.language) as any;
+				// Browsers may report languages like "de-DE", "en-US", etc.
+				// ioBroker expects "de", "en", ...
+				if (/^(en|de|ru|pt|nl|fr|it|es|pl|uk)-?/.test(this.systemLang)) {
+					this.systemLang = this.systemLang.substr(0, 2) as any;
+				} else if (
+					!/^(en|de|ru|pt|nl|fr|it|es|pl|uk|zh-cn)$/.test(this.systemLang)
+				) {
+					this.systemLang = "en";
+				}
+				this._systemConfig.common.language = this.systemLang;
 			}
-			this._systemConfig.common.language = this.systemLang;
 		}
 		this.props.onLanguage?.(this.systemLang);
 
@@ -2155,7 +2154,7 @@ export class Connection<
 	 * Gets the system configuration.
 	 * @param update Force update.
 	 */
-	getSystemConfig(update?: boolean): Promise<SystemConfig> {
+	getSystemConfig(update?: boolean): Promise<ioBroker.SystemConfigObject> {
 		return this.request({
 			cacheKey: "systemConfig",
 			forceUpdate: update,
@@ -2172,8 +2171,8 @@ export class Connection<
 		});
 	}
 
-	// returns very optimized information for adapters to minimize connection load
-	getCompactSystemConfig(update?: boolean): Promise<SystemConfig> {
+	// returns very optimized information for adapters to minimize a connection load
+	getCompactSystemConfig(update?: boolean): Promise<ioBroker.SystemConfigObject> {
 		return this.request({
 			cacheKey: "systemConfigCommon",
 			forceUpdate: update,
@@ -2258,7 +2257,7 @@ export class Connection<
 	 * @param obj
 	 */
 	setSystemConfig(
-		obj: ioBroker.SettableObjectWorker<ioBroker.OtherObject>,
+		obj: ioBroker.SystemConfigObject,
 	): Promise<void> {
 		return this.setObject("system.config", obj);
 	}
