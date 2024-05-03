@@ -39,7 +39,7 @@ console.log(await adminConnection.getHosts());
 	### **WORK IN PROGRESS**
 -->
 ## Changelog
-### **WORK IN PROGRESS**
+### 2.4.9 (2024-05-03)
 * (bluefox) Replaced the SystemConfig type with ioBroker.SystemConfigObject
 
 ### 2.4.8 (2024-04-30)
