@@ -49,6 +49,7 @@
     "url": "https://github.com/ioBroker/socket-client/issues"
   },
   "files": [
+    "src/",
     "dist/",
     "package-lock.json",
     "LICENSE"

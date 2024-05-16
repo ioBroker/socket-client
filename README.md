@@ -39,6 +39,9 @@ console.log(await adminConnection.getHosts());
 	### **WORK IN PROGRESS**
 -->
 ## Changelog
+### **WORK IN PROGRESS**
+* (bluefox) Added source files for typescript
+
 ### 2.4.9 (2024-05-03)
 * (bluefox) Replaced the SystemConfig type with ioBroker.SystemConfigObject
 
