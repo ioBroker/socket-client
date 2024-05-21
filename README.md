@@ -39,7 +39,7 @@ console.log(await adminConnection.getHosts());
 	### **WORK IN PROGRESS**
 -->
 ## Changelog
-### **WORK IN PROGRESS**
+### 2.4.11 (2024-05-21)
 * (bluefox) Better typing for subscribeOnInstance
 
 ### 2.4.10 (2024-05-16)
