@@ -2637,7 +2637,7 @@ export class Connection<
 		messageType: string,
 		data: any | null,
 		callback: InstanceMessageCallback,
-	): Promise<string | null> {
+	): Promise<{ error?: string; accepted?: boolean; heartbeat?: number } | null> {
 		return this.request({
 			commandTimeout: false,
 			executor: (resolve, reject) => {

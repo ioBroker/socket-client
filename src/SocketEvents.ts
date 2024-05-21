@@ -29,8 +29,8 @@ export type AuthenticateCallback = (isOk: boolean, isSecure: boolean) => void;
 export type AuthEnabledCallback = (isSecure: boolean, user: string) => void;
 export type GetUserPermissionsCallback = (err?: string, acl?: any) => void;
 export type SubscribeOnInstanceCallback = (
-	err: string | null,
-	result?: any,
+	error: string | null,
+	result?: { error?: string; accepted?: boolean; heartbeat?: number }
 ) => void;
 export type UnsubscribeFromInstanceCallback = (
 	err: string | null,
