@@ -39,7 +39,7 @@ console.log(await adminConnection.getHosts());
 	### **WORK IN PROGRESS**
 -->
 ## Changelog
-### **WORK IN PROGRESS**
+### 2.4.12 (2024-05-23)
 * (bluefox) Added admin functions: upgradeAdapterWithWebserver, upgradeController, upgradeOsPackages, updateLicenses
 
 ### 2.4.11 (2024-05-21)
