@@ -275,16 +275,7 @@ export class AdminConnection extends Connection<
 		login: string,
 		/** password for ioBroker.net */
 		password: string,
-	): Promise<{
-		id: string;
-		product: string;
-		time: number;
-		uuid: string;
-		validTill: string;
-		version: string;
-		usedBy: string;
-		invoice: string;
-	}[] | undefined> {
+	): Promise<License[] | undefined> {
 		return this.request({
 			commandTimeout: false,
 			executor: (resolve, reject) => {
