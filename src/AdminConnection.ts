@@ -9,6 +9,7 @@ import type {
 	CompactInstanceInfo,
 	CompactRepository,
 	CompactSystemRepository,
+	License,
 	LogFile,
 } from "./SocketEvents.js";
 import {
@@ -210,6 +211,127 @@ export class AdminConnection extends Connection<
 	}
 
 	/**
+	 * Upgrade adapter with webserver.
+	 */
+	upgradeAdapterWithWebserver(
+		host: string,
+		options: {
+			version: string;
+			adapterName: string;
+			port: number;
+			useHttps?: boolean;
+			certPublicName?: string;
+			certPrivateName?: string;
+		},
+	): Promise<{ result: boolean }> {
+		return this.request({
+			commandTimeout: false,
+			executor: (resolve) => {
+				this._socket.emit(
+					"sendToHost",
+					host,
+					"upgradeAdapterWithWebserver",
+					options as any,
+					(result: unknown) => {
+						resolve(result as { result: boolean });
+					},
+				);
+			},
+		});
+	}
+
+	/**
+	 * Upgrade controller
+	 */
+	upgradeController(
+		host: string,
+		version: string,
+		adminInstance: string,
+	): Promise<{ result: string; error?: string }> {
+		return this.request({
+			commandTimeout: false,
+			executor: (resolve) => {
+				this._socket.emit(
+					"sendToHost",
+					host,
+					"upgradeController",
+					{
+						version,
+						adminInstance,
+					} as any,
+					(result: unknown) => {
+						resolve(result as { result: string; error?: string });
+					},
+				);
+			},
+		});
+	}
+
+	/**
+	 * Read licenses from ioBroker.net anew
+	 */
+	updateLicenses(
+		/** login for ioBroker.net */
+		login: string,
+		/** password for ioBroker.net */
+		password: string,
+	): Promise<{
+		id: string;
+		product: string;
+		time: number;
+		uuid: string;
+		validTill: string;
+		version: string;
+		usedBy: string;
+		invoice: string;
+	}[] | undefined> {
+		return this.request({
+			commandTimeout: false,
+			executor: (resolve, reject) => {
+				this._socket.emit(
+					"updateLicenses",
+					login,
+					password,
+					(err, licenses?: License[]) => {
+						if (err) {
+							reject(err);
+						} else {
+							resolve(licenses);
+						}
+					},
+				);
+			},
+		});
+	}
+
+	/**
+	 * Upgrade controller
+	 */
+	upgradeOsPackages(
+		host: string,
+		packages: { name: string; version?: string }[],
+		restart?: boolean,
+	): Promise<{ success: boolean; error?: string }> {
+		return this.request({
+			commandTimeout: false,
+			executor: (resolve) => {
+				this._socket.emit(
+					"sendToHost",
+					host,
+					"upgradeOsPackages",
+					{
+						packages,
+						restart: !!restart,
+					} as any,
+					(result: unknown) => {
+						resolve(result as { success: boolean; error?: string });
+					},
+				);
+			},
+		});
+	}
+
+	/**
 	 * Get the log files (only for admin connection).
 	 */
 	getLogsFiles(host: string): Promise<LogFile[]> {
@@ -218,7 +340,9 @@ export class AdminConnection extends Connection<
 			commandTimeout: false,
 			executor: (resolve, reject) => {
 				this._socket.emit("readLogs", host, (err, files) => {
-					if (err) reject(err);
+					if (err) {
+						reject(err);
+					}
 					resolve(files!);
 				});
 			},
@@ -239,7 +363,9 @@ export class AdminConnection extends Connection<
 					"delLogs",
 					null,
 					(err) => {
-						if (err) reject(err);
+						if (err) {
+							reject(err);
+						}
 						resolve();
 					},
 				);
@@ -258,7 +384,9 @@ export class AdminConnection extends Connection<
 			commandTimeout: false,
 			executor: (resolve, reject) => {
 				this._socket.emit("deleteFile", adapter, fileName, (err) => {
-					if (err) reject(err);
+					if (err) {
+						reject(err);
+					}
 					resolve();
 				});
 			},
@@ -280,7 +408,9 @@ export class AdminConnection extends Connection<
 					adapter,
 					folderName,
 					(err) => {
-						if (err) reject(err);
+						if (err) {
+							reject(err);
+						}
 						resolve();
 					},
 				);
@@ -304,7 +434,9 @@ export class AdminConnection extends Connection<
 					oldName,
 					newName,
 					(err) => {
-						if (err) reject(err);
+						if (err) {
+							reject(err);
+						}
 						resolve();
 					},
 				);
@@ -333,7 +465,9 @@ export class AdminConnection extends Connection<
 					oldName,
 					newName,
 					(err) => {
-						if (err) reject(err);
+						if (err) {
+							reject(err);
+						}
 						resolve();
 					},
 				);
@@ -644,7 +778,9 @@ export class AdminConnection extends Connection<
 						}
 					timeout.clearTimeout();
 
-					if (err) reject(err);
+					if (err) {
+						reject(err);
+					}
 					resolve();
 				});
 			},
@@ -791,7 +927,9 @@ export class AdminConnection extends Connection<
 							return;
 						}
 					timeout.clearTimeout();
-					if (err) reject(err);
+					if (err) {
+						reject(err);
+					}
 					resolve();
 				});
 			},
@@ -855,7 +993,9 @@ export class AdminConnection extends Connection<
 							return;
 						}
 					timeout.clearTimeout();
-					if (err) reject(err);
+					if (err) {
+						reject(err);
+					}
 					resolve(ciphertext!);
 				});
 			},
@@ -874,7 +1014,9 @@ export class AdminConnection extends Connection<
 							return;
 						}
 					timeout.clearTimeout();
-					if (err) reject(err);
+					if (err) {
+						reject(err);
+					}
 					resolve(plaintext!);
 				});
 			},
@@ -904,7 +1046,9 @@ export class AdminConnection extends Connection<
 							return;
 						}
 						timeout.clearTimeout();
-						if (err) reject(err);
+						if (err) {
+							reject(err);
+						}
 						resolve(processed!);
 					},
 				);
@@ -935,7 +1079,9 @@ export class AdminConnection extends Connection<
 							return;
 						}
 						timeout.clearTimeout();
-						if (err) reject(err);
+						if (err) {
+							reject(err);
+						}
 						resolve(processed!);
 					},
 				);
@@ -1007,7 +1153,9 @@ export class AdminConnection extends Connection<
 							return;
 						}
 					timeout.clearTimeout();
-					if (err) reject(err);
+					if (err) {
+						reject(err);
+					}
 					resolve(!!isStrict);
 				});
 			},
@@ -1025,7 +1173,9 @@ export class AdminConnection extends Connection<
 							return;
 						}
 					timeout.clearTimeout();
-					if (err) reject(err);
+					if (err) {
+						reject(err);
+					}
 					resolve(config);
 				});
 			},
@@ -1043,7 +1193,9 @@ export class AdminConnection extends Connection<
 							return;
 						}
 					timeout.clearTimeout();
-					if (err) reject(err);
+					if (err) {
+						reject(err);
+					}
 					resolve(ratings);
 				});
 			},
@@ -1087,7 +1239,9 @@ export class AdminConnection extends Connection<
 							return;
 						}
 					timeout.clearTimeout();
-					if (err) reject(err);
+					if (err) {
+						reject(err);
+					}
 					resolve(namespace!);
 				});
 			},
@@ -1167,7 +1321,9 @@ export class AdminConnection extends Connection<
 							return;
 						}
 					timeout.clearTimeout();
-					if (err) reject(err);
+					if (err) {
+						reject(err);
+					}
 					resolve(adapters!);
 				});
 			},
@@ -1187,7 +1343,9 @@ export class AdminConnection extends Connection<
 							return;
 						}
 					timeout.clearTimeout();
-					if (err) reject(err);
+					if (err) {
+						reject(err);
+					}
 					resolve(adapters!);
 				});
 			},
@@ -1214,7 +1372,9 @@ export class AdminConnection extends Connection<
 							return;
 						}
 					timeout.clearTimeout();
-					if (err) reject(err);
+					if (err) {
+						reject(err);
+					}
 					resolve(instances!);
 				});
 			},
@@ -1358,7 +1518,9 @@ export class AdminConnection extends Connection<
 							return;
 						}
 						timeout.clearTimeout();
-						if (err) reject(err);
+						if (err) {
+							reject(err);
+						}
 						resolve(systemRepositories!);
 					},
 				);

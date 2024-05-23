@@ -149,6 +149,17 @@ export interface LogFile {
 	size: number;
 }
 
+export interface License {
+	id: string;
+	product: string;
+	time: number;
+	uuid: string;
+	validTill: string;
+	version: string;
+	usedBy: string;
+	invoice: string;
+}
+
 /** Defines which events are emitted by the client and can be listened on the server */
 export interface IOEmitEvents {
 	authenticate(callback: AuthenticateCallback): void;
@@ -444,4 +455,5 @@ export interface AdminEmitEvents {
 	): void;
 
 	readLogs(host: string, callback: GenericCallback<LogFile[]>): void;
+	updateLicenses(login: string, password: string, callback: GenericCallback<License[]>): void;
 }
