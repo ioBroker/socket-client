@@ -246,7 +246,7 @@ export class AdminConnection extends Connection<
 	upgradeController(
 		host: string,
 		version: string,
-		adminInstance: string,
+		adminInstance: number,
 	): Promise<{ result: string; error?: string }> {
 		return this.request({
 			commandTimeout: false,
