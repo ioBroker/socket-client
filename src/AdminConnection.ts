@@ -247,10 +247,10 @@ export class AdminConnection extends Connection<
 		host: string,
 		version: string,
 		adminInstance: number,
-	): Promise<{ result: string; error?: string }> {
+	): Promise<string> {
 		return this.request({
 			commandTimeout: false,
-			executor: (resolve) => {
+			executor: (resolve, reject) => {
 				this._socket.emit(
 					"sendToHost",
 					host,
@@ -260,7 +260,12 @@ export class AdminConnection extends Connection<
 						adminInstance,
 					} as any,
 					(result: unknown) => {
-						resolve(result as { result: string; error?: string });
+						const _result = result as { result: string; error?: string };
+						if (_result.error) {
+							reject(_result.error);
+						} else {
+							resolve(_result.result);
+						}
 					},
 				);
 			},
