@@ -39,7 +39,7 @@ console.log(await adminConnection.getHosts());
 	### **WORK IN PROGRESS**
 -->
 ## Changelog
-### **WORK IN PROGRESS**
+### 2.4.13 (2024-05-24)
 * (bluefox) Corrected upgradeController
 
 ### 2.4.12 (2024-05-23)
