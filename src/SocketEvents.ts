@@ -357,7 +357,7 @@ export interface IOEmitEvents {
 	): void;
 	cmdExec(
 		hostName: string,
-		commandId: string,
+		commandId: number,
 		command: string,
 		callback?: ErrorCallback,
 	): void;

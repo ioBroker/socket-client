@@ -39,6 +39,9 @@ console.log(await adminConnection.getHosts());
 	### **WORK IN PROGRESS**
 -->
 ## Changelog
+### **WORK IN PROGRESS**
+* (bluefox) Corrected typing of cmdExec
+
 ### 2.4.13 (2024-05-24)
 * (bluefox) Corrected upgradeController
 

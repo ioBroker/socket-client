@@ -752,15 +752,15 @@ export class AdminConnection extends Connection<
 
 	/**
 	 * Execute a command on a host.
-	 * @param host The host name.
-	 * @param cmd The command.
-	 * @param cmdId The command ID.
-	 * @param cmdTimeout Timeout of command in ms
 	 */
 	cmdExec(
+		/** The host name. */
 		host: string,
+		/** The command to execute. */
 		cmd: string,
-		cmdId: string,
+		/** The command ID. */
+		cmdId: number,
+		/** Timeout of command in ms */
 		cmdTimeout?: number,
 	): Promise<void> {
 		return this.request({

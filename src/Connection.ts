@@ -2120,15 +2120,15 @@ export class Connection<
 
 	/**
 	 * Execute a command on a host.
-	 * @param host The host name.
-	 * @param cmd The command.
-	 * @param cmdId The command ID.
-	 * @param cmdTimeout Timeout of command in ms
 	 */
 	cmdExec(
+		/** Host name */
 		host: string,
+		/** Command to execute */
 		cmd: string,
-		cmdId: string,
+		/** Command ID */
+		cmdId: number,
+		/** Timeout of command in ms */
 		cmdTimeout?: number,
 	): Promise<void> {
 		return this.request({
@@ -2137,7 +2137,9 @@ export class Connection<
 				host = normalizeHostId(host);
 
 				this._socket.emit("cmdExec", host, cmdId, cmd, (err) => {
-					if (timeout.elapsed) return;
+					if (timeout.elapsed) {
+						return;
+					}
 					timeout.clearTimeout();
 
 					if (err) {
