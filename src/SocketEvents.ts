@@ -158,6 +158,7 @@ export interface License {
 	version: string;
 	usedBy: string;
 	invoice: string;
+	json: string;
 }
 
 /** Defines which events are emitted by the client and can be listened on the server */
