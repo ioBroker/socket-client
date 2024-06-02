@@ -1,6 +1,6 @@
 {
   "name": "@iobroker/socket-client",
-  "version": "2.4.14",
+  "version": "2.4.15",
   "description": "Client libraries for ioBroker using web sockets",
   "main": "dist/cjs/index.js",
   "module": "dist/esm/index.js",
