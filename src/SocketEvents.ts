@@ -86,6 +86,7 @@ export interface CompactInstanceInfo {
 	name: ioBroker.InstanceCommon["name"];
 	icon: ioBroker.InstanceCommon["icon"];
 	enabled: ioBroker.InstanceCommon["enabled"];
+	version: ioBroker.InstanceCommon["version"];
 }
 
 export interface CompactAdapterInfo {
@@ -94,27 +95,21 @@ export interface CompactAdapterInfo {
 	iv?: boolean;
 }
 
-export type CompactInstalledInfo = Record<
-	string,
-	{
-		version: string;
-	}
->;
+export type CompactInstalledInfo = Record<string, {
+	version: string;
+}>;
 
-export type CompactRepository = Record<
-	string,
-	{
-		icon: ioBroker.AdapterCommon["icon"];
-		version: string;
-	}
->;
+export type CompactRepository = Record<string, {
+	icon: ioBroker.AdapterCommon["icon"];
+	version: string;
+}>;
 
 export type CompactHost = {
 	_id: ioBroker.HostObject["_id"];
 	common: {
 		name: ioBroker.HostCommon["name"];
 		icon: ioBroker.HostCommon["icon"];
-		color: any; // TODO: what's the type of this?
+		color: string;
 		installedVersion: ioBroker.HostCommon["installedVersion"];
 	};
 	native: {
@@ -123,15 +118,12 @@ export type CompactHost = {
 		};
 	};
 };
-export type CompactSystemRepositoryEntry = Record<
-	string,
-	{
-		link: string;
-		hash?: string;
-		stable?: boolean;
-		json: null | undefined;
-	}
->;
+export type CompactSystemRepositoryEntry = {
+	link: string;
+	hash?: string;
+	stable?: boolean;
+	json: { _repoInfo: { stable?: boolean; name?: ioBroker.StringOrTranslated } } | null | undefined;
+};
 
 export type CompactSystemRepository = {
 	_id: ioBroker.HostObject["_id"];
