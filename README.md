@@ -39,7 +39,7 @@ console.log(await adminConnection.getHosts());
 	### **WORK IN PROGRESS**
 -->
 ## Changelog
-### 2.4.15 (2024-06-02)
+### **WORK IN PROGRESS**
 * (bluefox) Corrected typing of `CompactInstanceInfo`
 
 ### 2.4.14 (2024-05-25)
