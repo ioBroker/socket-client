@@ -208,7 +208,9 @@ export class Connection<
 
 	protected _systemConfig?: ioBroker.SystemConfigObject;
 	/** The "system.config" object */
-	public get systemConfig(): Readonly<ioBroker.SystemConfigObject> | undefined {
+	public get systemConfig():
+		| Readonly<ioBroker.SystemConfigObject>
+		| undefined {
 		return this._systemConfig;
 	}
 
@@ -589,10 +591,14 @@ export class Connection<
 					window.navigator.language) as any;
 				// Browsers may report languages like "de-DE", "en-US", etc.
 				// ioBroker expects "de", "en", ...
-				if (/^(en|de|ru|pt|nl|fr|it|es|pl|uk)-?/.test(this.systemLang)) {
+				if (
+					/^(en|de|ru|pt|nl|fr|it|es|pl|uk)-?/.test(this.systemLang)
+				) {
 					this.systemLang = this.systemLang.substr(0, 2) as any;
 				} else if (
-					!/^(en|de|ru|pt|nl|fr|it|es|pl|uk|zh-cn)$/.test(this.systemLang)
+					!/^(en|de|ru|pt|nl|fr|it|es|pl|uk|zh-cn)$/.test(
+						this.systemLang,
+					)
 				) {
 					this.systemLang = "en";
 				}
@@ -2643,7 +2649,11 @@ export class Connection<
 		messageType: string,
 		data: any | null,
 		callback: InstanceMessageCallback,
-	): Promise<{ error?: string; accepted?: boolean; heartbeat?: number } | null> {
+	): Promise<{
+		error?: string;
+		accepted?: boolean;
+		heartbeat?: number;
+	} | null> {
 		return this.request({
 			commandTimeout: false,
 			executor: (resolve, reject) => {

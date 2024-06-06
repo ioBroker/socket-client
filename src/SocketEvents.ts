@@ -30,7 +30,7 @@ export type AuthEnabledCallback = (isSecure: boolean, user: string) => void;
 export type GetUserPermissionsCallback = (err?: string, acl?: any) => void;
 export type SubscribeOnInstanceCallback = (
 	error: string | null,
-	result?: { error?: string; accepted?: boolean; heartbeat?: number }
+	result?: { error?: string; accepted?: boolean; heartbeat?: number },
 ) => void;
 export type UnsubscribeFromInstanceCallback = (
 	err: string | null,
@@ -92,17 +92,23 @@ export interface CompactInstanceInfo {
 export interface CompactAdapterInfo {
 	icon: ioBroker.AdapterCommon["icon"];
 	v: ioBroker.AdapterCommon["version"];
-	iv?: boolean;
+	iv?: ioBroker.AdapterCommon["ignoreVersion"];
 }
 
-export type CompactInstalledInfo = Record<string, {
-	version: string;
-}>;
+export type CompactInstalledInfo = Record<
+	string,
+	{
+		version: string;
+	}
+>;
 
-export type CompactRepository = Record<string, {
-	icon: ioBroker.AdapterCommon["icon"];
-	version: string;
-}>;
+export type CompactRepository = Record<
+	string,
+	{
+		icon: ioBroker.AdapterCommon["icon"];
+		version: string;
+	}
+>;
 
 export type CompactHost = {
 	_id: ioBroker.HostObject["_id"];
@@ -122,7 +128,15 @@ export type CompactSystemRepositoryEntry = {
 	link: string;
 	hash?: string;
 	stable?: boolean;
-	json: { _repoInfo: { stable?: boolean; name?: ioBroker.StringOrTranslated } } | null | undefined;
+	json:
+		| {
+				_repoInfo: {
+					stable?: boolean;
+					name?: ioBroker.StringOrTranslated;
+				};
+		  }
+		| null
+		| undefined;
 };
 
 export type CompactSystemRepository = {
@@ -448,5 +462,9 @@ export interface AdminEmitEvents {
 	): void;
 
 	readLogs(host: string, callback: GenericCallback<LogFile[]>): void;
-	updateLicenses(login: string, password: string, callback: GenericCallback<License[]>): void;
+	updateLicenses(
+		login: string,
+		password: string,
+		callback: GenericCallback<License[]>,
+	): void;
 }
