@@ -6,9 +6,9 @@ export interface ConnectionProps {
 	/** Automatically subscribe to logging. */
 	autoSubscribeLog?: boolean;
 	/** The protocol to use for the socket.io connection. */
-	protocol: string;
+	protocol?: string;
 	/** The host name to use for the socket.io connection. */
-	host: string;
+	host?: string;
 	/** The port to use for the socket.io connection. */
 	port: string | number;
 	/** The socket.io connection timeout. */

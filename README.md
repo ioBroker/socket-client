@@ -39,6 +39,9 @@ console.log(await adminConnection.getHosts());
 	### **WORK IN PROGRESS**
 -->
 ## Changelog
+### **WORK IN PROGRESS**
+* (bluefox) made protocol and host optional
+
 ### 2.4.16 (2024-06-02)
 * (bluefox) Corrected typing of `CompactInstanceInfo`
 
