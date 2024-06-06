@@ -330,7 +330,7 @@ export class Connection<
 									parseInt(patch, 10);
 								if (v < 40102) {
 									this._authTimer = null;
-									// possible this is old version of admin
+									// possible this is an old version of admin
 									this.onPreConnect(false, false);
 								} else {
 									this._socket.emit(
