@@ -260,7 +260,9 @@ export class Connection<
 
 		let host = this.props.host;
 		let port = this.props.port;
-		let protocol = (this.props.protocol || window.location.protocol).replace(":", "");
+		let protocol = (
+			this.props.protocol || window.location.protocol
+		).replace(":", "");
 		let path = window.location.pathname;
 
 		if (
