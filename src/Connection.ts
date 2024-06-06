@@ -254,7 +254,9 @@ export class Connection<
 	 * Starts the socket.io connection.
 	 */
 	async startSocket(): Promise<void> {
-		if (this._socket) return;
+		if (this._socket) {
+			return;
+		}
 
 		let host = this.props.host;
 		let port = this.props.port;
