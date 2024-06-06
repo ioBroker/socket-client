@@ -39,7 +39,7 @@ console.log(await adminConnection.getHosts());
 	### **WORK IN PROGRESS**
 -->
 ## Changelog
-### 2.4.17 (2024-06-06)
+### **WORK IN PROGRESS**
 * (bluefox) made protocol and host optional
 
 ### 2.4.16 (2024-06-02)
