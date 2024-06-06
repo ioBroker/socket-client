@@ -260,7 +260,10 @@ export class AdminConnection extends Connection<
 						adminInstance,
 					} as any,
 					(result: unknown) => {
-						const _result = result as { result: string; error?: string };
+						const _result = result as {
+							result: string;
+							error?: string;
+						};
 						if (_result.error) {
 							reject(_result.error);
 						} else {
@@ -770,8 +773,8 @@ export class AdminConnection extends Connection<
 
 				this._socket.emit("cmdExec", host, cmdId, cmd, (err) => {
 					if (timeout.elapsed) {
-							return;
-						}
+						return;
+					}
 					timeout.clearTimeout();
 
 					if (err) {
@@ -920,8 +923,8 @@ export class AdminConnection extends Connection<
 			executor: (resolve, reject, timeout) => {
 				this._socket.emit("changePassword", user, password, (err) => {
 					if (timeout.elapsed) {
-							return;
-						}
+						return;
+					}
 					timeout.clearTimeout();
 					if (err) {
 						reject(err);
@@ -966,8 +969,8 @@ export class AdminConnection extends Connection<
 			executor: (resolve, reject, timeout) => {
 				this._socket.emit("getHostByIp", ipOrHostName, (ip, host) => {
 					if (timeout.elapsed) {
-							return;
-						}
+						return;
+					}
 					timeout.clearTimeout();
 
 					const { IPs4, IPs6 } = parseIPAddresses(host);
@@ -986,8 +989,8 @@ export class AdminConnection extends Connection<
 			executor: (resolve, reject, timeout) => {
 				this._socket.emit("encrypt", plaintext, (err, ciphertext) => {
 					if (timeout.elapsed) {
-							return;
-						}
+						return;
+					}
 					timeout.clearTimeout();
 					if (err) {
 						reject(err);
@@ -1007,8 +1010,8 @@ export class AdminConnection extends Connection<
 			executor: (resolve, reject, timeout) => {
 				this._socket.emit("decrypt", ciphertext, (err, plaintext) => {
 					if (timeout.elapsed) {
-							return;
-						}
+						return;
+					}
 					timeout.clearTimeout();
 					if (err) {
 						reject(err);
@@ -1106,7 +1109,11 @@ export class AdminConnection extends Connection<
 							return;
 						}
 						timeout.clearTimeout();
-						resolve(notifications as { result: FilteredNotificationInformation });
+						resolve(
+							notifications as {
+								result: FilteredNotificationInformation;
+							},
+						);
 					},
 				);
 			},
@@ -1146,8 +1153,8 @@ export class AdminConnection extends Connection<
 			executor: (resolve, reject, timeout) => {
 				this._socket.emit("getIsEasyModeStrict", (err, isStrict) => {
 					if (timeout.elapsed) {
-							return;
-						}
+						return;
+					}
 					timeout.clearTimeout();
 					if (err) {
 						reject(err);
@@ -1166,8 +1173,8 @@ export class AdminConnection extends Connection<
 			executor: (resolve, reject, timeout) => {
 				this._socket.emit("getEasyMode", (err, config) => {
 					if (timeout.elapsed) {
-							return;
-						}
+						return;
+					}
 					timeout.clearTimeout();
 					if (err) {
 						reject(err);
@@ -1186,8 +1193,8 @@ export class AdminConnection extends Connection<
 			executor: (resolve, reject, timeout) => {
 				this._socket.emit("getRatings", !!update, (err, ratings) => {
 					if (timeout.elapsed) {
-							return;
-						}
+						return;
+					}
 					timeout.clearTimeout();
 					if (err) {
 						reject(err);
@@ -1212,8 +1219,8 @@ export class AdminConnection extends Connection<
 						signal: controller.signal,
 					});
 					if (timeout.elapsed) {
-							return;
-						}
+						return;
+					}
 					timeout.clearTimeout();
 					resolve(res.json());
 				} catch (e) {
@@ -1232,8 +1239,8 @@ export class AdminConnection extends Connection<
 			executor: (resolve, reject, timeout) => {
 				this._socket.emit("getCurrentInstance", (err, namespace) => {
 					if (timeout.elapsed) {
-							return;
-						}
+						return;
+					}
 					timeout.clearTimeout();
 					if (err) {
 						reject(err);
@@ -1312,16 +1319,20 @@ export class AdminConnection extends Connection<
 			cacheKey: `adapter_${adapterStr}`,
 			forceUpdate: update,
 			executor: (resolve, reject, timeout) => {
-				this._socket.emit("getAdapters", adapterStr, (err, adapters) => {
-					if (timeout.elapsed) {
+				this._socket.emit(
+					"getAdapters",
+					adapterStr,
+					(err, adapters) => {
+						if (timeout.elapsed) {
 							return;
 						}
-					timeout.clearTimeout();
-					if (err) {
-						reject(err);
-					}
-					resolve(adapters!);
-				});
+						timeout.clearTimeout();
+						if (err) {
+							reject(err);
+						}
+						resolve(adapters!);
+					},
+				);
 			},
 		});
 	}
@@ -1336,8 +1347,8 @@ export class AdminConnection extends Connection<
 			executor: (resolve, reject, timeout) => {
 				this._socket.emit("getCompactAdapters", (err, adapters) => {
 					if (timeout.elapsed) {
-							return;
-						}
+						return;
+					}
 					timeout.clearTimeout();
 					if (err) {
 						reject(err);
@@ -1365,8 +1376,8 @@ export class AdminConnection extends Connection<
 			executor: (resolve, reject, timeout) => {
 				this._socket.emit("getCompactInstances", (err, instances) => {
 					if (timeout.elapsed) {
-							return;
-						}
+						return;
+					}
 					timeout.clearTimeout();
 					if (err) {
 						reject(err);
@@ -1483,16 +1494,19 @@ export class AdminConnection extends Connection<
 			cacheKey: "hostsCompact",
 			forceUpdate: update,
 			executor: (resolve, reject, timeout) => {
-				this._socket.emit("getCompactHosts", (err, compactHostsInfo) => {
-					if (timeout.elapsed) {
-						return;
-					}
-					timeout.clearTimeout();
-					if (err) {
-						reject(err);
-					}
-					resolve(compactHostsInfo!);
-				});
+				this._socket.emit(
+					"getCompactHosts",
+					(err, compactHostsInfo) => {
+						if (timeout.elapsed) {
+							return;
+						}
+						timeout.clearTimeout();
+						if (err) {
+							reject(err);
+						}
+						resolve(compactHostsInfo!);
+					},
+				);
 			},
 		});
 	}

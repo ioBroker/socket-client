@@ -2456,7 +2456,7 @@ export class Connection<
 	/**
 	 * Get uuid
 	 */
-	getUuid(): Promise<ioBroker.Object[]> {
+	getUuid(): Promise<string> {
 		return this.request({
 			cacheKey: "uuid",
 			// TODO: check if this should time out
