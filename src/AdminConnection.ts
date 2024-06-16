@@ -100,6 +100,7 @@ export interface IPAddress {
 	name: string;
 	address: string;
 	family: "ipv4" | "ipv6";
+	internal?: boolean;
 }
 
 interface IPAddresses {
