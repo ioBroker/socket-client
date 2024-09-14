@@ -1,14 +1,14 @@
-import type { SocketClient } from "./SocketClient.js";
+import type { SocketClient } from './SocketClient.js';
 
 declare global {
-	interface Window {
-		io: { connect: (name: string, par: any) => SocketClient };
-		socketUrl: string;
-		registerSocketOnLoad: (callback: () => void) => void;
-		vendorPrefix: string;
-	}
+    interface Window {
+        io: { connect: (name: string, par: any) => SocketClient };
+        socketUrl: string;
+        registerSocketOnLoad: (callback: () => void) => void;
+        vendorPrefix: string;
+    }
 
-	interface Navigator {
-		userLanguage: string;
-	}
+    interface Navigator {
+        userLanguage: string;
+    }
 }
