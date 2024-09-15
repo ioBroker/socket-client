@@ -598,7 +598,7 @@ export class AdminConnection extends Connection<AdminListenEvents, AdminEmitEven
      */
     getRepository(
         host: string,
-        args?: { update?: boolean; repo?: string } | string | null,
+        args?: { update?: boolean; repo?: string | string[] } | string | null,
         update?: boolean,
         timeoutMs?: number,
     ): Promise<any> {
@@ -694,7 +694,7 @@ export class AdminConnection extends Connection<AdminListenEvents, AdminEmitEven
      *
      * @param host The host name.
      */
-    readBaseSettings(host: string): Promise<ioBroker.IoBrokerJson> {
+    readBaseSettings(host: string): Promise<{ config?: ioBroker.IoBrokerJson; isActive?: boolean }> {
         // Make sure we deal with a hostname, not an object ID
         host = objectIdToHostname(host);
 
@@ -711,8 +711,10 @@ export class AdminConnection extends Connection<AdminListenEvents, AdminEmitEven
                         reject('May not read "BaseSettings"');
                     } else if (!data) {
                         reject('Cannot read "BaseSettings"');
+                    } else if ((data as { error?: string }).error) {
+                        reject(new Error((data as { error?: string }).error));
                     } else {
-                        resolve(data as ioBroker.IoBrokerJson);
+                        resolve(data as { config: ioBroker.IoBrokerJson; isActive: boolean });
                     }
                 });
             },
