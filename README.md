@@ -46,7 +46,7 @@ console.log(await adminConnection.getHosts());
 -->
 
 ## Changelog
-### **WORK IN PROGRESS**
+### 3.0.1 (2024-09-15)
 -   (bluefox) Migrated to eslint@9
 -   (bluefox) Breaking change: all thrown errors are now instances of `Error` class
 
