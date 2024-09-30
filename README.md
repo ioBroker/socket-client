@@ -46,7 +46,7 @@ console.log(await adminConnection.getHosts());
 -->
 
 ## Changelog
-### **WORK IN PROGRESS**
+### 3.1.0 (2024-09-30)
 -   (@GermanBluefox) Added new `socket.io` namespace `iob`
 
 ### 3.0.1 (2024-09-15)
