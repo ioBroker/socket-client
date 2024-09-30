@@ -203,7 +203,7 @@ export class Connection<
         // eslint-disable-next-line no-async-promise-executor
         this._waitForSocketPromise = new Promise(async (resolve, reject) => {
             // If socket io is not yet loaded, we need to wait for it
-            if (typeof window.io === 'undefined') {
+            if (typeof window.io === 'undefined' && typeof window.iob === 'undefined') {
                 // If the registerSocketOnLoad function is defined in index.html,
                 // we can use it to know when the socket library was loaded
                 if (typeof window.registerSocketOnLoad === 'function') {
@@ -211,7 +211,7 @@ export class Connection<
                 } else {
                     // otherwise, we need to poll
                     for (let i = 1; i <= 30; i++) {
-                        if (window.io) {
+                        if (window.io || window.iob) {
                             return resolve();
                         }
                         await wait(100);
@@ -275,7 +275,7 @@ export class Connection<
 
         const url = port ? `${protocol}://${host}:${port}` : `${protocol}://${host}`;
 
-        this._socket = window.io.connect(url, {
+        this._socket = (window.io || window.iob).connect(url, {
             path: path.endsWith('/') ? `${path}socket.io` : `${path}/socket.io`,
             query: 'ws=true',
             name: this.props.name,

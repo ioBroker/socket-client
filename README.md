@@ -46,78 +46,81 @@ console.log(await adminConnection.getHosts());
 -->
 
 ## Changelog
+### **WORK IN PROGRESS**
+-   (@GermanBluefox) Added new `socket.io` namespace `iob`
+
 ### 3.0.1 (2024-09-15)
--   (bluefox) Migrated to eslint@9
--   (bluefox) Breaking change: all thrown errors are now instances of `Error` class
+-   (@GermanBluefox) Migrated to eslint@9
+-   (@GermanBluefox) Breaking change: all thrown errors are now instances of `Error` class
 
 ### 2.4.18 (2024-06-06)
 
--   (bluefox) made protocol and host optional
+-   (@GermanBluefox) made protocol and host optional
 
 ### 2.4.16 (2024-06-02)
 
--   (bluefox) Corrected typing of `CompactInstanceInfo`
+-   (@GermanBluefox) Corrected typing of `CompactInstanceInfo`
 
 ### 2.4.14 (2024-05-25)
 
--   (bluefox) Corrected typing of cmdExec
+-   (@GermanBluefox) Corrected typing of cmdExec
 
 ### 2.4.13 (2024-05-24)
 
--   (bluefox) Corrected upgradeController
+-   (@GermanBluefox) Corrected upgradeController
 
 ### 2.4.12 (2024-05-23)
 
--   (bluefox) Added admin functions: upgradeAdapterWithWebserver, upgradeController, upgradeOsPackages, updateLicenses
+-   (@GermanBluefox) Added admin functions: upgradeAdapterWithWebserver, upgradeController, upgradeOsPackages, updateLicenses
 
 ### 2.4.11 (2024-05-21)
 
--   (bluefox) Better typing for subscribeOnInstance
+-   (@GermanBluefox) Better typing for subscribeOnInstance
 
 ### 2.4.10 (2024-05-16)
 
--   (bluefox) Added source files for typescript
+-   (@GermanBluefox) Added source files for typescript
 
 ### 2.4.9 (2024-05-03)
 
--   (bluefox) Replaced the SystemConfig type with ioBroker.SystemConfigObject
+-   (@GermanBluefox) Replaced the SystemConfig type with ioBroker.SystemConfigObject
 
 ### 2.4.8 (2024-04-30)
 
--   (bluefox) Allowed calling getObjectView, getObjectViewSystem and getObjectViewCustom without options
+-   (@GermanBluefox) Allowed calling getObjectView, getObjectViewSystem and getObjectViewCustom without options
 
 ### 2.4.7 (2024-04-20)
 
--   (bluefox) Improved getNotifications command
+-   (@GermanBluefox) Improved getNotifications command
 
 ### 2.4.6 (2024-04-11)
 
--   (bluefox) Corrected the object subscribing
+-   (@GermanBluefox) Corrected the object subscribing
 
 ### 2.4.3 (2024-04-01)
 
--   (bluefox) Corrected types
+-   (@GermanBluefox) Corrected types
 
 ### 2.4.0 (2024-03-30)
 
--   (bluefox) Allowed subscribing and unsubscribing on arrays of IDs
+-   (@GermanBluefox) Allowed subscribing and unsubscribing on arrays of IDs
 
 ### 2.3.16 (2024-03-16)
 
--   (bluefox) Changed systemLang to writable, as it can be changed on the fly
+-   (@GermanBluefox) Changed systemLang to writable, as it can be changed on the fly
 
 ### 2.3.15 (2024-03-08)
 
 -   (foxriver76) fix `cjs` types export
--   (bluefox) Better typing for getLogs
+-   (@GermanBluefox) Better typing for getLogs
 
 ### 2.3.14 (2024-03-07)
 
--   (bluefox) Better typing for getNotifications
+-   (@GermanBluefox) Better typing for getNotifications
 
 ### 2.3.13 (2023-12-14)
 
--   (bluefox) updated packages
+-   (@GermanBluefox) updated packages
 
 ### 2.3.12 (2023-12-04)
 
@@ -129,7 +132,7 @@ console.log(await adminConnection.getHosts());
 
 ### 2.3.10 (2023-10-19)
 
--   (bluefox) Added return value for `subscribeOnInstance`
+-   (@GermanBluefox) Added return value for `subscribeOnInstance`
 
 ### 2.3.9 (2023-09-29)
 
@@ -137,7 +140,7 @@ console.log(await adminConnection.getHosts());
 
 ### 2.3.7 (2023-09-28)
 
--   (bluefox) Added implicit export of AdminConnection
+-   (@GermanBluefox) Added implicit export of AdminConnection
 
 ### 2.3.6 (2023-09-28)
 
@@ -145,49 +148,49 @@ console.log(await adminConnection.getHosts());
 
 ### 2.3.4 (2023-08-10)
 
--   (bluefox) Added `subscribeStateAsync` method for legacy compatibility
+-   (@GermanBluefox) Added `subscribeStateAsync` method for legacy compatibility
 
 ### 2.3.3 (2023-08-01)
 
--   (bluefox) Added the subscribing on the specific instance messages
+-   (@GermanBluefox) Added the subscribing on the specific instance messages
 
 ### 2.2.1 (2023-07-31)
 
--   (bluefox) Update packages
+-   (@GermanBluefox) Update packages
 
 ### 2.2.0 (2023-07-07)
 
--   (bluefox) added new method - `getObjectsById`
+-   (@GermanBluefox) added new method - `getObjectsById`
 
 ### 2.1.0 (2023-06-14)
 
 -   (rovo89) Typescript types tuning
--   (bluefox) The path was removed from `socket.io` URL
+-   (@GermanBluefox) The path was removed from `socket.io` URL
 
 ### 2.0.7 (2023-03-24)
 
--   (bluefox) better detection of chained certificates
+-   (@GermanBluefox) better detection of chained certificates
 
 ### 2.0.6 (2023-03-22)
 
--   (bluefox) packages updated
+-   (@GermanBluefox) packages updated
 
 ### 2.0.5 (2023-03-16)
 
--   (bluefox) Added `rename` and `renameFile` methods
+-   (@GermanBluefox) Added `rename` and `renameFile` methods
 
 ### 2.0.4 (2023-02-15)
 
--   (bluefox) Made the fix for `material` and `echarts`
+-   (@GermanBluefox) Made the fix for `material` and `echarts`
 
 ### 2.0.2 (2023-02-02)
 
--   (bluefox) Caught errors on state/object changes
--   (bluefox) Special changes for vis and "nothing_selected" ID
+-   (@GermanBluefox) Caught errors on state/object changes
+-   (@GermanBluefox) Special changes for vis and "nothing_selected" ID
 
 ### 2.0.1 (2022-12-19)
 
--   (bluefox) Added `log` command
+-   (@GermanBluefox) Added `log` command
 
 ### 2.0.0 (2022-11-30)
 
@@ -195,59 +198,59 @@ console.log(await adminConnection.getHosts());
 
 ### 1.1.14 (2022-09-12)
 
--   (bluefox) Added support of authentication token
+-   (@GermanBluefox) Added support of authentication token
 
 ### 1.1.13 (2022-08-30)
 
--   (bluefox) Working on cloud connection
+-   (@GermanBluefox) Working on cloud connection
 
 ### 1.1.12 (2022-08-18)
 
--   (bluefox) Added method getCompactSystemRepositories
+-   (@GermanBluefox) Added method getCompactSystemRepositories
 
 ### 1.1.11 (2022-08-01)
 
--   (bluefox) Added ack parameter to `setState` method.
+-   (@GermanBluefox) Added ack parameter to `setState` method.
 
 ### 1.1.10 (2022-07-05)
 
--   (bluefox) Allowed call of getStates with pattern
+-   (@GermanBluefox) Allowed call of getStates with pattern
 
 ### 1.1.9 (2022-07-04)
 
--   (bluefox) Errors on connection are handled now
+-   (@GermanBluefox) Errors on connection are handled now
 
 ### 1.1.8 (2022-06-22)
 
--   (bluefox) Added preparations for iobroker cloud
+-   (@GermanBluefox) Added preparations for iobroker cloud
 
 ### 1.1.7 (2022-06-21)
 
--   (bluefox) Added functions to reset cache
+-   (@GermanBluefox) Added functions to reset cache
 
 ### 1.1.6 (2022-06-20)
 
--   (bluefox) Allowed connections behind reverse proxy
+-   (@GermanBluefox) Allowed connections behind reverse proxy
 
 ### 1.1.4 (2022-06-19)
 
--   (bluefox) Added functions to reset cache
+-   (@GermanBluefox) Added functions to reset cache
 
 ### 1.1.2 (2022-06-17)
 
--   (bluefox) Corrected cache problem by `getInstalled` and `getRepository` commands
+-   (@GermanBluefox) Corrected cache problem by `getInstalled` and `getRepository` commands
 
 ### 1.1.1 (2022-06-09)
 
--   (bluefox) Allowed connections behind reverse proxy
+-   (@GermanBluefox) Allowed connections behind reverse proxy
 
 ### 1.1.0 (2022-05-24)
 
--   (bluefox) Added methods: subscribeFiles, unsubscribeFiles
+-   (@GermanBluefox) Added methods: subscribeFiles, unsubscribeFiles
 
 ### 1.0.12 (2022-05-09)
 
--   (bluefox) Extended `getVersion` command with update
+-   (@GermanBluefox) Extended `getVersion` command with update
 
 ### 1.0.11 (2022-03-20)
 
@@ -255,8 +258,8 @@ console.log(await adminConnection.getHosts());
 
 ### 1.0.10 (2022-01-29)
 
--   (bluefox) Added `logout` command
--   (bluefox) Move `getGroups` to web connection
+-   (@GermanBluefox) Added `logout` command
+-   (@GermanBluefox) Move `getGroups` to web connection
 
 ### 1.0.9 (2021-12-21)
 
@@ -265,11 +268,11 @@ console.log(await adminConnection.getHosts());
 
 ### 1.0.8 (2021-10-30)
 
--   (bluefox) Fixed `getInstalled` command
+-   (@GermanBluefox) Fixed `getInstalled` command
 
 ### 1.0.7 (2021-10-30)
 
--   (bluefox) Improved the vendor support
+-   (@GermanBluefox) Improved the vendor support
 
 ### 1.0.6 (2021-10-20)
 
@@ -281,7 +284,7 @@ console.log(await adminConnection.getHosts());
 
 ### 1.0.4 (2021-07-12)
 
--   (bluefox) Fix the renaming of groups
+-   (@GermanBluefox) Fix the renaming of groups
 
 ### 1.0.3 (2021-06-10)
 
@@ -289,7 +292,7 @@ console.log(await adminConnection.getHosts());
 
 ### 1.0.2 (2021-06-10)
 
--   (bluefox) Update methods
+-   (@GermanBluefox) Update methods
 -   (UncleSamSwiss) Add release script and release workflow
 
 ### 1.0.0 (2021-06-08)
