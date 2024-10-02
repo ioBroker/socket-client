@@ -46,7 +46,7 @@ console.log(await adminConnection.getHosts());
 -->
 
 ## Changelog
-### **WORK IN PROGRESS**
+### 3.1.1 (2024-10-02)
 
 -   (@GermanBluefox) Changed behavior by timeout: do not cache such responses
 
