@@ -1091,6 +1091,11 @@ export class Connection<
                     timeoutControl.elapsed = true;
                     // Let the caller know that the timeout elapsed
                     onTimeout?.();
+
+                    // do not cache responses with timeout or no connection
+                    if (cacheKey && this._promises[cacheKey] instanceof Promise) {
+                        delete this._promises[cacheKey];
+                    }
                     reject(new Error(ERRORS.TIMEOUT));
                 }, commandTimeout ?? this.props.cmdTimeout);
                 timeoutControl.clearTimeout = () => {
@@ -1102,6 +1107,10 @@ export class Connection<
             try {
                 await executor(resolve, reject, timeoutControl);
             } catch (e) {
+                // do not cache responses with timeout or no connection
+                if (cacheKey && this._promises[cacheKey] instanceof Promise) {
+                    delete this._promises[cacheKey];
+                }
                 reject(new Error(e.toString()));
             }
         });

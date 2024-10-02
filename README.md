@@ -46,6 +46,10 @@ console.log(await adminConnection.getHosts());
 -->
 
 ## Changelog
+### **WORK IN PROGRESS**
+
+-   (@GermanBluefox) Changed behavior by timeout: do not cache such responses
+
 ### 3.1.0 (2024-09-30)
 -   (@GermanBluefox) Added new `socket.io` namespace `iob`
 

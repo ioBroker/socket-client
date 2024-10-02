@@ -18,7 +18,7 @@ export function normalizeHostId(host: string): string {
 
 export function objectIdToHostname(id: string): string {
     if (id?.startsWith('system.host.')) {
-        id = id.substr('system.host.'.length);
+        id = id.substring('system.host.'.length);
     }
     return id;
 }

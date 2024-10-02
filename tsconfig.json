@@ -1,6 +1,10 @@
 {
-    "extends": "@tsconfig/node18/tsconfig.json",
     "compilerOptions": {
+		"target": "es2022",
+		"strict": true,
+		"esModuleInterop": true,
+		"skipLibCheck": true,
+
         "types": ["@iobroker/types"],
         // Don't output anything when the build fails
         "noEmitOnError": true,
