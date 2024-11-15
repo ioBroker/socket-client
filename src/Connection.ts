@@ -1,4 +1,4 @@
-import type { ConnectionProps } from './ConnectionProps.js';
+import type { ConnectionProps, LogMessage } from './ConnectionProps.js';
 import { createDeferredPromise } from './DeferredPromise.js';
 import type { EmitEventHandler, ListenEventHandler, SocketClient } from './SocketClient.js';
 import { getObjectViewResultToArray, normalizeHostId, pattern2RegEx, wait } from './tools.js';
@@ -153,7 +153,7 @@ export class Connection<
     public onReadyDone: boolean = false;
 
     private readonly onConnectionHandlers: ((connected: boolean) => void)[] = [];
-    private readonly onLogHandlers: ((message: string) => void)[] = [];
+    private readonly onLogHandlers: ((message: LogMessage) => void)[] = [];
 
     private onCmdStdoutHandler?: (id: string, text: string) => void;
     private onCmdStderrHandler?: (id: string, text: string) => void;
@@ -344,7 +344,7 @@ export class Connection<
 
         this._socket.on('reauthenticate', () => this.authenticate());
 
-        this._socket.on('log', message => {
+        this._socket.on('log', (message: LogMessage) => {
             this.props.onLog?.(message);
             this.onLogHandlers.forEach(cb => cb(message));
         });
@@ -1590,7 +1590,7 @@ export class Connection<
      *
      * @param handler The handler.
      */
-    registerLogHandler(handler: (message: string) => void): void {
+    registerLogHandler(handler: (message: LogMessage) => void): void {
         if (!this.onLogHandlers.includes(handler)) {
             this.onLogHandlers.push(handler);
         }
@@ -1601,7 +1601,7 @@ export class Connection<
      *
      * @param handler The handler.
      */
-    unregisterLogHandler(handler: (message: string) => void): void {
+    unregisterLogHandler(handler: (message: LogMessage) => void): void {
         const pos = this.onLogHandlers.indexOf(handler);
         pos !== -1 && this.onLogHandlers.splice(pos, 1);
     }

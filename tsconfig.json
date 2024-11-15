@@ -1,9 +1,9 @@
 {
     "compilerOptions": {
-		"target": "es2022",
-		"strict": true,
-		"esModuleInterop": true,
-		"skipLibCheck": true,
+        "target": "es2022",
+        "strict": true,
+        "esModuleInterop": true,
+        "skipLibCheck": true,
 
         "types": ["@iobroker/types"],
         // Don't output anything when the build fails
@@ -15,7 +15,7 @@
         "declaration": true,
         "removeComments": false,
         "sourceMap": true,
-		"inlineSources": true,
+        "inlineSources": true,
         "inlineSourceMap": false,
 
         // Strictness flags - check the base config before adding something here

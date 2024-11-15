@@ -1,4 +1,5 @@
 import type { ERRORS } from './Connection.js';
+import type { LogMessage } from './ConnectionProps.js';
 
 /** Defines which events are emitted by the server and can be listened on the client */
 export interface IOListenEvents {
@@ -15,7 +16,7 @@ export interface IOListenEvents {
     disconnect: () => void;
     reauthenticate: () => void;
 
-    log: (message: string) => void;
+    log: (message: LogMessage) => void;
 
     error: (error: Error) => void;
     connect_error: (error: Error) => void;
