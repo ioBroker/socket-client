@@ -46,7 +46,7 @@ console.log(await adminConnection.getHosts());
 -->
 
 ## Changelog
-### **WORK IN PROGRESS**
+### 3.1.2 (2024-11-15)
 
 -   (@GermanBluefox) Added the log message type
 
