@@ -46,6 +46,10 @@ console.log(await adminConnection.getHosts());
 -->
 
 ## Changelog
+### **WORK IN PROGRESS**
+
+-   (@GermanBluefox) Prevented small possible error by subscribeStates
+
 ### 3.1.2 (2024-11-15)
 
 -   (@GermanBluefox) Added the log message type

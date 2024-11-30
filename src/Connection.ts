@@ -663,6 +663,7 @@ export class Connection<
                     base64 = await this.getBinaryState(ids[i]);
                 } catch (e) {
                     console.error(`Cannot getBinaryState "${ids[i]}": ${JSON.stringify(e)}`);
+                    base64 = undefined;
                 }
                 if (base64 != undefined) {
                     (cb as BinaryStateChangeHandler)(ids[i], base64);

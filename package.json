@@ -1,70 +1,70 @@
 {
-  "name": "@iobroker/socket-client",
-  "version": "3.1.2",
-  "description": "Client libraries for ioBroker using web sockets",
-  "main": "dist/cjs/index.js",
-  "module": "dist/esm/index.js",
-  "exports": {
-    ".": {
-      "import": "./dist/esm/index.js",
-      "require": "./dist/cjs/index.js",
-      "types": "./dist/esm/index.d.ts"
+    "name": "@iobroker/socket-client",
+    "version": "3.1.2",
+    "description": "Client libraries for ioBroker using web sockets",
+    "main": "dist/cjs/index.js",
+    "module": "dist/esm/index.js",
+    "exports": {
+        ".": {
+            "import": "./dist/esm/index.js",
+            "require": "./dist/cjs/index.js",
+            "types": "./dist/esm/index.d.ts"
+        },
+        "./package.json": "./package.json"
     },
-    "./package.json": "./package.json"
-  },
-  "types": "dist/esm/index.d.ts",
-  "typesVersions": {
-    "*": {
-      "dist/esm/index.d.ts": [
-        "dist/esm/index.d.ts"
-      ],
-      "dist/cjs/index.d.ts": [
-        "dist/esm/index.d.ts"
-      ],
-      "*": [
-        "dist/esm/*"
-      ]
+    "types": "dist/esm/index.d.ts",
+    "typesVersions": {
+        "*": {
+            "dist/esm/index.d.ts": [
+                "dist/esm/index.d.ts"
+            ],
+            "dist/cjs/index.d.ts": [
+                "dist/esm/index.d.ts"
+            ],
+            "*": [
+                "dist/esm/*"
+            ]
+        }
+    },
+    "scripts": {
+        "build": "tsc",
+        "postbuild": "esm2cjs --in dist/esm --out dist/cjs -l error",
+        "watch": "npm run build -- --watch",
+        "lint": "eslint -c eslint.config.mjs",
+        "prepare": "npm run build",
+        "release": "release-script -lf",
+        "release-patch": "release-script patch --yes --lf",
+        "release-minor": "release-script minor --yes --lf",
+        "release-major": "release-script major --yes --lf",
+        "update-packages": "ncu --upgrade",
+        "npm": "npm i -f"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/ioBroker/socket-client.git"
+    },
+    "author": "",
+    "license": "MIT",
+    "bugs": {
+        "url": "https://github.com/ioBroker/socket-client/issues"
+    },
+    "files": [
+        "src/",
+        "dist/",
+        "package-lock.json",
+        "LICENSE"
+    ],
+    "publishConfig": {
+        "access": "public"
+    },
+    "homepage": "https://github.com/ioBroker/socket-client",
+    "devDependencies": {
+        "@alcalzone/esm2cjs": "^1.4.1",
+        "@alcalzone/release-script": "~3.8.0",
+        "@alcalzone/release-script-plugin-license": "~3.7.0",
+        "@iobroker/eslint-config": "^1.0.0",
+        "@iobroker/types": "^6.0.11",
+        "@types/node": "^22.10.1",
+        "typescript": "~5.7.2"
     }
-  },
-  "scripts": {
-    "build": "tsc",
-    "postbuild": "esm2cjs --in dist/esm --out dist/cjs -l error",
-    "watch": "npm run build -- --watch",
-    "lint": "eslint -c eslint.config.mjs",
-    "prepare": "npm run build",
-    "release": "release-script -lf",
-    "release-patch": "release-script patch --yes --lf",
-    "release-minor": "release-script minor --yes --lf",
-    "release-major": "release-script major --yes --lf",
-    "update-packages": "ncu --upgrade",
-    "npm": "npm i -f"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/ioBroker/socket-client.git"
-  },
-  "author": "",
-  "license": "MIT",
-  "bugs": {
-    "url": "https://github.com/ioBroker/socket-client/issues"
-  },
-  "files": [
-    "src/",
-    "dist/",
-    "package-lock.json",
-    "LICENSE"
-  ],
-  "publishConfig": {
-    "access": "public"
-  },
-  "homepage": "https://github.com/ioBroker/socket-client",
-  "devDependencies": {
-    "@alcalzone/esm2cjs": "^1.4.0",
-    "@alcalzone/release-script": "~3.8.0",
-    "@alcalzone/release-script-plugin-license": "~3.7.0",
-    "@iobroker/eslint-config": "^0.1.7",
-    "@iobroker/types": "^6.0.11",
-    "@types/node": "^22.9.0",
-    "typescript": "~5.6.3"
-  }
 }
