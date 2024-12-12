@@ -46,6 +46,10 @@ console.log(await adminConnection.getHosts());
 -->
 
 ## Changelog
+### **WORK IN PROGRESS**
+
+-   (@GermanBluefox) Updated js-controller packages
+
 ### 3.1.3 (2024-11-30)
 
 -   (@GermanBluefox) Prevented small possible error by subscribeStates

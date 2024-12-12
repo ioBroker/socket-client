@@ -115,27 +115,26 @@ function parseIPAddresses(host: ioBroker.HostObject): IPAddresses {
         },
     ];
     if (host.native?.hardware?.networkInterfaces) {
-        for (const [eth, iface] of Object.entries(host.native.hardware.networkInterfaces)) {
-            if (!iface) {
-                continue;
-            }
+        const list: Record<string, { family: 'IPv6' | 'IPv4'; address: string }[]> =
+            host.native?.hardware?.networkInterfaces;
 
-            for (const ip of iface) {
+        Object.keys(list).forEach(inter => {
+            list[inter].forEach(ip => {
                 if (ip.family !== 'IPv6') {
                     IPs4.push({
-                        name: `[${ip.family}] ${ip.address} - ${eth}`,
+                        name: `[${ip.family}] ${ip.address} - ${inter}`,
                         address: ip.address,
                         family: 'ipv4',
                     });
                 } else {
                     IPs6.push({
-                        name: `[${ip.family}] ${ip.address} - ${eth}`,
+                        name: `[${ip.family}] ${ip.address} - ${inter}`,
                         address: ip.address,
                         family: 'ipv6',
                     });
                 }
-            }
-        }
+            });
+        });
     }
     return { IPs4, IPs6 };
 }

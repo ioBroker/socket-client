@@ -1086,7 +1086,7 @@ export class Connection<
                     // no-op unless there is a timeout
                 },
             };
-            let timeout: NodeJS.Timeout | undefined;
+            let timeout: ReturnType<typeof setTimeout> | undefined;
             if (commandTimeout !== false) {
                 timeout = setTimeout(() => {
                     timeoutControl.elapsed = true;
@@ -1867,7 +1867,7 @@ export class Connection<
      * @param fileName The file name.
      * @param data The data (if it's a Buffer, it will be converted to Base64).
      */
-    writeFile64(namespace: string, fileName: string, data: Buffer | string): Promise<void> {
+    writeFile64(namespace: string, fileName: string, data: ArrayBuffer | string): Promise<void> {
         return this.request({
             // TODO: check if this should time out
             commandTimeout: false,
@@ -2161,22 +2161,21 @@ export class Connection<
         options: ioBroker.GetHistoryOptions,
     ): Promise<{
         values: ioBroker.GetHistoryResult;
-        sessionId: string;
-        stepIgnore: number;
+        sessionId: number;
+        step: number;
     }> {
         return this.request({
             // TODO: check if this should time out
             commandTimeout: false,
             executor: (resolve, reject) => {
-                this._socket.emit('getHistory', id, options, (err, values, stepIgnore, sessionId) => {
+                this._socket.emit('getHistory', id, options, (err, values, step, sessionId) => {
                     if (err) {
                         reject(err);
                     } else {
                         resolve({
                             values: values!,
                             sessionId: sessionId!,
-                            // TODO: WTF is up with the ignore thing?
-                            stepIgnore: stepIgnore!,
+                            step: step!,
                         });
                     }
                 });
