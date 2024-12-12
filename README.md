@@ -46,7 +46,7 @@ console.log(await adminConnection.getHosts());
 -->
 
 ## Changelog
-### **WORK IN PROGRESS**
+### 4.0.0 (2024-12-12)
 
 -   (@GermanBluefox) Updated js-controller 7 packages
 
