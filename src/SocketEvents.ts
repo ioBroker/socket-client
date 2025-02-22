@@ -1,4 +1,4 @@
-import type { ERRORS } from './Connection.js';
+import type {ERRORS, SocketACL} from './Connection.js';
 import type { LogMessage } from './ConnectionProps.js';
 
 /** Defines which events are emitted by the server and can be listened on the client */
@@ -28,7 +28,7 @@ export type ErrorCallback = ErrorAsString<ioBroker.ErrorCallback>;
 
 export type AuthenticateCallback = (isOk: boolean, isSecure: boolean) => void;
 export type AuthEnabledCallback = (isSecure: boolean, user: string) => void;
-export type GetUserPermissionsCallback = (err?: string, acl?: any) => void;
+export type GetUserPermissionsCallback = (err?: string, acl?: SocketACL | null) => void;
 export type SubscribeOnInstanceCallback = (
     error: string | null,
     result?: { error?: string; accepted?: boolean; heartbeat?: number },

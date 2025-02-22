@@ -3,6 +3,41 @@ import { createDeferredPromise } from './DeferredPromise.js';
 import type { EmitEventHandler, ListenEventHandler, SocketClient } from './SocketClient.js';
 import { getObjectViewResultToArray, normalizeHostId, pattern2RegEx, wait } from './tools.js';
 
+export interface SocketACL {
+	user: `system.user.${string}` | '';
+	groups: `system.group.${string}`[];
+	object?: {
+		read: boolean;
+		list: boolean;
+		write: boolean;
+		delete: boolean;
+	};
+	state?: {
+		list: boolean;
+		read: boolean;
+		write: boolean;
+		delete: boolean;
+		create: boolean;
+	};
+	users?: {
+		create: boolean;
+		delete: boolean;
+		write: boolean;
+	};
+	other?: {
+		http: boolean;
+		execute: boolean;
+		sendto: boolean;
+	};
+	file?: {
+		list: boolean;
+		create: boolean;
+		write: boolean;
+		read: boolean;
+		delete: boolean;
+	};
+}
+
 /** Possible progress states. */
 export enum PROGRESS {
     /** The socket is connecting. */
@@ -147,7 +182,7 @@ export class Connection<
     private objects: Record<string, ioBroker.Object> = {};
     private states: Record<string, ioBroker.State> = {};
 
-    public acl: any = null;
+    public acl: SocketACL | null = null;
     public isSecure: boolean = false;
     // Do not inform about readiness two times
     public onReadyDone: boolean = false;
@@ -174,7 +209,8 @@ export class Connection<
     /** Cache for server requests */
     private readonly _promises: Record<string, Promise<any>> = {};
 
-    protected _authTimer: any;
+    protected _authTimer: ReturnType<typeof setTimeout> | null = null;
+    protected _refreshTimer: ReturnType<typeof setTimeout> | null = null;
 
     protected _systemConfig?: ioBroker.SystemConfigObject;
     /** The "system.config" object */
@@ -437,10 +473,82 @@ export class Connection<
 
             this._subscribe(true);
             this.onConnectionHandlers.forEach(cb => cb(true));
+
+			this.checkAccessTokenExpire();
         }
 
         this._waitForFirstConnectionPromise.resolve();
     }
+
+	private getAccessTokenExpiration(): number {
+		return parseInt(window.sessionStorage.getItem('access_token_exp') || window.localStorage.getItem('access_token_exp') || '0', 10);
+	}
+
+	private checkAccessTokenExpire() {
+		if (this._refreshTimer) {
+			clearTimeout(this._refreshTimer);
+		}
+		if (this.isSecure) {
+			const accessTokenExpire = this.getAccessTokenExpiration();
+			if (accessTokenExpire) {
+				// Check if the access token expires in the next 30 seconds
+				if (accessTokenExpire < Date.now() + 30_000) {
+					const refreshToken = window.sessionStorage.getItem('refresh_token') || window.localStorage.getItem('refresh_token');
+					if (!refreshToken) {
+						// Refresh the page, as we cannot refresh the token
+						setTimeout(() => window.location.reload(), Date.now() > accessTokenExpire ? 500 : accessTokenExpire - Date.now());
+					} else {
+						// Access token will expire soon => Send authentication again
+						fetch('./oauth/token', {
+							method: 'POST',
+							headers: {
+								'Content-Type': 'application/x-www-form-urlencoded',
+							},
+							body: `grant_type=refresh_token&refresh_token=${refreshToken}&client_id=ioBroker`,
+						})
+							.then(response => {
+								if (response.ok) {
+									return response.json();
+								}
+								throw new Error('Cannot refresh access token');
+							})
+							.then(data => {
+								if (data.accessToken) {
+									// Save expiration time of access token and refresh token
+									if (window.localStorage.getItem('refresh_token')) {
+										window.localStorage.setItem('access_token_exp', data.accessTokenExpiresAt);
+										window.localStorage.setItem('refresh_token_exp', data.refreshTokenExpiresAt);
+										window.localStorage.setItem('refresh_token', data.refreshToken);
+									} else {
+										window.sessionStorage.setItem('refresh_token_exp', data.refreshTokenExpiresAt);
+										window.sessionStorage.setItem('access_token_exp', data.accessTokenExpiresAt);
+										window.sessionStorage.setItem('refresh_token', data.refreshToken);
+									}
+								} else {
+									throw new Error('Cannot get access token');
+								}
+							})
+							.catch(err => {
+								window.localStorage.removeItem('access_token_exp');
+								window.localStorage.removeItem('refresh_token_exp');
+								window.localStorage.removeItem('refresh_token');
+								window.sessionStorage.removeItem('access_token_exp');
+								window.sessionStorage.removeItem('refresh_token_exp');
+								window.sessionStorage.removeItem('refresh_token');
+								console.error(err);
+								window.location.reload();
+							});
+					}
+
+				} else {
+					this._refreshTimer = setTimeout(() => {
+						this._refreshTimer = null;
+						this.checkAccessTokenExpire()
+					}, accessTokenExpire - Date.now() - 30_000 > 120_000 ? 120_000 : accessTokenExpire - Date.now() - 30_000);
+				}
+			}
+		}
+	}
 
     /**
      * Checks if running in ioBroker cloud
@@ -474,16 +582,16 @@ export class Connection<
     /**
      * Called internally.
      */
-    private async getUserPermissions(): Promise<any> {
+    private async getUserPermissions(): Promise<SocketACL | null> {
         return this.request({
             // TODO: check if this should time out
             commandTimeout: false,
             executor: (resolve, reject) => {
-                this._socket.emit('getUserPermissions', (err, acl) => {
+                this._socket.emit('getUserPermissions', (err, acl?: SocketACL | null): void => {
                     if (err) {
                         reject(err);
                     } else {
-                        resolve(acl);
+                        resolve(acl || null);
                     }
                 });
             },
