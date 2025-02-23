@@ -531,6 +531,7 @@ export class Connection<
 										window.sessionStorage.setItem('access_token_exp', data.accessTokenExpiresAt);
 										window.sessionStorage.setItem('refresh_token', data.refreshToken);
 									}
+									this.checkAccessTokenExpire();
 								} else {
 									throw new Error('Cannot get access token');
 								}
