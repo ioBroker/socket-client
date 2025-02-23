@@ -5,6 +5,7 @@ export {
     type Severity,
     type NotificationMessageObject,
     type FilteredNotificationInformation,
+	type HostInfo,
 } from './AdminConnection.js';
 
 export {
