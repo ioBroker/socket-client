@@ -481,7 +481,12 @@ export class Connection<
     }
 
 	private getAccessTokenExpiration(): number {
-		return parseInt(window.sessionStorage.getItem('access_token_exp') || window.localStorage.getItem('access_token_exp') || '0', 10);
+		const dateStr = window.sessionStorage.getItem('access_token_exp') || window.localStorage.getItem('access_token_exp');
+		if (dateStr) {
+			return new Date(dateStr).getTime();
+		}
+
+		return 0;
 	}
 
 	private checkAccessTokenExpire() {
