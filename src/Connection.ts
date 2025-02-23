@@ -532,6 +532,15 @@ export class Connection<
 										window.sessionStorage.setItem('refresh_token', data.refreshToken);
 									}
 									this.checkAccessTokenExpire();
+									this._socket.emit('updateTokenExpiration', (err: string | null, success?: boolean): void => {
+										if (err) {
+											console.error(`Cannot update expiration time: ${err}`);
+											window.location.reload();
+										} else if (!success) {
+											console.error('Cannot update expiration time');
+											window.location.reload();
+										}
+									});
 								} else {
 									throw new Error('Cannot get access token');
 								}

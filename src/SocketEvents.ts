@@ -152,6 +152,7 @@ export interface IOEmitEvents {
     authenticate(callback: AuthenticateCallback): void;
     authEnabled(callback: AuthEnabledCallback): void;
     getUserPermissions(callback?: GetUserPermissionsCallback): void;
+	updateTokenExpiration(callback?: (err: string | null, success?: boolean) => void): void;
 
     requireLog(enabled: boolean, callback?: ErrorCallback): void;
 
