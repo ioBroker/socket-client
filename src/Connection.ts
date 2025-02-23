@@ -4,38 +4,38 @@ import type { EmitEventHandler, ListenEventHandler, SocketClient } from './Socke
 import { getObjectViewResultToArray, normalizeHostId, pattern2RegEx, wait } from './tools.js';
 
 export interface SocketACL {
-	user: `system.user.${string}` | '';
-	groups: `system.group.${string}`[];
-	object?: {
-		read: boolean;
-		list: boolean;
-		write: boolean;
-		delete: boolean;
-	};
-	state?: {
-		list: boolean;
-		read: boolean;
-		write: boolean;
-		delete: boolean;
-		create: boolean;
-	};
-	users?: {
-		create: boolean;
-		delete: boolean;
-		write: boolean;
-	};
-	other?: {
-		http: boolean;
-		execute: boolean;
-		sendto: boolean;
-	};
-	file?: {
-		list: boolean;
-		create: boolean;
-		write: boolean;
-		read: boolean;
-		delete: boolean;
-	};
+    user: `system.user.${string}` | '';
+    groups: `system.group.${string}`[];
+    object?: {
+        read: boolean;
+        list: boolean;
+        write: boolean;
+        delete: boolean;
+    };
+    state?: {
+        list: boolean;
+        read: boolean;
+        write: boolean;
+        delete: boolean;
+        create: boolean;
+    };
+    users?: {
+        create: boolean;
+        delete: boolean;
+        write: boolean;
+    };
+    other?: {
+        http: boolean;
+        execute: boolean;
+        sendto: boolean;
+    };
+    file?: {
+        list: boolean;
+        create: boolean;
+        write: boolean;
+        read: boolean;
+        delete: boolean;
+    };
 }
 
 /** Possible progress states. */
@@ -474,98 +474,144 @@ export class Connection<
             this._subscribe(true);
             this.onConnectionHandlers.forEach(cb => cb(true));
 
-			this.checkAccessTokenExpire();
+            this.checkAccessTokenExpire();
         }
 
         this._waitForFirstConnectionPromise.resolve();
     }
 
-	private getAccessTokenExpiration(): number {
-		const dateStr = window.sessionStorage.getItem('access_token_exp') || window.localStorage.getItem('access_token_exp');
-		if (dateStr) {
-			return new Date(dateStr).getTime();
-		}
+    /**
+     * Get the expiration time of the access token as UNIX timestamp in milliseconds
+     */
+    private getAccessTokenExpiration(): number {
+        const dateStr =
+            window.sessionStorage.getItem('access_token_exp') || window.localStorage.getItem('access_token_exp');
+        if (dateStr) {
+            return new Date(dateStr).getTime();
+        }
 
-		return 0;
-	}
+        return 0;
+    }
 
-	private checkAccessTokenExpire() {
-		if (this._refreshTimer) {
-			clearTimeout(this._refreshTimer);
-		}
-		if (this.isSecure) {
-			const accessTokenExpire = this.getAccessTokenExpiration();
-			if (accessTokenExpire) {
-				// Check if the access token expires in the next 30 seconds
-				if (accessTokenExpire < Date.now() + 30_000) {
-					const refreshToken = window.sessionStorage.getItem('refresh_token') || window.localStorage.getItem('refresh_token');
-					if (!refreshToken) {
-						// Refresh the page, as we cannot refresh the token
-						setTimeout(() => window.location.reload(), Date.now() > accessTokenExpire ? 500 : accessTokenExpire - Date.now());
-					} else {
-						const stayLoggedIn = window.localStorage.getItem('refresh_token') ? 'true' : 'false';
+    private refreshTokens(accessTokenExpire: number): void {
+        const refreshToken =
+            window.sessionStorage.getItem('refresh_token') || window.localStorage.getItem('refresh_token') || '';
+        const stayLoggedIn = window.localStorage.getItem('refresh_token') ? 'true' : 'false';
 
-						// Access token will expire soon => Send authentication again
-						fetch('./oauth/token', {
-							method: 'POST',
-							headers: {
-								'Content-Type': 'application/x-www-form-urlencoded',
-							},
-							body: `grant_type=refresh_token&refresh_token=${refreshToken}&client_id=ioBroker&stayloggedin=${stayLoggedIn}`,
-						})
-							.then(response => {
-								if (response.ok) {
-									return response.json();
-								}
-								throw new Error('Cannot refresh access token');
-							})
-							.then(data => {
-								if (data.accessToken) {
-									// Save expiration time of access token and refresh token
-									if (stayLoggedIn === 'true') {
-										window.localStorage.setItem('access_token_exp', data.accessTokenExpiresAt);
-										window.localStorage.setItem('refresh_token_exp', data.refreshTokenExpiresAt);
-										window.localStorage.setItem('refresh_token', data.refreshToken);
-									} else {
-										window.sessionStorage.setItem('refresh_token_exp', data.refreshTokenExpiresAt);
-										window.sessionStorage.setItem('access_token_exp', data.accessTokenExpiresAt);
-										window.sessionStorage.setItem('refresh_token', data.refreshToken);
-									}
-									this.checkAccessTokenExpire();
-									this._socket.emit('updateTokenExpiration', data.accessToken, (err: string | null, success?: boolean): void => {
-										if (err) {
-											console.error(`Cannot update expiration time: ${err}`);
-											window.location.reload();
-										} else if (!success) {
-											console.error('Cannot update expiration time');
-											window.location.reload();
-										}
-									});
-								} else {
-									throw new Error('Cannot get access token');
-								}
-							})
-							.catch(err => {
-								window.localStorage.removeItem('access_token_exp');
-								window.localStorage.removeItem('refresh_token_exp');
-								window.localStorage.removeItem('refresh_token');
-								window.sessionStorage.removeItem('access_token_exp');
-								window.sessionStorage.removeItem('refresh_token_exp');
-								window.sessionStorage.removeItem('refresh_token');
-								console.error(err);
-								window.location.reload();
-							});
-					}
+        if (!refreshToken) {
+            // Refresh the page, as we cannot refresh the token
+            setTimeout(
+                () => window.location.reload(),
+                Date.now() > accessTokenExpire ? 500 : accessTokenExpire - Date.now(),
+            );
+            return;
+        }
 
-				} else {
-					this._refreshTimer = setTimeout(() => {
-						this._refreshTimer = null;
-						this.checkAccessTokenExpire()
-					}, accessTokenExpire - Date.now() - 30_000 > 120_000 ? 120_000 : accessTokenExpire - Date.now() - 30_000);
-				}
-			}
-		}
-	}
+        // Access token will expire soon => Send authentication again
+        fetch('./oauth/token', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: `grant_type=refresh_token&refresh_token=${refreshToken}&client_id=ioBroker&stayloggedin=${stayLoggedIn}`,
+        })
+            .then(response => {
+                if (response.ok) {
+                    return response.json();
+                }
+                throw new Error('Cannot refresh access token');
+            })
+            .then(data => {
+                if (data.accessToken) {
+                    // Save expiration time of access token and refresh token
+                    if (stayLoggedIn === 'true') {
+                        window.localStorage.setItem('access_token_exp', data.accessTokenExpiresAt);
+                        window.localStorage.setItem('refresh_token_exp', data.refreshTokenExpiresAt);
+                        window.localStorage.setItem('refresh_token', data.refreshToken);
+                    } else {
+                        window.sessionStorage.setItem('refresh_token_exp', data.refreshTokenExpiresAt);
+                        window.sessionStorage.setItem('access_token_exp', data.accessTokenExpiresAt);
+                        window.sessionStorage.setItem('refresh_token', data.refreshToken);
+                    }
+                    this.checkAccessTokenExpire();
+                    this._socket.emit(
+                        'updateTokenExpiration',
+                        data.accessToken,
+                        (err: string | null, success?: boolean): void => {
+                            if (err) {
+                                console.error(`Cannot update expiration time: ${err}`);
+                                window.location.reload();
+                            } else if (!success) {
+                                console.error('Cannot update expiration time');
+                                window.location.reload();
+                            }
+                        },
+                    );
+                } else {
+                    throw new Error('Cannot get access token');
+                }
+            })
+            .catch(err => {
+                window.localStorage.removeItem('access_token_exp');
+                window.localStorage.removeItem('refresh_token_exp');
+                window.localStorage.removeItem('refresh_token');
+                window.sessionStorage.removeItem('access_token_exp');
+                window.sessionStorage.removeItem('refresh_token_exp');
+                window.sessionStorage.removeItem('refresh_token');
+                console.error(err);
+                window.location.reload();
+            });
+    }
+
+    private checkAccessTokenExpire() {
+        if (this._refreshTimer) {
+            clearTimeout(this._refreshTimer);
+        }
+        if (this.isSecure) {
+            const accessTokenExpire = this.getAccessTokenExpiration();
+            if (accessTokenExpire) {
+                // Check if the access token expires in the next 30 seconds
+                if (accessTokenExpire < Date.now() + 30_000) {
+                    const refreshToken =
+                        window.sessionStorage.getItem('refresh_token') || window.localStorage.getItem('refresh_token');
+                    if (!refreshToken) {
+                        // Refresh the page, as we cannot refresh the token
+                        setTimeout(
+                            () => window.location.reload(),
+                            Date.now() > accessTokenExpire ? 500 : accessTokenExpire - Date.now(),
+                        );
+                    } else {
+                        if (this.props.tokenTimeoutHandler) {
+                            // Asc if the user wants to stay logged in
+                            this.props.tokenTimeoutHandler(accessTokenExpire).then(prolong => {
+                                if (prolong) {
+                                    this.refreshTokens(accessTokenExpire);
+                                } else {
+                                    // Refresh the page, as we cannot refresh the token
+                                    setTimeout(
+                                        () => window.location.reload(),
+                                        Date.now() > accessTokenExpire ? 500 : accessTokenExpire - Date.now(),
+                                    );
+                                }
+                            });
+                        } else {
+                            this.refreshTokens(accessTokenExpire);
+                        }
+                    }
+                } else {
+                    this._refreshTimer = setTimeout(
+                        () => {
+                            this._refreshTimer = null;
+                            this.checkAccessTokenExpire();
+                        },
+                        accessTokenExpire - Date.now() - 30_000 > 120_000
+                            ? 120_000
+                            : accessTokenExpire - Date.now() - 30_000,
+                    );
+                }
+            }
+        }
+    }
 
     /**
      * Checks if running in ioBroker cloud
