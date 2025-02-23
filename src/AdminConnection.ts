@@ -97,7 +97,71 @@ export interface HostInfo {
     'adapters count': number;
     /** NPM version */
     NPM: string;
+	/** Running instances */
+	'Active instances': number;
+	location: string;
+	/** Uptime */
+	Uptime: number;
 }
+
+export interface AdapterInformation {
+	/** this flag is only true for the js-controller */
+	controller: boolean;
+	/** adapter version */
+	version: string;
+	/** path to icon of the adapter */
+	icon: string;
+	/** path to local icon of the adapter */
+	localIcon?: string;
+	/** title of the adapter */
+	title: string;
+	/** title of the adapter in multiple languages */
+	titleLang: ioBroker.Translated;
+	/** description of the adapter in multiple languages */
+	desc: ioBroker.Translated;
+	/** platform of the adapter */
+	platform: 'Javascript/Node.js';
+	/** keywords of the adapter */
+	keywords: string[];
+	/** path to a readme file */
+	readme: string;
+	/** The installed adapter version, not existing on controller */
+	runningVersion?: string;
+	/** type of the adapter */
+	type: string;
+	/** license of the adapter */
+	license: string;
+	/** url to license information */
+	licenseUrl?: string;
+}
+
+export type AdapterRating = {
+	// @ts-expect-error rating is here
+	rating?: { r: number; c: number };
+	[version: string]: { r: number; c: number };
+};
+export type AdapterRatingInfo = AdapterRating & { title: string };
+
+export type AdapterInformationEx = AdapterInformation & {
+	installedFrom?: string;
+	enabled: number;
+	count: number;
+	ignoreVersion?: string;
+};
+export type InstalledInfo = { [adapterName: string]: AdapterInformationEx } & {
+	hosts?: { [hostName: string]: ioBroker.HostCommon & { host: string; runningVersion: string } };
+};
+
+interface RepositoryEntry {
+	/** Link to external icon */
+	extIcon: string;
+	/** Translated title */
+	titleLang: ioBroker.Translated;
+	[other: string]: unknown;
+}
+
+/** The ioBroker repository */
+export type Repository = Record<string, RepositoryEntry>;
 
 export interface FilteredNotificationInformation {
     [scope: string]: {
@@ -672,7 +736,7 @@ export class AdminConnection extends Connection<AdminListenEvents, AdminEmitEven
         args?: { update?: boolean; repo?: string | string[] } | string | null,
         update?: boolean,
         timeoutMs?: number,
-    ): Promise<Record<string, ioBroker.AdapterCommon>> {
+    ): Promise<Repository> {
         return this.request({
             cacheKey: `repository_${host}`,
             forceUpdate: update,
@@ -688,7 +752,7 @@ export class AdminConnection extends Connection<AdminListenEvents, AdminEmitEven
                     } else if (!data) {
                         reject('Cannot read "getRepository"');
                     } else {
-                        resolve(data as Record<string, ioBroker.AdapterCommon>);
+                        resolve(data as Repository);
                     }
                 });
             },
@@ -702,7 +766,7 @@ export class AdminConnection extends Connection<AdminListenEvents, AdminEmitEven
      * @param update Force update.
      * @param cmdTimeout timeout in ms
      */
-    getInstalled(host: string, update?: boolean, cmdTimeout?: number): Promise<Record<string, ioBroker.AdapterObject>> {
+    getInstalled(host: string, update?: boolean, cmdTimeout?: number): Promise<InstalledInfo> {
         host = normalizeHostId(host);
 
         return this.request({
@@ -720,7 +784,7 @@ export class AdminConnection extends Connection<AdminListenEvents, AdminEmitEven
                     } else if (!data) {
                         reject('Cannot read "getInstalled"');
                     } else {
-                        resolve(data as Record<string, ioBroker.AdapterObject>);
+                        resolve(data as InstalledInfo);
                     }
                 });
             },
@@ -1166,18 +1230,7 @@ export class AdminConnection extends Connection<AdminListenEvents, AdminEmitEven
     /**
      * Read adapter ratings
      */
-    getRatings(update?: boolean): Promise<{
-        [adapterName: string]: {
-            rating: {
-                r: number;
-                c: number;
-            };
-            [versionNumber: string]: {
-                r: number;
-                c: number;
-            };
-        };
-    }> {
+    getRatings(update?: boolean): Promise<{ [adapterName: string]: AdapterRating } & { uuid: string }> {
         return this.request({
             executor: (resolve, reject, timeout) => {
                 this._socket.emit('getRatings', !!update, (err, ratings) => {
@@ -1189,18 +1242,7 @@ export class AdminConnection extends Connection<AdminListenEvents, AdminEmitEven
                         reject(new Error(err));
                     } else {
                         resolve(
-                            ratings as {
-                                [adapterName: string]: {
-                                    rating: {
-                                        r: number;
-                                        c: number;
-                                    };
-                                    [versionNumber: string]: {
-                                        r: number;
-                                        c: number;
-                                    };
-                                };
-                            },
+                            ratings as { [adapterName: string]: AdapterRating } & { uuid: string },
                         );
                     }
                 });
