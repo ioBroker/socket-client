@@ -498,13 +498,15 @@ export class Connection<
 						// Refresh the page, as we cannot refresh the token
 						setTimeout(() => window.location.reload(), Date.now() > accessTokenExpire ? 500 : accessTokenExpire - Date.now());
 					} else {
+						const stayLoggedIn = window.localStorage.getItem('refresh_token') ? 'true' : 'false';
+
 						// Access token will expire soon => Send authentication again
 						fetch('./oauth/token', {
 							method: 'POST',
 							headers: {
 								'Content-Type': 'application/x-www-form-urlencoded',
 							},
-							body: `grant_type=refresh_token&refresh_token=${refreshToken}&client_id=ioBroker`,
+							body: `grant_type=refresh_token&refresh_token=${refreshToken}&client_id=ioBroker&stayloggedin=${stayLoggedIn}`,
 						})
 							.then(response => {
 								if (response.ok) {
@@ -515,7 +517,7 @@ export class Connection<
 							.then(data => {
 								if (data.accessToken) {
 									// Save expiration time of access token and refresh token
-									if (window.localStorage.getItem('refresh_token')) {
+									if (stayLoggedIn === 'true') {
 										window.localStorage.setItem('access_token_exp', data.accessTokenExpiresAt);
 										window.localStorage.setItem('refresh_token_exp', data.refreshTokenExpiresAt);
 										window.localStorage.setItem('refresh_token', data.refreshToken);
