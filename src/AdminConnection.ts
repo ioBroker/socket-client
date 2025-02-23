@@ -672,7 +672,7 @@ export class AdminConnection extends Connection<AdminListenEvents, AdminEmitEven
         args?: { update?: boolean; repo?: string | string[] } | string | null,
         update?: boolean,
         timeoutMs?: number,
-    ): Promise<Record<string, ioBroker.AdapterObject>> {
+    ): Promise<Record<string, ioBroker.AdapterCommon>> {
         return this.request({
             cacheKey: `repository_${host}`,
             forceUpdate: update,
@@ -688,7 +688,7 @@ export class AdminConnection extends Connection<AdminListenEvents, AdminEmitEven
                     } else if (!data) {
                         reject('Cannot read "getRepository"');
                     } else {
-                        resolve(data as Record<string, ioBroker.AdapterObject>);
+                        resolve(data as Record<string, ioBroker.AdapterCommon>);
                     }
                 });
             },
