@@ -27,6 +27,78 @@ export interface NotificationMessageObject {
     ts: number;
 }
 
+type DockerInformation =
+    | {
+          /** If it is a Docker installation */
+          isDocker: boolean;
+          /** If it is the official Docker image */
+          isOfficial: true;
+          /** Semver string for official Docker image */
+          officialVersion: string;
+      }
+    | {
+          /** If it is a Docker installation */
+          isDocker: boolean;
+          /** If it is the official Docker image */
+          isOfficial: false;
+      };
+
+export interface HostInfo {
+    /** Converted OS for human readability */
+    Platform:
+        | 'aix'
+        | 'android'
+        | 'darwin'
+        | 'freebsd'
+        | 'haiku'
+        | 'linux'
+        | 'openbsd'
+        | 'sunos'
+        | 'win32'
+        | 'cygwin'
+        | 'netbsd'
+        | 'docker'
+        | 'Windows'
+        | 'OSX';
+    /** The underlying OS */
+    os:
+        | 'aix'
+        | 'android'
+        | 'darwin'
+        | 'freebsd'
+        | 'haiku'
+        | 'linux'
+        | 'openbsd'
+        | 'sunos'
+        | 'win32'
+        | 'cygwin'
+        | 'netbsd';
+    /** Information about the docker installation */
+    dockerInformation?: DockerInformation;
+    /** Host architecture */
+    Architecture: string;
+    /** Number of CPUs */
+    CPUs: number | null;
+    /** CPU speed */
+    Speed: number | null;
+    /** CPU model */
+    Model: string | null;
+    /** Total RAM of host */
+    RAM: number;
+    /** System uptime in seconds */
+    'System uptime': number;
+    /** Node.JS version */
+    'Node.js': string;
+    /** Current time to compare to local time */
+    time: number;
+    /** Timezone offset to compare to local time */
+    timeOffset: number;
+    /** Number of available adapters */
+    'adapters count': number;
+    /** NPM version */
+    NPM: string;
+}
+
 export interface FilteredNotificationInformation {
     [scope: string]: {
         description: MultilingualObject;
@@ -532,7 +604,7 @@ export class AdminConnection extends Connection<AdminListenEvents, AdminEmitEven
      * @param update Force update.
      * @param timeoutMs optional read timeout.
      */
-    getHostInfo(host: string, update?: boolean, timeoutMs?: number): Promise<any> {
+    getHostInfo(host: string, update?: boolean, timeoutMs?: number): Promise<HostInfo> {
         host = normalizeHostId(host);
         return this.request({
             cacheKey: `hostInfo_${host}`,
@@ -549,7 +621,7 @@ export class AdminConnection extends Connection<AdminListenEvents, AdminEmitEven
                     } else if (!data) {
                         reject('Cannot read "getHostInfo"');
                     } else {
-                        resolve(data);
+                        resolve(data as HostInfo);
                     }
                 });
             },
@@ -563,7 +635,7 @@ export class AdminConnection extends Connection<AdminListenEvents, AdminEmitEven
      * @param update Force update.
      * @param timeoutMs optional read timeout.
      */
-    getHostInfoShort(host: string, update?: boolean, timeoutMs?: number): Promise<any> {
+    getHostInfoShort(host: string, update?: boolean, timeoutMs?: number): Promise<HostInfo> {
         host = normalizeHostId(host);
         return this.request({
             cacheKey: `hostInfoShort_${host}`,
@@ -580,7 +652,7 @@ export class AdminConnection extends Connection<AdminListenEvents, AdminEmitEven
                     } else if (!data) {
                         reject('Cannot read "getHostInfoShort"');
                     } else {
-                        resolve(data);
+                        resolve(data as HostInfo);
                     }
                 });
             },
@@ -600,7 +672,7 @@ export class AdminConnection extends Connection<AdminListenEvents, AdminEmitEven
         args?: { update?: boolean; repo?: string | string[] } | string | null,
         update?: boolean,
         timeoutMs?: number,
-    ): Promise<any> {
+    ): Promise<Record<string, ioBroker.AdapterObject>> {
         return this.request({
             cacheKey: `repository_${host}`,
             forceUpdate: update,
@@ -616,7 +688,7 @@ export class AdminConnection extends Connection<AdminListenEvents, AdminEmitEven
                     } else if (!data) {
                         reject('Cannot read "getRepository"');
                     } else {
-                        resolve(data);
+                        resolve(data as Record<string, ioBroker.AdapterObject>);
                     }
                 });
             },
@@ -630,7 +702,7 @@ export class AdminConnection extends Connection<AdminListenEvents, AdminEmitEven
      * @param update Force update.
      * @param cmdTimeout timeout in ms
      */
-    getInstalled(host: string, update?: boolean, cmdTimeout?: number): Promise<any> {
+    getInstalled(host: string, update?: boolean, cmdTimeout?: number): Promise<Record<string, ioBroker.AdapterObject>> {
         host = normalizeHostId(host);
 
         return this.request({
@@ -648,7 +720,7 @@ export class AdminConnection extends Connection<AdminListenEvents, AdminEmitEven
                     } else if (!data) {
                         reject('Cannot read "getInstalled"');
                     } else {
-                        resolve(data);
+                        resolve(data as Record<string, ioBroker.AdapterObject>);
                     }
                 });
             },
@@ -726,7 +798,7 @@ export class AdminConnection extends Connection<AdminListenEvents, AdminEmitEven
      * @param host The host name.
      * @param config The configuration to write.
      */
-    writeBaseSettings(host: string, config: ioBroker.IoBrokerJson): Promise<{ error?: any; result?: 'ok' }> {
+    writeBaseSettings(host: string, config: ioBroker.IoBrokerJson): Promise<{ error?: string; result?: 'ok' }> {
         // Make sure we deal with a hostname, not an object ID
         host = objectIdToHostname(host);
 
@@ -779,7 +851,10 @@ export class AdminConnection extends Connection<AdminListenEvents, AdminEmitEven
      * @param host The host name.
      * @param typeOfDiag one of none, normal, no-city, extended
      */
-    getDiagData(host: string, typeOfDiag: string): Promise<Record<string, any> | null> {
+    getDiagData(
+        host: string,
+        typeOfDiag: 'none' | 'normal' | 'no-city' | 'extended',
+    ): Promise<Record<string, any> | null> {
         // Make sure we deal with a hostname, not an object ID
         host = objectIdToHostname(host);
 
@@ -1003,15 +1078,15 @@ export class AdminConnection extends Connection<AdminListenEvents, AdminEmitEven
      * @param host The host name.
      * @param category - optional
      */
-    clearNotifications(host: string, category: string): Promise<any> {
+    clearNotifications(host: string, category: string): Promise<{ result: 'ok' }> {
         return this.request({
             executor: (resolve, reject, timeout) => {
-                this._socket.emit('sendToHost', host, 'clearNotifications', { category }, notifications => {
+                this._socket.emit('sendToHost', host, 'clearNotifications', { category }, result => {
                     if (timeout.elapsed) {
                         return;
                     }
                     timeout.clearTimeout();
-                    resolve(notifications);
+                    resolve(result as { result: 'ok' });
                 });
             },
         });
@@ -1133,7 +1208,7 @@ export class AdminConnection extends Connection<AdminListenEvents, AdminEmitEven
         });
     }
 
-    getCurrentSession(cmdTimeout?: number): any {
+    getCurrentSession(cmdTimeout?: number): Promise<{ expireInSec?: number; error?: string }> {
         const controller = new AbortController();
 
         return this.request({
@@ -1150,7 +1225,8 @@ export class AdminConnection extends Connection<AdminListenEvents, AdminEmitEven
                         return;
                     }
                     timeout.clearTimeout();
-                    resolve(res.json());
+                    const result: { expireInSec?: number; error?: string } = await res.json();
+                    resolve(result);
                 } catch (e) {
                     reject(`getCurrentSession: ${e}`);
                 }
@@ -1172,8 +1248,9 @@ export class AdminConnection extends Connection<AdminListenEvents, AdminEmitEven
                     timeout.clearTimeout();
                     if (err) {
                         reject(err);
+                    } else {
+                        resolve(namespace!);
                     }
-                    resolve(namespace!);
                 });
             },
         });
