@@ -27,6 +27,7 @@ export {
     type ObjectChangeHandler,
     type InstanceMessageCallback,
     type InstanceSubscribe,
+    type OAuth2Response,
 } from './Connection.js';
 
 export type { ConnectionProps } from './ConnectionProps.js';
