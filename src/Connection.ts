@@ -3,6 +3,14 @@ import { createDeferredPromise } from './DeferredPromise.js';
 import type { EmitEventHandler, ListenEventHandler, SocketClient } from './SocketClient.js';
 import { getObjectViewResultToArray, normalizeHostId, pattern2RegEx, wait } from './tools.js';
 
+export interface OAuth2Response {
+	access_token: string;
+	expires_in: number;
+	token_type: 'Bearer' | 'JWT';
+	refresh_token: string;
+	refresh_token_expires_in: number;
+}
+
 export interface SocketACL {
     user: `system.user.${string}` | '';
     groups: `system.group.${string}`[];
@@ -521,22 +529,23 @@ export class Connection<
                 }
                 throw new Error('Cannot refresh access token');
             })
-            .then(data => {
-                if (data.accessToken) {
+            .then((data: OAuth2Response): void => {
+                if (data.access_token) {
+					const now = Date.now();
                     // Save expiration time of access token and refresh token
                     if (stayLoggedIn === 'true') {
-                        window.localStorage.setItem('access_token_exp', data.accessTokenExpiresAt);
-                        window.localStorage.setItem('refresh_token_exp', data.refreshTokenExpiresAt);
-                        window.localStorage.setItem('refresh_token', data.refreshToken);
+                        window.localStorage.setItem('access_token_exp', new Date(now + data.expires_in * 1000).toISOString());
+                        window.localStorage.setItem('refresh_token_exp', new Date(now + data.refresh_token_expires_in * 1000).toISOString());
+                        window.localStorage.setItem('refresh_token', data.refresh_token);
                     } else {
-                        window.sessionStorage.setItem('refresh_token_exp', data.refreshTokenExpiresAt);
-                        window.sessionStorage.setItem('access_token_exp', data.accessTokenExpiresAt);
-                        window.sessionStorage.setItem('refresh_token', data.refreshToken);
+						window.sessionStorage.setItem('access_token_exp', new Date(now + data.expires_in * 1000).toISOString());
+						window.sessionStorage.setItem('refresh_token_exp', new Date(now + data.refresh_token_expires_in * 1000).toISOString());
+                        window.sessionStorage.setItem('refresh_token', data.refresh_token);
                     }
                     this.checkAccessTokenExpire();
                     this._socket.emit(
                         'updateTokenExpiration',
-                        data.accessToken,
+                        data.access_token,
                         (err: string | null, success?: boolean): void => {
                             if (err) {
                                 console.error(`Cannot update expiration time: ${err}`);
