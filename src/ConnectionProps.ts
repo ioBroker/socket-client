@@ -54,5 +54,5 @@ export interface ConnectionProps {
     /** Authentication token (used only in cloud) */
     token?: string;
 	/** The timeout handler which will be called 30 seconds before token expiration */
-	tokenTimeoutHandler?: (accessTokenExpire: number) => Promise<boolean>;
+	tokenTimeoutHandler?: (accessTokenExpireUnixTimeInMs: number) => Promise<boolean>;
 }

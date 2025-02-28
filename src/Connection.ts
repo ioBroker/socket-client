@@ -4,11 +4,20 @@ import type { EmitEventHandler, ListenEventHandler, SocketClient } from './Socke
 import { getObjectViewResultToArray, normalizeHostId, pattern2RegEx, wait } from './tools.js';
 
 export interface OAuth2Response {
-	access_token: string;
-	expires_in: number;
-	token_type: 'Bearer' | 'JWT';
-	refresh_token: string;
-	refresh_token_expires_in: number;
+    access_token: string;
+    expires_in: number;
+    token_type: 'Bearer' | 'JWT';
+    refresh_token: string;
+    refresh_token_expires_in: number;
+}
+
+interface StoredTokens {
+    refresh_token: string;
+    access_token: string;
+    expires_in: Date;
+    refresh_token_expires_in: Date;
+    stayLoggedIn: boolean;
+    owner: string | undefined;
 }
 
 export interface SocketACL {
@@ -137,6 +146,10 @@ export class Connection<
     constructor(props: Partial<ConnectionProps>) {
         this.props = this.applyDefaultProps(props);
 
+        // Create unique ID of this instance
+        this.connId = `${this.props.name ? `${this.props.name}-` : ''}${Math.round(Math.random() * 1000000)
+            .toString()
+            .padStart(6, '0')}`;
         this.waitForSocketLib()
             .then(() => this.startSocket())
             .catch(e => {
@@ -162,6 +175,8 @@ export class Connection<
     }
 
     private readonly props: ConnectionProps;
+    private readonly connId: string;
+    private lastAccessToken: string | null = null;
 
     private ignoreState: string = '';
     private connected: boolean = false;
@@ -488,124 +503,176 @@ export class Connection<
         this._waitForFirstConnectionPromise.resolve();
     }
 
-    /**
-     * Get the expiration time of the access token as UNIX timestamp in milliseconds
-     */
-    private getAccessTokenExpiration(): number {
-        const dateStr =
-            window.sessionStorage.getItem('access_token_exp') || window.localStorage.getItem('access_token_exp');
-        if (dateStr) {
-            return new Date(dateStr).getTime();
+    static parseStoredTokens(): StoredTokens | null {
+        let tokenString: string | null | undefined = window.sessionStorage.getItem('iob_tokens');
+        let stayLoggedIn = !tokenString;
+        if (!tokenString) {
+            tokenString = window.localStorage.getItem('iob_tokens');
+        }
+        if (!tokenString) {
+            return null;
         }
 
-        return 0;
+        const [refresh_token, refresh_token_expires_in, access_token, expires_in, owner] = tokenString.split(';');
+        const refreshExpires = new Date(refresh_token_expires_in);
+        if (refreshExpires.getTime() < Date.now()) {
+            // refresh token expired
+            return null;
+        }
+        return {
+            refresh_token,
+            refresh_token_expires_in: refreshExpires,
+            access_token,
+            expires_in: new Date(expires_in),
+            owner,
+            stayLoggedIn,
+        };
     }
 
-    private refreshTokens(accessTokenExpire: number): void {
-        const refreshToken =
-            window.sessionStorage.getItem('refresh_token') || window.localStorage.getItem('refresh_token') || '';
-        const stayLoggedIn = window.localStorage.getItem('refresh_token') ? 'true' : 'false';
+    static saveTokens(data: OAuth2Response, owner: string, stayLoggedIn: boolean): void {
+        const tokenStr = `${data.access_token};${new Date(Date.now() + data.refresh_token_expires_in * 1000).toISOString()};${new Date(Date.now() + data.expires_in * 1000).toISOString()};${data.expires_in};${owner}`;
+        if (stayLoggedIn) {
+            window.localStorage.setItem('iob_tokens', tokenStr);
+        } else {
+            window.sessionStorage.setItem('iob_tokens', tokenStr);
+        }
+    }
 
-        if (!refreshToken) {
+    /**
+     * Destroy tokens if they were created by this connection if they expired or invalid
+     *
+     * @param owner connection ID
+     * @param stayLoggedIn if stored in localStorage or in sessionStorage
+     */
+    static deleteTokens(owner: string, stayLoggedIn: boolean): void {
+        const tokens = Connection.parseStoredTokens();
+        if (tokens) {
+            if (tokens.stayLoggedIn === stayLoggedIn && tokens.owner === owner) {
+                if (tokens.stayLoggedIn) {
+                    window.localStorage.removeItem('iob_tokens');
+                } else {
+                    window.sessionStorage.removeItem('iob_tokens');
+                }
+            }
+        }
+    }
+
+    private refreshTokens(tokenStructure: StoredTokens): void {
+        if (!tokenStructure) {
             // Refresh the page, as we cannot refresh the token
-            setTimeout(
-                () => window.location.reload(),
-                Date.now() > accessTokenExpire ? 500 : accessTokenExpire - Date.now(),
-            );
+            setTimeout(() => window.location.reload(), 500);
             return;
         }
 
-        // Access token will expire soon => Send authentication again
-        fetch('./oauth/token', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-            },
-            body: `grant_type=refresh_token&refresh_token=${refreshToken}&client_id=ioBroker&stayloggedin=${stayLoggedIn}`,
-        })
-            .then(response => {
-                if (response.ok) {
-                    return response.json();
-                }
-                throw new Error('Cannot refresh access token');
+        if (!tokenStructure.owner || tokenStructure.owner === this.props.name) {
+            // Access token will expire soon => Send authentication again
+            fetch('./oauth/token', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: `grant_type=refresh_token&refresh_token=${tokenStructure.refresh_token}&client_id=ioBroker&stayloggedin=${tokenStructure.stayLoggedIn}`,
             })
-            .then((data: OAuth2Response): void => {
-                if (data.access_token) {
-					const now = Date.now();
-                    // Save expiration time of access token and refresh token
-                    if (stayLoggedIn === 'true') {
-                        window.localStorage.setItem('access_token_exp', new Date(now + data.expires_in * 1000).toISOString());
-                        window.localStorage.setItem('refresh_token_exp', new Date(now + data.refresh_token_expires_in * 1000).toISOString());
-                        window.localStorage.setItem('refresh_token', data.refresh_token);
-                    } else {
-						window.sessionStorage.setItem('access_token_exp', new Date(now + data.expires_in * 1000).toISOString());
-						window.sessionStorage.setItem('refresh_token_exp', new Date(now + data.refresh_token_expires_in * 1000).toISOString());
-                        window.sessionStorage.setItem('refresh_token', data.refresh_token);
+                .then(response => {
+                    if (response.ok) {
+                        return response.json();
                     }
-                    this.checkAccessTokenExpire();
-                    this._socket.emit(
-                        'updateTokenExpiration',
-                        data.access_token,
-                        (err: string | null, success?: boolean): void => {
-                            if (err) {
-                                console.error(`Cannot update expiration time: ${err}`);
-                                window.location.reload();
-                            } else if (!success) {
-                                console.error('Cannot update expiration time');
-                                window.location.reload();
-                            }
-                        },
-                    );
-                } else {
-                    throw new Error('Cannot get access token');
-                }
-            })
-            .catch(err => {
-                window.localStorage.removeItem('access_token_exp');
-                window.localStorage.removeItem('refresh_token_exp');
-                window.localStorage.removeItem('refresh_token');
-                window.sessionStorage.removeItem('access_token_exp');
-                window.sessionStorage.removeItem('refresh_token_exp');
-                window.sessionStorage.removeItem('refresh_token');
-                console.error(err);
-                window.location.reload();
-            });
+                    throw new Error('Cannot refresh access token');
+                })
+                .then((data: OAuth2Response): void => {
+                    if (data.access_token) {
+                        Connection.saveTokens(data, this.connId, tokenStructure.stayLoggedIn);
+
+						// Start timer to check if the token expires
+                        this.checkAccessTokenExpire();
+
+                        this._socket.emit(
+                            'updateTokenExpiration',
+                            data.access_token,
+                            (err: string | null, success?: boolean): void => {
+                                if (err) {
+                                    console.error(`Cannot update expiration time: ${err}`);
+                                    window.location.reload();
+                                } else if (!success) {
+                                    console.error('Cannot update expiration time');
+                                    window.location.reload();
+                                }
+                            },
+                        );
+                    } else {
+                        throw new Error('Cannot get access token');
+                    }
+                })
+                .catch(err => {
+                    Connection.deleteTokens(this.connId, tokenStructure.stayLoggedIn);
+                    console.error(err);
+                    window.location.reload();
+                });
+        } else if (this.lastAccessToken !== tokenStructure.access_token) {
+			// This connection is not a token owner, so only read the new access token and inform the server
+            this.lastAccessToken = tokenStructure.access_token;
+            this._socket.emit(
+                'updateTokenExpiration',
+                tokenStructure.access_token,
+                (err: string | null, success?: boolean): void => {
+                    if (err) {
+                        console.error(`Cannot update expiration time: ${err}`);
+                        window.location.reload();
+                    } else if (!success) {
+                        console.error('Cannot update expiration time');
+                        window.location.reload();
+                    }
+                },
+            );
+
+            this.checkAccessTokenExpire();
+        }
     }
 
     private checkAccessTokenExpire() {
         if (this._refreshTimer) {
             clearTimeout(this._refreshTimer);
+            this._refreshTimer = null;
         }
         if (this.isSecure) {
-            const accessTokenExpire = this.getAccessTokenExpiration();
-            if (accessTokenExpire) {
+            const tokens = Connection.parseStoredTokens();
+            if (tokens) {
+                const accessExpireInUnixMs = tokens.expires_in.getTime();
                 // Check if the access token expires in the next 30 seconds
-                if (accessTokenExpire < Date.now() + 30_000) {
-                    const refreshToken =
-                        window.sessionStorage.getItem('refresh_token') || window.localStorage.getItem('refresh_token');
-                    if (!refreshToken) {
+                if (accessExpireInUnixMs < Date.now() + 30_000) {
+                    if (!tokens.refresh_token) {
                         // Refresh the page, as we cannot refresh the token
                         setTimeout(
                             () => window.location.reload(),
-                            Date.now() > accessTokenExpire ? 500 : accessTokenExpire - Date.now(),
+                            Date.now() > accessExpireInUnixMs ? 500 : accessExpireInUnixMs - Date.now(),
                         );
-                    } else {
+                    } else if (tokens.owner === this.connId) {
+                        // Handle token expiration if the connection is the owner of the token
                         if (this.props.tokenTimeoutHandler) {
                             // Asc if the user wants to stay logged in
-                            this.props.tokenTimeoutHandler(accessTokenExpire).then(prolong => {
+                            this.props.tokenTimeoutHandler(accessExpireInUnixMs).then(prolong => {
                                 if (prolong) {
-                                    this.refreshTokens(accessTokenExpire);
+                                    this.refreshTokens(tokens);
                                 } else {
                                     // Refresh the page, as we cannot refresh the token
                                     setTimeout(
                                         () => window.location.reload(),
-                                        Date.now() > accessTokenExpire ? 500 : accessTokenExpire - Date.now(),
+                                        Date.now() > accessExpireInUnixMs ? 500 : accessExpireInUnixMs - Date.now(),
                                     );
                                 }
                             });
                         } else {
-                            this.refreshTokens(accessTokenExpire);
+                            this.refreshTokens(tokens);
                         }
+                    } else if (this.lastAccessToken !== tokens.access_token) {
+                        // The connection is not the owner, so just check if access_token changed, so inform the server about it
+                        this.refreshTokens(tokens);
+                    } else {
+                        // What 3 seconds and check again, maybe the owner connection will update the token
+                        this._refreshTimer = setTimeout(() => {
+                            this._refreshTimer = null;
+                            this.checkAccessTokenExpire();
+                        }, 3_000);
                     }
                 } else {
                     this._refreshTimer = setTimeout(
@@ -613,9 +680,9 @@ export class Connection<
                             this._refreshTimer = null;
                             this.checkAccessTokenExpire();
                         },
-                        accessTokenExpire - Date.now() - 30_000 > 120_000
+                        accessExpireInUnixMs - Date.now() - 30_000 > 120_000
                             ? 120_000
-                            : accessTokenExpire - Date.now() - 30_000,
+                            : accessExpireInUnixMs - Date.now() - 30_000,
                     );
                 }
             }
