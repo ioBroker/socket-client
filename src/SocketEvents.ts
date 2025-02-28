@@ -1,4 +1,4 @@
-import type {ERRORS, SocketACL} from './Connection.js';
+import type { ERRORS, SocketACL } from './Connection.js';
 import type { LogMessage } from './ConnectionProps.js';
 
 /** Defines which events are emitted by the server and can be listened on the client */
@@ -152,7 +152,7 @@ export interface IOEmitEvents {
     authenticate(callback: AuthenticateCallback): void;
     authEnabled(callback: AuthEnabledCallback): void;
     getUserPermissions(callback?: GetUserPermissionsCallback): void;
-	updateTokenExpiration(accessToken: string, callback?: (err: string | null, success?: boolean) => void): void;
+    updateTokenExpiration(accessToken: string, callback?: (err: string | null, success?: boolean) => void): void;
 
     requireLog(enabled: boolean, callback?: ErrorCallback): void;
 

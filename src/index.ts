@@ -5,13 +5,13 @@ export {
     type Severity,
     type NotificationMessageObject,
     type FilteredNotificationInformation,
-	type HostInfo,
-	type InstalledInfo,
-	type Repository,
-	type AdapterInformation,
-	type AdapterRating,
-	type AdapterRatingInfo,
-	type AdapterInformationEx,
+    type HostInfo,
+    type InstalledInfo,
+    type Repository,
+    type AdapterInformation,
+    type AdapterRating,
+    type AdapterRatingInfo,
+    type AdapterInformationEx,
 } from './AdminConnection.js';
 
 export {

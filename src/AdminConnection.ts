@@ -103,9 +103,9 @@ export interface HostInfo {
     location: string;
     /** Uptime */
     Uptime: number;
-	/** Free disk space */
+    /** Free disk space */
     'Disk free': number;
-	/** Disk size */
+    /** Disk size */
     'Disk size': number;
 }
 

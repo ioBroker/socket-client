@@ -505,7 +505,7 @@ export class Connection<
 
     static parseStoredTokens(): StoredTokens | null {
         let tokenString: string | null | undefined = window.sessionStorage.getItem('iob_tokens');
-        let stayLoggedIn = !tokenString;
+        const stayLoggedIn = !tokenString;
         if (!tokenString) {
             tokenString = window.localStorage.getItem('iob_tokens');
         }
@@ -583,7 +583,7 @@ export class Connection<
                     if (data.access_token) {
                         Connection.saveTokens(data, this.connId, tokenStructure.stayLoggedIn);
 
-						// Start timer to check if the token expires
+                        // Start timer to check if the token expires
                         this.checkAccessTokenExpire();
 
                         this._socket.emit(
@@ -609,7 +609,7 @@ export class Connection<
                     window.location.reload();
                 });
         } else if (this.lastAccessToken !== tokenStructure.access_token) {
-			// This connection is not a token owner, so only read the new access token and inform the server
+            // This connection is not a token owner, so only read the new access token and inform the server
             this.lastAccessToken = tokenStructure.access_token;
             this._socket.emit(
                 'updateTokenExpiration',
@@ -629,7 +629,7 @@ export class Connection<
         }
     }
 
-    private checkAccessTokenExpire() {
+    private checkAccessTokenExpire(): void {
         if (this._refreshTimer) {
             clearTimeout(this._refreshTimer);
             this._refreshTimer = null;
@@ -650,7 +650,7 @@ export class Connection<
                         // Handle token expiration if the connection is the owner of the token
                         if (this.props.tokenTimeoutHandler) {
                             // Asc if the user wants to stay logged in
-                            this.props.tokenTimeoutHandler(accessExpireInUnixMs).then(prolong => {
+                            void this.props.tokenTimeoutHandler(accessExpireInUnixMs).then(prolong => {
                                 if (prolong) {
                                     this.refreshTokens(tokens);
                                 } else {
