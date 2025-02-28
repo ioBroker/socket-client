@@ -551,7 +551,7 @@ export class Connection<
     }
 
     static saveTokensStatic(data: OAuth2Response, stayLoggedIn: boolean, owner?: string): void {
-        const tokenStr = `${data.access_token};${new Date(Date.now() + data.refresh_token_expires_in * 1000).toISOString()};${new Date(Date.now() + data.expires_in * 1000).toISOString()};${data.expires_in}${owner ? `;${owner}` : ''}`;
+        const tokenStr = `${data.access_token};${new Date(Date.now() + data.refresh_token_expires_in * 1000).toISOString()};${data.access_token};${new Date(Date.now() + data.expires_in * 1000).toISOString()}${owner ? `;${owner}` : ''}`;
         if (stayLoggedIn) {
             window.localStorage.setItem('iob_tokens', tokenStr);
         } else {
