@@ -350,7 +350,7 @@ export class Connection<
 
         this._socket.on('connect', noTimeout => {
             // Listen for messages from other tabs
-            window.addEventListener('message', this.onAccessTokenUpdated);
+            window.addEventListener('storage', this.onAccessTokenUpdated);
 
             const tokens = Connection.readTokens();
             if (tokens && !tokens.owner) {
@@ -592,35 +592,31 @@ export class Connection<
         }
     }
 
-    private onAccessTokenUpdated = (event: MessageEvent): void => {
-        // Verify the message origin matches your domain
-        if (event.origin !== window.location.origin) {
-            return;
-        }
-
-        const data: {
-            type: string;
-            accessToken: string;
-            updatedBy: string;
-        } = event.data;
-        if (data && typeof data === 'object' && data.type === 'TOKEN_UPDATE' && data.updatedBy !== this.connId) {
-            console.log(`Tab ${this.connId} received updated token: ${data.accessToken}`);
-            this.updateTokenExpiration(data.accessToken);
+    private onAccessTokenUpdated = (event: StorageEvent): void => {
+        // Storage event is only fired in other tabs/windows (or iframes) of the same origin when the localStorage (or sessionStorage) is modified, and not in the same window where the change was made.
+        if (event.key === 'iob_tokens') {
+            const tokens = Connection.readTokens();
+            if (tokens) {
+                console.log(`Tab ${this.connId} received updated token: ${tokens.access_token}`);
+                this.updateTokenExpiration(tokens.access_token);
+            }
         }
     };
 
     private updateTokenExpiration(accessToken: string): void {
         // This connection is not a token owner, so only read the new access token and inform the server
-        this.lastAccessToken = accessToken;
-        this._socket.emit('updateTokenExpiration', accessToken, (err: string | null, success?: boolean): void => {
-            if (err) {
-                console.error(`Cannot update expiration time: ${err}`);
-                window.location.reload();
-            } else if (!success) {
-                console.error('Cannot update expiration time');
-                window.location.reload();
-            }
-        });
+        if (this.lastAccessToken !== accessToken) {
+            this.lastAccessToken = accessToken;
+            this._socket.emit('updateTokenExpiration', accessToken, (err: string | null, success?: boolean): void => {
+                if (err) {
+                    console.error(`Cannot update expiration time: ${err}`);
+                    window.location.reload();
+                } else if (!success) {
+                    console.error('Cannot update expiration time');
+                    window.location.reload();
+                }
+            });
+        }
 
         this.checkAccessTokenExpire();
     }
@@ -651,16 +647,6 @@ export class Connection<
                     .then((data: OAuth2Response): void => {
                         if (data.access_token) {
                             this.saveTokens(data, tokenStructure.stayLoggedIn);
-
-                            // inform other connections about the new token
-                            window.postMessage(
-                                {
-                                    type: 'TOKEN_UPDATE',
-                                    accessToken: data.access_token,
-                                    updatedBy: this.connId,
-                                },
-                                window.location.origin, // Target origin for security
-                            );
 
                             this.releaseTokenLock();
 
