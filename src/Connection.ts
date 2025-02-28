@@ -503,7 +503,7 @@ export class Connection<
         this._waitForFirstConnectionPromise.resolve();
     }
 
-    static parseStoredTokens(): StoredTokens | null {
+    static readTokens(): StoredTokens | null {
         let tokenString: string | null | undefined = window.sessionStorage.getItem('iob_tokens');
         const stayLoggedIn = !tokenString;
         if (!tokenString) {
@@ -529,13 +529,22 @@ export class Connection<
         };
     }
 
-    public saveTokens(data: OAuth2Response, stayLoggedIn: boolean): void {
-        const tokenStr = `${data.access_token};${new Date(Date.now() + data.refresh_token_expires_in * 1000).toISOString()};${new Date(Date.now() + data.expires_in * 1000).toISOString()};${data.expires_in};${this.connId}`;
+    static saveTokensStatic(data: OAuth2Response, stayLoggedIn: boolean, owner?: string): void {
+        const tokenStr = `${data.access_token};${new Date(Date.now() + data.refresh_token_expires_in * 1000).toISOString()};${new Date(Date.now() + data.expires_in * 1000).toISOString()};${data.expires_in}${owner ? `;${owner}` : ''}`;
         if (stayLoggedIn) {
             window.localStorage.setItem('iob_tokens', tokenStr);
         } else {
             window.sessionStorage.setItem('iob_tokens', tokenStr);
         }
+    }
+
+    public saveTokens(data: OAuth2Response, stayLoggedIn: boolean): void {
+        Connection.saveTokensStatic(data, stayLoggedIn, this.connId);
+    }
+
+    static deleteTokensStatic(): void {
+        window.localStorage.removeItem('iob_tokens');
+        window.sessionStorage.removeItem('iob_tokens');
     }
 
     /**
@@ -545,11 +554,10 @@ export class Connection<
      * @param logout if logout is requested
      */
     public deleteTokens(stayLoggedIn: boolean, logout?: boolean): void {
-        const tokens = Connection.parseStoredTokens();
+        const tokens = Connection.readTokens();
         if (tokens) {
             if (logout) {
-                window.localStorage.removeItem('iob_tokens');
-                window.sessionStorage.removeItem('iob_tokens');
+                Connection.deleteTokensStatic();
             } else if (tokens.stayLoggedIn === stayLoggedIn && tokens.owner === this.connId) {
                 if (tokens.stayLoggedIn) {
                     window.localStorage.removeItem('iob_tokens');
@@ -638,7 +646,7 @@ export class Connection<
             this._refreshTimer = null;
         }
         if (this.isSecure) {
-            const tokens = Connection.parseStoredTokens();
+            const tokens = Connection.readTokens();
             if (tokens) {
                 const accessExpireInUnixMs = tokens.expires_in.getTime();
                 // Check if the access token expires in the next 30 seconds
