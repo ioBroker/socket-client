@@ -44,8 +44,7 @@ console.log(await adminConnection.getHosts());
 	Placeholder for the next version (at the beginning of the line):
 	### **WORK IN PROGRESS**
 -->
-
-### **WORK IN PROGRESS**
+### 4.0.19 (2025-02-28)
 
 -   (@GermanBluefox) Added support for OAuth2 authentication
 
