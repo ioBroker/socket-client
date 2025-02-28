@@ -632,7 +632,7 @@ export class Connection<
             return;
         }
 
-        if (takeOwnership || !tokenStructure.owner || tokenStructure.owner === this.props.name) {
+        if (takeOwnership || !tokenStructure.owner || tokenStructure.owner === this.connId) {
             if (this.acquireTokenLock()) {
                 // Access token will expire soon => Send authentication again
                 fetch('./oauth/token', {
