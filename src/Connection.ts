@@ -175,7 +175,7 @@ export class Connection<
     }
 
     private readonly props: ConnectionProps;
-    private readonly connId: string;
+    public readonly connId: string;
     private lastAccessToken: string | null = null;
 
     private ignoreState: string = '';
@@ -529,8 +529,8 @@ export class Connection<
         };
     }
 
-    static saveTokens(data: OAuth2Response, owner: string, stayLoggedIn: boolean): void {
-        const tokenStr = `${data.access_token};${new Date(Date.now() + data.refresh_token_expires_in * 1000).toISOString()};${new Date(Date.now() + data.expires_in * 1000).toISOString()};${data.expires_in};${owner}`;
+    public saveTokens(data: OAuth2Response, stayLoggedIn: boolean): void {
+        const tokenStr = `${data.access_token};${new Date(Date.now() + data.refresh_token_expires_in * 1000).toISOString()};${new Date(Date.now() + data.expires_in * 1000).toISOString()};${data.expires_in};${this.connId}`;
         if (stayLoggedIn) {
             window.localStorage.setItem('iob_tokens', tokenStr);
         } else {
@@ -541,13 +541,16 @@ export class Connection<
     /**
      * Destroy tokens if they were created by this connection if they expired or invalid
      *
-     * @param owner connection ID
      * @param stayLoggedIn if stored in localStorage or in sessionStorage
+     * @param logout if logout is requested
      */
-    static deleteTokens(owner: string, stayLoggedIn: boolean): void {
+    public deleteTokens(stayLoggedIn: boolean, logout?: boolean): void {
         const tokens = Connection.parseStoredTokens();
         if (tokens) {
-            if (tokens.stayLoggedIn === stayLoggedIn && tokens.owner === owner) {
+            if (logout) {
+                window.localStorage.removeItem('iob_tokens');
+                window.sessionStorage.removeItem('iob_tokens');
+            } else if (tokens.stayLoggedIn === stayLoggedIn && tokens.owner === this.connId) {
                 if (tokens.stayLoggedIn) {
                     window.localStorage.removeItem('iob_tokens');
                 } else {
@@ -581,7 +584,7 @@ export class Connection<
                 })
                 .then((data: OAuth2Response): void => {
                     if (data.access_token) {
-                        Connection.saveTokens(data, this.connId, tokenStructure.stayLoggedIn);
+                        this.saveTokens(data, tokenStructure.stayLoggedIn);
 
                         // Start timer to check if the token expires
                         this.checkAccessTokenExpire();
@@ -604,7 +607,7 @@ export class Connection<
                     }
                 })
                 .catch(err => {
-                    Connection.deleteTokens(this.connId, tokenStructure.stayLoggedIn);
+                    this.deleteTokens(tokenStructure.stayLoggedIn);
                     console.error(err);
                     window.location.reload();
                 });

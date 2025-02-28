@@ -46,7 +46,7 @@ console.log(await adminConnection.getHosts());
 -->
 
 ## Changelog
-### 4.0.13 (2025-02-28)
+### **WORK IN PROGRESS**
 
 -   (@GermanBluefox) Added support for OAuth2 authentication
 
