@@ -4,10 +4,15 @@ import type { EmitEventHandler, ListenEventHandler, SocketClient } from './Socke
 import { getObjectViewResultToArray, normalizeHostId, pattern2RegEx, wait } from './tools.js';
 
 export interface OAuth2Response {
+    /** The access token */
     access_token: string;
+    /** The time in seconds when the access token expires, e.g., 3600 for 1 hour */
     expires_in: number;
+    /** The type of the token */
     token_type: 'Bearer' | 'JWT';
+    /** The refresh token */
     refresh_token: string;
+    /** The time in seconds when the refresh token expires, e.g., 600 for 10 minutes */
     refresh_token_expires_in: number;
 }
 
@@ -344,6 +349,22 @@ export class Connection<
         });
 
         this._socket.on('connect', noTimeout => {
+            const tokens = Connection.readTokens();
+            if (tokens && !tokens.owner) {
+                // Take the ownership of the token
+                const now = Date.now();
+                this.saveTokens(
+                    {
+                        access_token: tokens.access_token,
+                        refresh_token: tokens.refresh_token,
+                        expires_in: Math.round((tokens.expires_in.getTime() - now) / 1000),
+                        refresh_token_expires_in: Math.round((tokens.refresh_token_expires_in.getTime() - now) / 1000),
+                        token_type: 'Bearer',
+                    },
+                    tokens.stayLoggedIn,
+                );
+            }
+
             this.onReadyDone = false;
             // If the user is not admin, it takes some time to install the handlers, because all rights must be checked
             if (noTimeout !== true) {
