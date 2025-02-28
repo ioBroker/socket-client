@@ -28,6 +28,7 @@ export {
     type InstanceMessageCallback,
     type InstanceSubscribe,
     type OAuth2Response,
+    type StoredTokens,
 } from './Connection.js';
 
 export type { ConnectionProps } from './ConnectionProps.js';

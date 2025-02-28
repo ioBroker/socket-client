@@ -16,7 +16,7 @@ export interface OAuth2Response {
     refresh_token_expires_in: number;
 }
 
-interface StoredTokens {
+export interface StoredTokens {
     refresh_token: string;
     access_token: string;
     expires_in: Date;
