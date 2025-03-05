@@ -44,6 +44,10 @@ console.log(await adminConnection.getHosts());
 	Placeholder for the next version (at the beginning of the line):
 	### **WORK IN PROGRESS**
 -->
+### **WORK IN PROGRESS**
+
+-   (@GermanBluefox) Updated packages. TypeScript 5.8
+
 ### 4.0.21 (2025-02-28)
 
 -   (@GermanBluefox) Added support for OAuth2 authentication
