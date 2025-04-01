@@ -44,7 +44,7 @@ console.log(await adminConnection.getHosts());
 	Placeholder for the next version (at the beginning of the line):
 	### **WORK IN PROGRESS**
 -->
-### 4.1.1 (2025-04-01)
+### **WORK IN PROGRESS**
 
 -   (@GermanBluefox) Corrected redirect by login
 
