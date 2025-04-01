@@ -44,6 +44,10 @@ console.log(await adminConnection.getHosts());
 	Placeholder for the next version (at the beginning of the line):
 	### **WORK IN PROGRESS**
 -->
+### **WORK IN PROGRESS**
+
+-   (@GermanBluefox) Corrected redirect by login
+
 ### 4.1.0 (2025-03-05)
 
 -   (@GermanBluefox) Updated packages. TypeScript 5.8
@@ -260,7 +264,7 @@ console.log(await adminConnection.getHosts());
 
 ### 1.1.2 (2022-06-17)
 
--   (@GermanBluefox) Corrected cache problem by `getInstalled` and `getRepository` commands
+-   (@GermanBluefox) Corrected the cache problem by `getInstalled` and `getRepository` commands
 
 ### 1.1.1 (2022-06-09)
 

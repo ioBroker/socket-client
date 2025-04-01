@@ -51,8 +51,8 @@ export interface ConnectionProps {
     admin5only?: boolean;
     /** The device UUID with which the communication must be established */
     uuid?: string;
-    /** Authentication token (used only in cloud) */
+    /** Authentication token */
     token?: string;
-    /** The timeout handler which will be called 30 seconds before token expiration */
+    /** The timeout handler, which will be called 30 seconds before token expiration */
     tokenTimeoutHandler?: (accessTokenExpireUnixTimeInMs: number) => Promise<boolean>;
 }

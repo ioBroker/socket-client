@@ -925,9 +925,9 @@ export class Connection<
      */
     private authenticate(): void {
         if (window.location.search.includes('&href=')) {
-            window.location.href = `${window.location.protocol}//${window.location.host}${window.location.pathname}${window.location.search}${window.location.hash}`;
+            window.location.href = `${window.location.protocol}//${window.location.host}${window.location.pathname}${window.location.search}`;
         } else {
-            window.location.href = `${window.location.protocol}//${window.location.host}${window.location.pathname}?login&href=${window.location.search}${window.location.hash}`;
+            window.location.href = `${window.location.protocol}//${window.location.host}${window.location.pathname}?login&href=${encodeURIComponent(window.location.search + window.location.hash)}`;
         }
     }
 
