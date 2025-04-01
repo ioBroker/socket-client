@@ -64,7 +64,7 @@
     "@alcalzone/release-script-plugin-license": "~3.7.0",
     "@iobroker/eslint-config": "^2.0.0",
     "@iobroker/types": "^7.0.6",
-    "@types/node": "^22.13.9",
+    "@types/node": "^22.13.14",
     "typescript": "~5.8.2"
   }
 }
