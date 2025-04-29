@@ -609,11 +609,13 @@ export class Connection<
             this.lastAccessToken = accessToken;
             this._socket.emit('updateTokenExpiration', accessToken, (err: string | null, success?: boolean): void => {
                 if (err) {
-                    console.error(`Cannot update expiration time: ${err}`);
+                    console.error(`[UPDATE/${new Date().toISOString()}] cannot say to server about new token: ${err}`);
                     window.location.reload();
                 } else if (!success) {
-                    console.error('Cannot update expiration time');
+                    console.error(`[UPDATE/${new Date().toISOString()}] cannot say to server about new token`);
                     window.location.reload();
+                } else {
+                    console.log(`[UPDATE/${new Date().toISOString()}] server accepted new token: ${accessToken}`);
                 }
             });
         }
@@ -623,13 +625,16 @@ export class Connection<
 
     private refreshTokens(tokenStructure: StoredTokens, takeOwnership?: boolean): void {
         if (!tokenStructure) {
+            console.log(`[REFRESH/${new Date().toISOString()}] No token structure found => reloading the page`);
             // Refresh the page, as we cannot refresh the token
             setTimeout(() => window.location.reload(), 500);
             return;
         }
 
         if (takeOwnership || !tokenStructure.owner || tokenStructure.owner === this.connId) {
+            console.log(`[REFRESH/${new Date().toISOString()}] claim ownership of the token`);
             if (this.acquireTokenLock()) {
+                console.log(`[REFRESH/${new Date().toISOString()}] refreshing token`);
                 // Access token will expire soon => Send authentication again
                 fetch('./oauth/token', {
                     method: 'POST',
@@ -646,6 +651,9 @@ export class Connection<
                     })
                     .then((data: OAuth2Response): void => {
                         if (data.access_token) {
+                            console.log(
+                                `[REFRESH/${new Date().toISOString()}] received new token: ${data.access_token}`,
+                            );
                             this.saveTokens(data, tokenStructure.stayLoggedIn);
 
                             this.releaseTokenLock();
@@ -656,12 +664,16 @@ export class Connection<
                         }
                     })
                     .catch(err => {
+                        console.warn(`[REFRESH/${new Date().toISOString()}] cannot refresh token: ${err}`);
                         this.releaseTokenLock();
                         this.deleteTokens(tokenStructure.stayLoggedIn);
                         console.error(err);
                         window.location.reload();
                     });
             } else {
+                console.log(
+                    `[REFRESH/${new Date().toISOString()}] Someone else is updating the token, so wait for the next check`,
+                );
                 // Someone else is updating the token, so wait for the next check
                 this.checkAccessTokenExpire();
             }
@@ -731,7 +743,11 @@ export class Connection<
                 // Check if the access token expires in the next 30 seconds
                 if (accessExpireInUnixMs < Date.now() + 30_000) {
                     const takeOwnership = accessExpireInUnixMs < Date.now() + 5_500;
+                    console.log(`[TOKEN/${new Date().toISOString()}] Updating refresh token ${tokens.access_token}`);
                     if (!tokens.refresh_token) {
+                        console.log(
+                            `[TOKEN/${new Date().toISOString()}] We do not have a refresh token, so we need to reauthenticate`,
+                        );
                         // Refresh the page, as we cannot refresh the token
                         setTimeout(
                             () => window.location.reload(),
@@ -742,13 +758,27 @@ export class Connection<
                         // We gave 25 seconds to the owner to update the token, and now we will do it and take the ownership
                         takeOwnership
                     ) {
+                        if (tokens.owner === this.connId) {
+                            console.log(`[TOKEN/${new Date().toISOString()}] We are the owner of the token`);
+                        } else {
+                            console.log(
+                                `[TOKEN/${new Date().toISOString()}] We are not the owner of the token, but we will take ownership`,
+                            );
+                        }
                         // Handle token expiration if the connection is the owner of the token
                         if (this.props.tokenTimeoutHandler) {
+                            console.log(
+                                `[TOKEN/${new Date().toISOString()}] Asking GUI if we should prolong the token`,
+                            );
                             // Asc if the user wants to stay logged in
                             void this.props.tokenTimeoutHandler(accessExpireInUnixMs).then(prolong => {
                                 if (prolong) {
+                                    console.log(`[TOKEN/${new Date().toISOString()}] Token will be prolonged`);
                                     this.refreshTokens(tokens, takeOwnership);
                                 } else {
+                                    console.log(
+                                        `[TOKEN/${new Date().toISOString()}] Token will not be prolonged. Reloading the page`,
+                                    );
                                     // Refresh the page, as we cannot refresh the token
                                     setTimeout(
                                         () => window.location.reload(),
@@ -757,12 +787,21 @@ export class Connection<
                                 }
                             });
                         } else {
+                            console.log(
+                                `[TOKEN/${new Date().toISOString()}] No tokenTimeoutHandler defined. Prolonging the token`,
+                            );
                             this.refreshTokens(tokens, takeOwnership);
                         }
                     } else if (this.lastAccessToken !== tokens.access_token) {
+                        console.log(
+                            `[TOKEN/${new Date().toISOString()}] We are not the owner of the token, but we will inform the server about new token`,
+                        );
                         // The connection is not the owner, so just check if access_token changed, so inform the server about it
                         this.refreshTokens(tokens);
                     } else {
+                        console.log(
+                            `[TOKEN/${new Date().toISOString()}] We are not the owner of the token and the token did not change. Check in 3 seconds if the owner updated the token`,
+                        );
                         // What 3 seconds and check again, maybe the owner connection will update the token
                         this._refreshTimer = setTimeout(() => {
                             this._refreshTimer = null;
