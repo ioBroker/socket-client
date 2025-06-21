@@ -1,0 +1,12 @@
+{
+    "extends": "./tsconfig.json",
+    "compilerOptions": {
+        "allowJs": false,
+        "checkJs": false,
+        "noEmit": false,
+        "declaration": true,
+        "types": ["@iobroker/types"]
+    },
+    "include": ["src/**/*.ts", "src/**/*.mts"],
+    "exclude": ["src/**/*.test.ts"]
+}
