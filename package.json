@@ -27,7 +27,9 @@
     }
   },
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && node tasks",
+    "build-backend": "cd backend && npm run build",
+    "npm-backend": "cd backend && npm i",
     "postbuild": "esm2cjs --in dist/esm --out dist/cjs -l error",
     "watch": "npm run build -- --watch",
     "lint": "eslint -c eslint.config.mjs",
