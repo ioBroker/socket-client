@@ -44,7 +44,7 @@ console.log(await adminConnection.getHosts());
 	Placeholder for the next version (at the beginning of the line):
 	### **WORK IN PROGRESS**
 -->
-### **WORK IN PROGRESS**
+### 5.0.1 (2025-06-21)
 
 -   (@GermanBluefox) Allowed using of this library in Node.js
 
