@@ -4,3 +4,4 @@ dist/
 
 # npm package files
 *.tgz
+/backend/package-lock.json

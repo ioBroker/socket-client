@@ -1,3 +1,5 @@
+import type { SocketClient } from './SocketClient';
+
 /**
  * Log event
  */
@@ -55,4 +57,6 @@ export interface ConnectionProps {
     token?: string;
     /** The timeout handler, which will be called 30 seconds before token expiration */
     tokenTimeoutHandler?: (accessTokenExpireUnixTimeInMs: number) => Promise<boolean>;
+    /** The function to connect to the socket (used in Node.js) */
+    connect?: (name: string, options: any) => SocketClient;
 }

@@ -3,6 +3,41 @@ import { createDeferredPromise } from './DeferredPromise.js';
 import type { EmitEventHandler, ListenEventHandler, SocketClient } from './SocketClient.js';
 import { getObjectViewResultToArray, normalizeHostId, pattern2RegEx, wait } from './tools.js';
 
+if (typeof (globalThis as any).process !== 'undefined') {
+    // Implement location, localStorage and sessionStorage for Node.js environment
+    // @ts-expect-error globalThis.location is not defined in Node.js
+    globalThis.location ||= {
+        href: 'http://localhost:8081/',
+        protocol: 'http:',
+        host: 'localhost:8081',
+        pathname: '/',
+        hostname: 'localhost',
+        reload: () => {},
+    };
+    // @ts-expect-error globalThis.location is not defined in Node.js
+    globalThis.localStorage ||= {
+        _keys: {} as { [key: string]: string },
+        setItem: (key: string, value: string) => {
+            globalThis.localStorage._keys[key] = value;
+        },
+        getItem: (key: string): string | null => {
+            if (key in globalThis.localStorage._keys) {
+                return globalThis.localStorage._keys[key];
+            }
+            return null;
+        },
+        removeItem: (key: string) => {
+            if (key in globalThis.localStorage._keys) {
+                delete globalThis.localStorage._keys[key];
+            }
+        },
+    };
+    globalThis.sessionStorage ||= globalThis.localStorage;
+    globalThis.navigator ||= {
+        language: 'en',
+    } as Navigator;
+}
+
 export interface OAuth2Response {
     /** The access token */
     access_token: string;
@@ -148,37 +183,6 @@ export class Connection<
     CustomListenEvents extends Record<keyof CustomListenEvents, ListenEventHandler> = Record<string, never>,
     CustomEmitEvents extends Record<keyof CustomEmitEvents, EmitEventHandler> = Record<string, never>,
 > {
-    constructor(props: Partial<ConnectionProps>) {
-        this.props = this.applyDefaultProps(props);
-
-        // Create unique ID of this instance
-        this.connId = `${this.props.name ? `${this.props.name}-` : ''}${Math.round(Math.random() * 1000000)
-            .toString()
-            .padStart(6, '0')}`;
-        this.waitForSocketLib()
-            .then(() => this.startSocket())
-            .catch(e => {
-                alert(`Socket connection could not be initialized: ${e}`);
-            });
-    }
-
-    private applyDefaultProps(props: Partial<ConnectionProps>): ConnectionProps {
-        return {
-            ...props,
-            // Define default props that always need to be set
-            protocol: props.protocol || window.location.protocol,
-            host: props.host || window.location.hostname,
-            port: props.port || (window.location.port === '3000' ? 8081 : window.location.port),
-            ioTimeout: Math.max(props.ioTimeout || 20000, 20000),
-            cmdTimeout: Math.max(props.cmdTimeout || 5000, 5000),
-            admin5only: props.admin5only || false,
-            autoSubscribes: props.autoSubscribes ?? [],
-            autoSubscribeLog: props.autoSubscribeLog ?? false,
-            doNotLoadACL: props.doNotLoadACL ?? true,
-            doNotLoadAllObjects: props.doNotLoadAllObjects ?? true,
-        };
-    }
-
     private readonly props: ConnectionProps;
     public readonly connId: string;
     private lastAccessToken: string | null = null;
@@ -190,6 +194,38 @@ export class Connection<
     public waitForRestart: boolean = false;
     public loaded: boolean = false;
     private simStates: Record<string, ioBroker.State> = {};
+
+    constructor(props: Partial<ConnectionProps>) {
+        this.props = this.applyDefaultProps(props);
+
+        // Create unique ID of this instance
+        this.connId = `${this.props.name ? `${this.props.name}-` : ''}${Math.round(Math.random() * 1000000)
+            .toString()
+            .padStart(6, '0')}`;
+
+        this.waitForSocketLib()
+            .then(() => this.startSocket())
+            .catch(e => {
+                alert(`Socket connection could not be initialized: ${e}`);
+            });
+    }
+
+    private applyDefaultProps(props: Partial<ConnectionProps>): ConnectionProps {
+        return {
+            ...props,
+            // Define default props that always need to be set
+            protocol: props.protocol || globalThis.location.protocol,
+            host: props.host || globalThis.location.hostname,
+            port: props.port || (globalThis.location.port === '3000' ? 8081 : globalThis.location.port),
+            ioTimeout: Math.max(props.ioTimeout || 20000, 20000),
+            cmdTimeout: Math.max(props.cmdTimeout || 5000, 5000),
+            admin5only: props.admin5only || false,
+            autoSubscribes: props.autoSubscribes ?? [],
+            autoSubscribeLog: props.autoSubscribeLog ?? false,
+            doNotLoadACL: props.doNotLoadACL ?? true,
+            doNotLoadAllObjects: props.doNotLoadAllObjects ?? true,
+        };
+    }
 
     private readonly statesSubscribes: Record<
         string,
@@ -255,7 +291,7 @@ export class Connection<
      * @returns True if running in a web adapter or in a socketio adapter.
      */
     static isWeb(): boolean {
-        return window.socketUrl !== undefined;
+        return (globalThis as any).socketUrl !== undefined;
     }
 
     private waitForSocketLib(): Promise<void> {
@@ -266,16 +302,22 @@ export class Connection<
 
         // eslint-disable-next-line no-async-promise-executor
         this._waitForSocketPromise = new Promise(async (resolve, reject) => {
+            // Connect function was provided, so we do not need to wait for the socket.io library
+            if (this.props.connect) {
+                resolve();
+                return;
+            }
+
             // If socket io is not yet loaded, we need to wait for it
-            if (typeof window.io === 'undefined' && typeof window.iob === 'undefined') {
+            if (typeof (globalThis as any).io === 'undefined' && typeof (globalThis as any).iob === 'undefined') {
                 // If the registerSocketOnLoad function is defined in index.html,
                 // we can use it to know when the socket library was loaded
-                if (typeof window.registerSocketOnLoad === 'function') {
-                    window.registerSocketOnLoad(() => resolve());
+                if (typeof (globalThis as any).registerSocketOnLoad === 'function') {
+                    (globalThis as any).registerSocketOnLoad(() => resolve());
                 } else {
                     // otherwise, we need to poll
                     for (let i = 1; i <= 30; i++) {
-                        if (window.io || window.iob) {
+                        if ((globalThis as any).io || (globalThis as any).iob) {
                             return resolve();
                         }
                         await wait(100);
@@ -300,15 +342,15 @@ export class Connection<
 
         let host = this.props.host;
         let port = this.props.port;
-        let protocol = (this.props.protocol || window.location.protocol).replace(':', '');
-        let path = window.location.pathname;
+        let protocol = (this.props.protocol || globalThis.location.protocol).replace(':', '');
+        let path = globalThis.location.pathname;
 
-        if (window.location.hostname === 'iobroker.net' || window.location.hostname === 'iobroker.pro') {
+        if (globalThis.location.hostname === 'iobroker.net' || globalThis.location.hostname === 'iobroker.pro') {
             path = '';
         } else {
             // if web adapter, socket io could be on another port or even host
-            if (window.socketUrl) {
-                const parsed = new URL(window.socketUrl);
+            if ((globalThis as any).socketUrl) {
+                const parsed = new globalThis.URL((globalThis as any).socketUrl);
                 host = parsed.hostname;
                 port = parsed.port;
                 protocol = parsed.protocol.replace(':', '');
@@ -339,7 +381,10 @@ export class Connection<
 
         const url = port ? `${protocol}://${host}:${port}` : `${protocol}://${host}`;
 
-        this._socket = (window.io || window.iob).connect(url, {
+        const connectFunc: (name: string, par: any) => SocketClient =
+            this.props.connect || ((globalThis as any).io || (globalThis as any).iob).connect;
+
+        this._socket = connectFunc(url, {
             path: path.endsWith('/') ? `${path}socket.io` : `${path}/socket.io`,
             query: 'ws=true',
             name: this.props.name,
@@ -350,7 +395,7 @@ export class Connection<
 
         this._socket.on('connect', noTimeout => {
             // Listen for messages from other tabs
-            window.addEventListener('storage', this.onAccessTokenUpdated);
+            globalThis.addEventListener?.('storage', this.onAccessTokenUpdated);
 
             const tokens = Connection.readTokens();
             if (tokens && !tokens.owner) {
@@ -410,7 +455,7 @@ export class Connection<
             this.connected = true;
 
             if (this.waitForRestart) {
-                window.location.reload();
+                globalThis.location.reload();
             } else {
                 this._subscribe(true);
                 this.onConnectionHandlers.forEach(cb => cb(true));
@@ -448,7 +493,7 @@ export class Connection<
                 this.authenticate();
             } else if (_err.includes('websocket error')) {
                 console.error(`Socket Error => reload: ${err}`);
-                window.location.reload();
+                globalThis.location.reload();
             } else {
                 console.error(`Socket Error: ${err}`);
             }
@@ -510,10 +555,12 @@ export class Connection<
         this.isSecure = isSecure;
 
         if (this.waitForRestart) {
-            window.location.reload();
+            globalThis.location.reload();
         } else {
             if (this.firstConnect) {
-                void this.loadData().catch(e => console.error(`Cannot load data: ${e}`));
+                void this.loadData().catch(e => {
+                    console.error(`Cannot load data: ${e}`);
+                });
             } else {
                 this.props.onProgress?.(PROGRESS.READY);
             }
@@ -528,10 +575,10 @@ export class Connection<
     }
 
     static readTokens(): StoredTokens | null {
-        let tokenString: string | null | undefined = window.sessionStorage.getItem('iob_tokens');
+        let tokenString: string | null | undefined = globalThis.sessionStorage.getItem('iob_tokens');
         const stayLoggedIn = !tokenString;
         if (!tokenString) {
-            tokenString = window.localStorage.getItem('iob_tokens');
+            tokenString = globalThis.localStorage.getItem('iob_tokens');
         }
         if (!tokenString) {
             return null;
@@ -556,9 +603,9 @@ export class Connection<
     static saveTokensStatic(data: OAuth2Response, stayLoggedIn: boolean, owner?: string): void {
         const tokenStr = `${data.refresh_token};${new Date(Date.now() + data.refresh_token_expires_in * 1000).toISOString()};${data.access_token};${new Date(Date.now() + data.expires_in * 1000).toISOString()}${owner ? `;${owner}` : ''}`;
         if (stayLoggedIn) {
-            window.localStorage.setItem('iob_tokens', tokenStr);
+            globalThis.localStorage.setItem('iob_tokens', tokenStr);
         } else {
-            window.sessionStorage.setItem('iob_tokens', tokenStr);
+            globalThis.sessionStorage.setItem('iob_tokens', tokenStr);
         }
     }
 
@@ -567,8 +614,8 @@ export class Connection<
     }
 
     static deleteTokensStatic(): void {
-        window.localStorage.removeItem('iob_tokens');
-        window.sessionStorage.removeItem('iob_tokens');
+        globalThis.localStorage.removeItem('iob_tokens');
+        globalThis.sessionStorage.removeItem('iob_tokens');
     }
 
     /**
@@ -584,16 +631,16 @@ export class Connection<
                 Connection.deleteTokensStatic();
             } else if (tokens.stayLoggedIn === stayLoggedIn && tokens.owner === this.connId) {
                 if (tokens.stayLoggedIn) {
-                    window.localStorage.removeItem('iob_tokens');
+                    globalThis.localStorage.removeItem('iob_tokens');
                 } else {
-                    window.sessionStorage.removeItem('iob_tokens');
+                    globalThis.sessionStorage.removeItem('iob_tokens');
                 }
             }
         }
     }
 
     private onAccessTokenUpdated = (event: StorageEvent): void => {
-        // Storage event is only fired in other tabs/windows (or iframes) of the same origin when the localStorage (or sessionStorage) is modified, and not in the same window where the change was made.
+        // Storage event is only fired in other tabs/globalThiss (or iframes) of the same origin when the localStorage (or sessionStorage) is modified, and not in the same globalThis where the change was made.
         if (event.key === 'iob_tokens') {
             const tokens = Connection.readTokens();
             if (tokens) {
@@ -610,10 +657,10 @@ export class Connection<
             this._socket.emit('updateTokenExpiration', accessToken, (err: string | null, success?: boolean): void => {
                 if (err) {
                     console.error(`[UPDATE/${new Date().toISOString()}] cannot say to server about new token: ${err}`);
-                    window.location.reload();
+                    globalThis.location.reload();
                 } else if (!success) {
                     console.error(`[UPDATE/${new Date().toISOString()}] cannot say to server about new token`);
-                    window.location.reload();
+                    globalThis.location.reload();
                 } else {
                     console.log(`[UPDATE/${new Date().toISOString()}] server accepted new token: ${accessToken}`);
                 }
@@ -627,7 +674,7 @@ export class Connection<
         if (!tokenStructure) {
             console.log(`[REFRESH/${new Date().toISOString()}] No token structure found => reloading the page`);
             // Refresh the page, as we cannot refresh the token
-            setTimeout(() => window.location.reload(), 500);
+            setTimeout(() => globalThis.location.reload(), 500);
             return;
         }
 
@@ -668,7 +715,7 @@ export class Connection<
                         this.releaseTokenLock();
                         this.deleteTokens(tokenStructure.stayLoggedIn);
                         console.error(err);
-                        window.location.reload();
+                        globalThis.location.reload();
                     });
             } else {
                 console.log(
@@ -689,7 +736,7 @@ export class Connection<
      */
     acquireTokenLock(): boolean {
         const now = Date.now();
-        const lock = localStorage.getItem('iob_token_semaphore');
+        const lock = globalThis.localStorage.getItem('iob_token_semaphore');
 
         if (lock) {
             try {
@@ -710,23 +757,23 @@ export class Connection<
             expiry: now + 10 * 1000, // 10 seconds in milliseconds
         };
 
-        localStorage.setItem('iob_token_semaphore', JSON.stringify(newLock));
+        globalThis.localStorage.setItem('iob_token_semaphore', JSON.stringify(newLock));
         return true;
     }
 
     /** Releases the semaphore lock if it's owned by the given connection ID. */
     releaseTokenLock(): void {
-        const lock = localStorage.getItem('iob_token_semaphore');
+        const lock = globalThis.localStorage.getItem('iob_token_semaphore');
         if (lock) {
             try {
                 const lockData: { expiry: number; connId: string } = JSON.parse(lock);
                 // Only remove the lock if it's owned by the current connection.
                 if (lockData.connId === this.connId) {
-                    localStorage.removeItem('iob_token_semaphore');
+                    globalThis.localStorage.removeItem('iob_token_semaphore');
                 }
             } catch {
                 // If parsing fails, remove the lock just in case.
-                localStorage.removeItem('iob_token_semaphore');
+                globalThis.localStorage.removeItem('iob_token_semaphore');
             }
         }
     }
@@ -750,7 +797,7 @@ export class Connection<
                         );
                         // Refresh the page, as we cannot refresh the token
                         setTimeout(
-                            () => window.location.reload(),
+                            () => globalThis.location.reload(),
                             Date.now() > accessExpireInUnixMs ? 500 : accessExpireInUnixMs - Date.now(),
                         );
                     } else if (
@@ -781,7 +828,7 @@ export class Connection<
                                     );
                                     // Refresh the page, as we cannot refresh the token
                                     setTimeout(
-                                        () => window.location.reload(),
+                                        () => globalThis.location.reload(),
                                         Date.now() > accessExpireInUnixMs ? 500 : accessExpireInUnixMs - Date.now(),
                                     );
                                 }
@@ -827,13 +874,18 @@ export class Connection<
      * Checks if running in ioBroker cloud
      */
     static isCloud(): boolean {
-        if (window.location.hostname.includes('amazonaws.com') || window.location.hostname.includes('iobroker.in')) {
+        if (
+            globalThis.location.hostname.includes('amazonaws.com') ||
+            globalThis.location.hostname.includes('iobroker.in')
+        ) {
             return true;
         }
-        if (typeof window.socketUrl === 'undefined') {
+        if (typeof (globalThis as any).socketUrl === 'undefined') {
             return false;
         }
-        return window.socketUrl.includes('iobroker.in') || window.socketUrl.includes('amazonaws');
+        return (
+            (globalThis as any).socketUrl.includes('iobroker.in') || (globalThis as any).socketUrl.includes('amazonaws')
+        );
     }
 
     /**
@@ -910,7 +962,7 @@ export class Connection<
             if (
                 this.props.admin5only &&
                 !Connection.isWeb() &&
-                (!window.vendorPrefix || window.vendorPrefix === '@@vendorPrefix@@')
+                (!(globalThis as any).vendorPrefix || (globalThis as any).vendorPrefix === '@@vendorPrefix@@')
             ) {
                 this._systemConfig = await this.getCompactSystemConfig();
             } else {
@@ -925,7 +977,7 @@ export class Connection<
         if (this._systemConfig) {
             this.systemLang = this._systemConfig.common?.language;
             if (!this.systemLang) {
-                this.systemLang = (window.navigator.userLanguage || window.navigator.language) as any;
+                this.systemLang = ((globalThis.navigator as any).userLanguage || globalThis.navigator.language) as any;
                 // Browsers may report languages like "de-DE", "en-US", etc.
                 // ioBroker expects "de", "en", ...
                 if (/^(en|de|ru|pt|nl|fr|it|es|pl|uk)-?/.test(this.systemLang)) {
@@ -963,10 +1015,10 @@ export class Connection<
      * Called internally.
      */
     private authenticate(): void {
-        if (window.location.search.includes('&href=')) {
-            window.location.href = `${window.location.protocol}//${window.location.host}${window.location.pathname}${window.location.search}`;
+        if (globalThis.location.search.includes('&href=')) {
+            globalThis.location.href = `${globalThis.location.protocol}//${globalThis.location.host}${globalThis.location.pathname}${globalThis.location.search}`;
         } else {
-            window.location.href = `${window.location.protocol}//${window.location.host}${window.location.pathname}?login&href=${encodeURIComponent(window.location.search + window.location.hash)}`;
+            globalThis.location.href = `${globalThis.location.protocol}//${globalThis.location.host}${globalThis.location.pathname}?login&href=${encodeURIComponent(globalThis.location.search + globalThis.location.hash)}`;
         }
     }
 
@@ -2147,8 +2199,8 @@ export class Connection<
             // TODO: check if this should time out
             commandTimeout: false,
             executor: (resolve, reject) => {
-                start = start || '';
-                end = end || '\u9999';
+                start ||= '';
+                end ||= '\u9999';
 
                 this._socket.emit('getObjectView', design, type, { startkey: start, endkey: end }, (err, res) => {
                     if (err) {
@@ -2725,7 +2777,7 @@ export class Connection<
             update = adapter;
             adapter = '';
         }
-        adapter = adapter || '';
+        adapter ||= '';
 
         return this.request({
             cacheKey: `instances_${adapter}`,
@@ -2758,7 +2810,7 @@ export class Connection<
             update = adapter;
             adapter = '';
         }
-        adapter = adapter || '';
+        adapter ||= '';
 
         return this.request({
             cacheKey: `adapter_${adapter}`,
