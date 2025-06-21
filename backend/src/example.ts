@@ -34,3 +34,6 @@ const socket = new AdminConnection({
         return socketClient;
     },
 });
+socket.registerConnectionHandler(isConnected => {
+    console.log(`Socket connection status: ${isConnected ? 'connected' : 'disconnected'}`);
+});
