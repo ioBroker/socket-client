@@ -27,7 +27,7 @@
     "homepage": "https://github.com/ioBroker/socket-client",
     "dependencies": {
         "@iobroker/socket-client": "^5.0.0",
-        "@iobroker/ws": "^3.0.2",
+        "@iobroker/ws": "^3.0.3",
         "ws": "^8.18.2"
     },
     "devDependencies": {
