@@ -101,6 +101,13 @@ jobs:
                   npm whoami
                   npm publish
 
+            - name: Publish backend package to npm
+              run: |
+                  npm config set //registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}
+                  npm whoami
+                  npm publish
+              working-directory: backend
+
             - name: Create Github Release
               uses: actions/create-release@v1
               env:
