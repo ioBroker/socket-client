@@ -1,5 +1,5 @@
 import WebSocket from 'ws';
-import { AdminConnection } from '../../dist/cjs/index.js';
+import { AdminConnection } from '@iobroker/socket-client';
 import { SocketClient } from './socket.io';
 
 const socket = new AdminConnection({
@@ -13,7 +13,7 @@ const socket = new AdminConnection({
         console.log(`Ready with ${Object.keys(_objects).length} objects`);
         const objects = await socket.getObjects(true);
         console.log('Received objects:', Object.keys(objects).length);
-        socket.subscribeState('system.adapter.admin.0.cputime', (id, state) => {
+        void socket.subscribeState('system.adapter.admin.0.cputime', (id, state) => {
             console.log(`State changed for ${id}:`, state);
         });
     },
@@ -34,5 +34,3 @@ const socket = new AdminConnection({
         return socketClient;
     },
 });
-
-
