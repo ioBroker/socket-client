@@ -194,6 +194,15 @@ export class Connection<
     public waitForRestart: boolean = false;
     public loaded: boolean = false;
     private simStates: Record<string, ioBroker.State> = {};
+    private objectViewCached:
+        | { [key: string]: Record<string, ioBroker.AnyObject & { type: ioBroker.ObjectType }> }
+        | undefined;
+
+    /**
+     * Creates a new instance of the Connection class.
+     *
+     * @param props The connection properties.
+     */
 
     constructor(props: Partial<ConnectionProps>) {
         this.props = this.applyDefaultProps(props);
@@ -2173,12 +2182,41 @@ export class Connection<
      * @param start The start ID.
      * @param [end] The end ID.
      */
-    getObjectViewSystem<T extends ioBroker.ObjectType>(
+    async getObjectViewSystem<T extends ioBroker.ObjectType>(
         type: T,
         start?: string,
         end?: string,
     ): Promise<Record<string, ioBroker.AnyObject & { type: T }>> {
-        return this.getObjectViewCustom('system', type, start, end);
+        const key = `${type}_${start || ''}_${end || ''}`;
+        const result = await this.getObjectViewCustom('system', type, start, end);
+        if (this.objectViewCached?.[key]) {
+            // update cached value
+            this.objectViewCached[key] = result;
+        }
+        return result;
+    }
+
+    /**
+     * Query a predefined object view.
+     *
+     * @param type The type of object.
+     * @param start The start ID.
+     * @param [end] The end ID.
+     */
+    async getObjectViewSystemCached<T extends ioBroker.ObjectType>(
+        type: T,
+        start?: string,
+        end?: string,
+    ): Promise<Record<string, ioBroker.AnyObject & { type: T }>> {
+        const key = `${type}_${start || ''}_${end || ''}`;
+        if (this.objectViewCached?.[key]) {
+            return Promise.resolve(this.objectViewCached[key] as any);
+        }
+
+        const result = await this.getObjectViewCustom('system', type, start, end);
+        this.objectViewCached ||= {};
+        this.objectViewCached[key] = result;
+        return result;
     }
 
     /**
