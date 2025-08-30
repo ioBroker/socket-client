@@ -44,6 +44,11 @@ console.log(await adminConnection.getHosts());
 	Placeholder for the next version (at the beginning of the line):
 	### **WORK IN PROGRESS**
 -->
+### **WORK IN PROGRESS**
+
+-   (@GermanBluefox) Updated packages, e.g. TypeScript 5.9
+-   (@GermanBluefox) Added new method: getObjectViewSystemCached
+
 ### 5.0.1 (2025-06-21)
 
 -   (@GermanBluefox) Allowed using of this library in Node.js
