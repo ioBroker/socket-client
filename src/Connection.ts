@@ -223,7 +223,7 @@ export class Connection<
         return {
             ...props,
             // Define default props that always need to be set
-            protocol: props.protocol || globalThis.location.protocol,
+            protocol: props.protocol || (globalThis.location.protocol as 'ws:' | 'wss:' | 'http:' | 'https:'),
             host: props.host || globalThis.location.hostname,
             port: props.port || (globalThis.location.port === '3000' ? 8081 : globalThis.location.port),
             ioTimeout: Math.max(props.ioTimeout || 20000, 20000),
@@ -986,7 +986,7 @@ export class Connection<
         if (this._systemConfig) {
             this.systemLang = this._systemConfig.common?.language;
             if (!this.systemLang) {
-                this.systemLang = ((globalThis.navigator as any).userLanguage || globalThis.navigator.language) as any;
+                this.systemLang = (globalThis.navigator as any).userLanguage || globalThis.navigator.language;
                 // Browsers may report languages like "de-DE", "en-US", etc.
                 // ioBroker expects "de", "en", ...
                 if (/^(en|de|ru|pt|nl|fr|it|es|pl|uk)-?/.test(this.systemLang)) {

@@ -256,7 +256,7 @@ function parseIPAddresses(host: ioBroker.HostObject): IPAddresses {
         },
     ];
     if (host.native?.hardware?.networkInterfaces) {
-        const list: Record<string, ({ family: 'IPv6' | 'IPv4'; address: string }[]) | undefined> =
+        const list: Record<string, { family: 'IPv6' | 'IPv4'; address: string }[] | undefined> =
             host.native?.hardware?.networkInterfaces;
 
         Object.keys(list).forEach(inter => {
