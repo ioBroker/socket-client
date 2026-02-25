@@ -248,12 +248,10 @@ export class SocketClient {
 
             // @ts-expect-error invalid typing
             this.socket.onerror = (error: CloseEvent): void => {
-                if (this.connected && this.socket) {
-                    if (this.socket.readyState === 1) {
-                        this.log.error(`ws normal error: ${error.type}`);
-                    }
-                    this.errorHandlers.forEach(cb => cb.call(this, ERRORS[error.code] || 'UNKNOWN'));
+                if (this.connected && this.socket?.readyState === 1) {
+                    this.log.error(`ws normal error: ${error.type}`);
                 }
+                this.errorHandlers.forEach(cb => cb.call(this, ERRORS[error.code] || 'UNKNOWN'));
                 this.close();
             };
 
