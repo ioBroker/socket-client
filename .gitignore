@@ -1,7 +1,8 @@
 node_modules/
-dist/
+build/
 /.idea
 
 # npm package files
 *.tgz
 /backend/package-lock.json
+/.claude/

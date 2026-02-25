@@ -12,7 +12,7 @@
 
         "skipLibCheck": true, // Don't report errors in 3rd party definitions
         "noEmitOnError": true,
-        "outDir": "./dist/",
+        "outDir": "./build/",
         "removeComments": false,
         "module": "Node16",
         "moduleResolution": "nodenext",
@@ -26,5 +26,5 @@
         "types": ["@iobroker/types"]
     },
     "include": ["src/**/*.ts", "src/**/*.mts"],
-    "exclude": ["dist/**", "node_modules/**"]
+    "exclude": ["build/**", "node_modules/**"]
 }

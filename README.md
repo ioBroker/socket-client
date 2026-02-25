@@ -122,7 +122,7 @@ console.log(await adminConnection.getHosts());
 
 ### 2.4.10 (2024-05-16)
 
--   (@GermanBluefox) Added source files for typescript
+-   (@GermanBluefox) Added source files for TypeScript
 
 ### 2.4.9 (2024-05-03)
 
@@ -257,7 +257,7 @@ console.log(await adminConnection.getHosts());
 
 ### 1.1.10 (2022-07-05)
 
--   (@GermanBluefox) Allowed call of getStates with pattern
+-   (@GermanBluefox) Allowed call of getStates with a pattern
 
 ### 1.1.9 (2022-07-04)
 
@@ -346,4 +346,4 @@ console.log(await adminConnection.getHosts());
 
 The MIT License (MIT)
 
-Copyright (c) 2021-2025 Jochen Kühner
+Copyright (c) 2021-2026 Jochen Kühner

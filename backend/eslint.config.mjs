@@ -13,7 +13,7 @@ export default [
         },
     },
     {
-        ignores: ['node_modules/', 'dist/'],
+        ignores: ['node_modules/', 'build/'],
     },
     {
         // disable temporary the rule 'jsdoc/require-param' and enable 'jsdoc/require-jsdoc'
