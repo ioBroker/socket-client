@@ -26,15 +26,18 @@
     },
     "homepage": "https://github.com/ioBroker/socket-client",
     "dependencies": {
-        "@iobroker/socket-client": "^5.0.2",
-        "@iobroker/ws": "^3.0.3",
-        "ws": "^8.18.3"
+        "@iobroker/socket-client": "^5.1.0",
+        "@iobroker/ws": "^3.0.5",
+        "ws": "^8.19.0"
     },
     "devDependencies": {
         "@iobroker/eslint-config": "^2.2.0",
-        "@iobroker/types": "^7.0.8-alpha.7-20250928-40cb80c18",
-        "@types/node": "^24.9.1",
+        "@iobroker/types": "^7.1.0",
+        "@types/node": "^25.3.0",
         "@types/ws": "^8.18.1",
         "typescript": "~5.9.3"
+    },
+    "overrides": {
+        "p-limit": "^4.0.0"
     }
 }

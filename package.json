@@ -68,5 +68,8 @@
     "@iobroker/types": "^7.1.0",
     "@types/node": "^25.3.0",
     "typescript": "~5.9.3"
+  },
+  "overrides": {
+    "p-limit": "^4.0.0"
   }
 }
