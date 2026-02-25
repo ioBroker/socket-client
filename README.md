@@ -44,7 +44,7 @@ console.log(await adminConnection.getHosts());
 	Placeholder for the next version (at the beginning of the line):
 	### **WORK IN PROGRESS**
 -->
-### **WORK IN PROGRESS**
+### 5.1.0 (2026-02-25)
 -   (@GermanBluefox) Updated packages
 -   (@bloop16) Better error handling implemented
 -   (@bloop16) Added destroy method to close the connection
