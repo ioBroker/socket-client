@@ -3062,4 +3062,60 @@ export class Connection<
     setStateToIgnore(id: string): void {
         this.ignoreState = id;
     }
+
+    /**
+     * Permanently destroys this connection instance, cleaning up all subscriptions, handlers, timers,
+     * and the underlying socket. The connection will not attempt to reconnect.
+     * Do not use the instance after calling this method.
+     */
+    destroy(): void {
+        if (this._socket) {
+            // Prefer hard destroy; fall back to close(true) which sets closing=true and skips reconnection
+            const socketAny = this._socket as unknown as {
+                destroy?: () => void;
+                close?: (noReconnect?: boolean) => void;
+            };
+            try {
+                if (typeof socketAny.destroy === 'function') {
+                    socketAny.destroy();
+                } else if (typeof socketAny.close === 'function') {
+                    socketAny.close(true);
+                }
+            } catch {
+                // ignore
+            }
+        }
+
+        // Remove the cross-tab token update listener
+        globalThis.removeEventListener?.('storage', this.onAccessTokenUpdated);
+
+        // Clear auth and token-refresh timers
+        if (this._authTimer) {
+            clearTimeout(this._authTimer);
+            this._authTimer = null;
+        }
+        if (this._refreshTimer) {
+            clearTimeout(this._refreshTimer);
+            this._refreshTimer = null;
+        }
+
+        // Clear all event handler registrations
+        this.onConnectionHandlers.length = 0;
+        this.onLogHandlers.length = 0;
+
+        // Clear all local subscription maps
+        for (const key of Object.keys(this.statesSubscribes)) {
+            delete this.statesSubscribes[key];
+        }
+        for (const key of Object.keys(this.objectsSubscribes)) {
+            delete this.objectsSubscribes[key];
+        }
+        for (const key of Object.keys(this.filesSubscribes)) {
+            delete this.filesSubscribes[key];
+        }
+        this._instanceSubscriptions = {};
+
+        this.connected = false;
+        this.onReadyDone = false;
+    }
 }

@@ -63,7 +63,7 @@ const ERRORS: Record<number, string> = {
     1011: 'Server error', // Internal server error while operating
     1012: 'Service restart', // Server/service is restarting
     1013: 'Try again later', // Temporary server condition forced blocking client's request
-    1014: 'Bad gateway	Server', // acting as gateway received an invalid response
+    1014: 'Bad gateway	Server', // acting as a gateway received an invalid response
     1015: 'TLS handshake fail', // Transport Layer Security handshake failure
 };
 
@@ -98,6 +98,7 @@ export class SocketClient {
     private authTimeout: ReturnType<typeof setTimeout> | null = null;
 
     public connected = false;
+    public closing = false;
 
     private readonly log: {
         debug: (text: string) => void;
@@ -207,6 +208,14 @@ export class SocketClient {
         this.connectingTimer = setTimeout(() => {
             this.connectingTimer = null;
             this.log.warn('No READY flag received in 3 seconds. Re-init');
+            if (this.socket) {
+                try {
+                    this.socket.close();
+                } catch {
+                    // ignore
+                }
+                this.socket = null;
+            }
             this.close(); // re-init connection, because no ___ready___ received in 2000 ms
         }, this.options.connectTimeout);
 
@@ -248,10 +257,17 @@ export class SocketClient {
 
             // @ts-expect-error invalid typing
             this.socket.onerror = (error: CloseEvent): void => {
-                if (this.connected && this.socket?.readyState === 1) {
-                    this.log.error(`ws normal error: ${error.type}`);
+                if (this.connected && this.socket) {
+                    if (this.socket.readyState === 1) {
+                        this.log.error(`ws normal error: ${error.type}`);
+                    }
+                    this.errorHandlers.forEach(cb => cb.call(this, ERRORS[error.code] || 'UNKNOWN'));
+                } else {
+                    // @ts-expect-error CloseEvent in ws can include a message
+                    this.log.error(`ws connection error: ${error?.message || error?.type || 'UNKNOWN'}`);
+                    // @ts-expect-error CloseEvent in ws can include a message
+                    this.errorHandlers.forEach(cb => cb.call(this, error?.message || 'UNKNOWN'));
                 }
-                this.errorHandlers.forEach(cb => cb.call(this, ERRORS[error.code] || 'UNKNOWN'));
                 this.close();
             };
 
@@ -483,7 +499,15 @@ export class SocketClient {
         }
     }
 
-    close(): SocketClient {
+    close(noReconnect: boolean = false): SocketClient {
+        if (this.closing && noReconnect) {
+            return this;
+        }
+
+        if (noReconnect) {
+            this.closing = true;
+        }
+
         if (this.pingInterval) {
             clearInterval(this.pingInterval);
             this.pingInterval = null;
@@ -497,6 +521,11 @@ export class SocketClient {
         if (this.connectingTimer) {
             clearTimeout(this.connectingTimer);
             this.connectingTimer = null;
+        }
+
+        if (this.connectTimer) {
+            clearTimeout(this.connectTimer);
+            this.connectTimer = null;
         }
 
         if (this.socket) {
@@ -515,7 +544,16 @@ export class SocketClient {
 
         this.callbacks = [];
 
-        this._reconnect();
+        const maxAttemptsReached = this.connectionCount >= (this.options?.connectMaxAttempt || 5);
+
+        if (!noReconnect && !this.closing && !maxAttemptsReached) {
+            this._reconnect();
+        } else if (maxAttemptsReached) {
+            // Only report an error when max reconnect attempts are exhausted,
+            // not for an intentional close (noReconnect=true).
+            this.closing = true;
+            this.errorHandlers.forEach(cb => cb.call(this, 'connection error. too many attempts'));
+        }
 
         return this;
     }
@@ -524,14 +562,31 @@ export class SocketClient {
     disconnect = this.close;
 
     destroy(): void {
-        this.close();
-        if (this.connectTimer) {
-            clearTimeout(this.connectTimer);
-            this.connectTimer = null;
-        }
+        // Do NOT set closing=true here first — close(true) sets it itself.
+        // Setting it before the call would trigger the re-entry guard and skip all cleanups.
+        this.close(true);
+
+        // Drop all handlers to allow GC
+        this.connectHandlers.length = 0;
+        this.reconnectHandlers.length = 0;
+        this.disconnectHandlers.length = 0;
+        this.errorHandlers.length = 0;
+        Object.keys(this.handlers).forEach(name => delete this.handlers[name]);
+        this.pending = [];
     }
 
     private _reconnect(): void {
+        if (this.closing) {
+            this.log.debug('Reconnect skipped: closing');
+            return;
+        }
+
+        if (this.connectionCount >= (this.options?.connectMaxAttempt || 5)) {
+            this.log.debug('Reconnect skipped: max attempts reached');
+            this.errorHandlers.forEach(cb => cb.call(this, 'connection error. too many attempts'));
+            return;
+        }
+
         if (!this.connectTimer) {
             this.log.debug(`Start reconnect ${this.connectionCount}`);
             this.connectTimer = setTimeout(
