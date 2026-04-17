@@ -2521,7 +2521,6 @@ export class Connection<
             forceUpdate: update,
             // TODO: check if this should time out
             commandTimeout: false,
-            requireAdmin: true,
             executor: (resolve, reject) => {
                 this._socket.emit('getCompactSystemConfig', (err, systemConfig) => {
                     if (err) {

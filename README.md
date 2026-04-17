@@ -44,6 +44,9 @@ console.log(await adminConnection.getHosts());
 	Placeholder for the next version (at the beginning of the line):
 	### **WORK IN PROGRESS**
 -->
+### **WORK IN PROGRESS**
+-   (@GermanBluefox) Allowed to call getCompactSystemConfig in web too
+
 ### 5.1.1 (2026-02-25)
 -   (@GermanBluefox) Updated packages
 -   (@bloop16) Better error handling implemented
