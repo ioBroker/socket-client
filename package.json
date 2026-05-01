@@ -67,7 +67,7 @@
     "@iobroker/eslint-config": "^2.2.0",
     "@iobroker/types": "^7.1.1",
     "@types/node": "^25.6.0",
-    "typescript": "~5.9.3"
+    "typescript": "~6.0.3"
   },
   "overrides": {
     "p-limit": "^4.0.0"
