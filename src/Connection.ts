@@ -388,7 +388,8 @@ export class Connection<
             }
         }
 
-        const url = port ? `${protocol}://${host}:${port}` : `${protocol}://${host}`;
+        const urlPath = (globalThis as any).socketPath || '';
+        const url = port ? `${protocol}://${host}:${port}${urlPath}` : `${protocol}://${host}${urlPath}`;
 
         const connectFunc: (name: string, par: any) => SocketClient =
             this.props.connect || ((globalThis as any).io || (globalThis as any).iob).connect;

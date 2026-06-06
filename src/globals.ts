@@ -5,6 +5,7 @@ declare global {
         io: { connect: (name: string, par: any) => SocketClient };
         iob: { connect: (name: string, par: any) => SocketClient };
         socketUrl: string;
+        socketPath: string;
         registerSocketOnLoad: (callback: () => void) => void;
         vendorPrefix: string;
     }
@@ -12,6 +13,7 @@ declare global {
         io: { connect: (name: string, par: any) => SocketClient };
         iob: { connect: (name: string, par: any) => SocketClient };
         socketUrl: string;
+        socketPath: string;
         registerSocketOnLoad: (callback: () => void) => void;
         vendorPrefix: string;
     }
