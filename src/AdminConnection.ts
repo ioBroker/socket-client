@@ -1,4 +1,4 @@
-import { Connection, ERRORS, type RequestOptions } from './Connection.js';
+import { Connection, ERRORS, type CommandFile, type RequestOptions } from './Connection.js';
 import type { ConnectionProps } from './ConnectionProps.js';
 import type {
     AdminEmitEvents,
@@ -808,13 +808,15 @@ export class AdminConnection extends Connection<AdminListenEvents, AdminEmitEven
         cmdId: number,
         /** Timeout of command in ms */
         cmdTimeout?: number,
+        /** Optional files to send with the command (base64). The command may refer to them by name. Requires controller feature `CONTROLLER_CMD_EXEC_FILES`. */
+        files?: CommandFile[],
     ): Promise<void> {
         return this.request({
             commandTimeout: cmdTimeout,
             executor: (resolve, reject, timeout) => {
                 host = normalizeHostId(host);
 
-                this._socket.emit('cmdExec', host, cmdId, cmd, err => {
+                const callback = (err?: string | null): void => {
                     if (timeout.elapsed) {
                         return;
                     }
@@ -824,7 +826,22 @@ export class AdminConnection extends Connection<AdminListenEvents, AdminEmitEven
                         reject(err);
                     }
                     resolve();
-                });
+                };
+
+                if (files?.length) {
+                    // `files` is an extra argument before the callback (new servers only). Cast because the
+                    // typed emit signature does not declare it, to keep old servers working for the no-files case.
+                    (this._socket.emit as (event: string, ...args: any[]) => void)(
+                        'cmdExec',
+                        host,
+                        cmdId,
+                        cmd,
+                        files,
+                        callback,
+                    );
+                } else {
+                    this._socket.emit('cmdExec', host, cmdId, cmd, callback);
+                }
             },
         });
     }

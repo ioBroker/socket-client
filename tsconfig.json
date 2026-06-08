@@ -4,23 +4,19 @@
         "strict": true,
         "esModuleInterop": true,
         "skipLibCheck": true,
-
         "types": ["@iobroker/types"],
         // Don't output anything when the build fails
         "noEmitOnError": true,
-        "moduleResolution": "classic",
+        "moduleResolution": "bundler",
         // What to output where
         "outDir": "./build/esm",
+        "rootDir": "./src",
         "module": "ES2020", // will be transpiled to CommonJS in the post-build step
         "declaration": true,
         "removeComments": false,
         "sourceMap": true,
         "inlineSources": true,
         "inlineSourceMap": false,
-
-        // Strictness flags - check the base config before adding something here
-        // "importsNotUsedAsValues": "error",
-        "ignoreDeprecations": "5.0",
         "noUnusedLocals": true,
         "noImplicitReturns": true,
         "noFallthroughCasesInSwitch": true,

@@ -29,6 +29,7 @@ export {
     type InstanceSubscribe,
     type OAuth2Response,
     type StoredTokens,
+    type CommandFile,
 } from './Connection.js';
 
 export type { ConnectionProps } from './ConnectionProps.js';

@@ -44,6 +44,10 @@ console.log(await adminConnection.getHosts());
 	Placeholder for the next version (at the beginning of the line):
 	### **WORK IN PROGRESS**
 -->
+### **WORK IN PROGRESS**
+-   (@GermanBluefox) Extended cmdExec with files
+-   (@GermanBluefox) Migrated to TS 6
+
 ### 5.1.2 (2026-04-17)
 -   (@GermanBluefox) Allowed to call getCompactSystemConfig in web too
 

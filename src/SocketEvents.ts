@@ -231,6 +231,8 @@ export interface IOEmitEvents {
     checkFeatureSupported(featureName: string, callback: GenericCallback<boolean>): void;
 
     sendTo<T = any>(instance: string, command: string, data?: any, callback?: (result: T) => void): void;
+    // Optional `files` (base64) can be sent between `command` and `callback`; emitted via a cast to keep
+    // runtime backward compatibility with older servers for the no-files case.
     cmdExec(hostName: string, commandId: number, command: string, callback?: ErrorCallback): void;
 
     clientSubscribe(
