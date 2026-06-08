@@ -653,7 +653,7 @@ export class AdminConnection extends Connection<AdminListenEvents, AdminEmitEven
                     parentGroup._id = newId as ioBroker.ObjectIDs.Group;
                     if (newName !== undefined) {
                         (parentGroup.common as any) ??= {};
-                        parentGroup.common.name = newName as any;
+                        parentGroup.common.name = newName;
                     }
 
                     // Create a new object, then delete the old one if it worked
@@ -871,7 +871,7 @@ export class AdminConnection extends Connection<AdminListenEvents, AdminEmitEven
                     } else if ((data as { error?: string }).error) {
                         reject(new Error((data as { error?: string }).error));
                     } else {
-                        resolve(data as { config: ioBroker.IoBrokerJson; isActive: boolean });
+                        resolve(data);
                     }
                 });
             },
