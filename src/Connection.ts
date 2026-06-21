@@ -414,6 +414,7 @@ export class Connection<
             timeout: this.props.ioTimeout,
             uuid: this.props.uuid,
             token: this.props.token,
+            transports: (globalThis as any).socketForceWebSockets ? ['websocket'] : undefined,
         });
 
         this._socket.on('connect', noTimeout => {

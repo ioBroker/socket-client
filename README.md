@@ -44,6 +44,9 @@ console.log(await adminConnection.getHosts());
 	Placeholder for the next version (at the beginning of the line):
 	### **WORK IN PROGRESS**
 -->
+### **WORK IN PROGRESS**
+-   (@GermanBluefox) Added support for web-socket-only (socket.io) communication
+
 ### 5.2.0 (2026-06-12)
 -   (@SimonFischer04) Added socketPath to allow for (web) running behind reverse proxy
 
