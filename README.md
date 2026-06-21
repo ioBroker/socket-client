@@ -44,7 +44,7 @@ console.log(await adminConnection.getHosts());
 	Placeholder for the next version (at the beginning of the line):
 	### **WORK IN PROGRESS**
 -->
-### **WORK IN PROGRESS**
+### 5.2.1 (2026-06-21)
 -   (@GermanBluefox) Added support for web-socket-only (socket.io) communication
 
 ### 5.2.0 (2026-06-12)

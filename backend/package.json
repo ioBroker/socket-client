@@ -1,6 +1,6 @@
 {
     "name": "@iobroker/socket-client-backend",
-    "version": "5.2.0",
+    "version": "5.2.1",
     "description": "Client libraries for ioBroker using web sockets",
     "main": "build/index.js",
     "scripts": {
