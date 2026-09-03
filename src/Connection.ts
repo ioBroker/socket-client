@@ -199,6 +199,12 @@ export class Connection<
     private readonly props: ConnectionProps;
     public readonly connId: string;
     private lastAccessToken: string | null = null;
+    /** A token refresh request is running. A refresh token can be used only once, so a second request must not be started */
+    private tokenRefreshInProgress: boolean = false;
+    /** When the server last accepted a new access token from this connection */
+    private lastTokenUpdateAt: number = 0;
+    /** How often in a row the server rejected the access token this connection announced */
+    private tokenUpdateFailures: number = 0;
 
     private ignoreState: string = '';
     private connected: boolean = false;
@@ -494,7 +500,7 @@ export class Connection<
             this.onConnectionHandlers.forEach(cb => cb(false));
         });
 
-        this._socket.on('reauthenticate', () => this.authenticate());
+        this._socket.on('reauthenticate', () => this.onReauthenticate());
 
         this._socket.on('log', (message: LogMessage) => {
             this.props.onLog?.(message);
@@ -643,6 +649,19 @@ export class Connection<
     }
 
     /**
+     * Forget the tokens of one storage, no matter which connection owns them.
+     *
+     * @param stayLoggedIn if stored in localStorage or in sessionStorage
+     */
+    static deleteStoredTokens(stayLoggedIn: boolean): void {
+        if (stayLoggedIn) {
+            globalThis.localStorage.removeItem('iob_tokens');
+        } else {
+            globalThis.sessionStorage.removeItem('iob_tokens');
+        }
+    }
+
+    /**
      * Destroy tokens if they were created by this connection if they expired or invalid
      *
      * @param stayLoggedIn if stored in localStorage or in sessionStorage
@@ -679,19 +698,60 @@ export class Connection<
         if (this.lastAccessToken !== accessToken) {
             this.lastAccessToken = accessToken;
             this._socket.emit('updateTokenExpiration', accessToken, (err: string | null, success?: boolean): void => {
-                if (err) {
-                    console.error(`[UPDATE/${new Date().toISOString()}] cannot say to server about new token: ${err}`);
-                    globalThis.location.reload();
-                } else if (!success) {
-                    console.error(`[UPDATE/${new Date().toISOString()}] cannot say to server about new token`);
-                    globalThis.location.reload();
+                if (err || !success) {
+                    console.error(
+                        `[UPDATE/${new Date().toISOString()}] cannot say to server about new token: ${err || 'not accepted'}`,
+                    );
+                    this.tokenUpdateFailures++;
+                    // The server does not know the announced access token, so it is stale. As long as there
+                    // is a refresh token, a fresh access token is only one request away - a reload would
+                    // just come back here with the same stale token.
+                    const tokens = Connection.readTokens();
+                    if (tokens?.refresh_token && !this.tokenRefreshInProgress && this.tokenUpdateFailures < 3) {
+                        this.refreshTokens(tokens, true);
+                    } else {
+                        globalThis.location.reload();
+                    }
                 } else {
+                    this.tokenUpdateFailures = 0;
+                    this.lastTokenUpdateAt = Date.now();
                     console.log(`[UPDATE/${new Date().toISOString()}] server accepted new token: ${accessToken}`);
                 }
             });
         }
 
         this.checkAccessTokenExpire();
+    }
+
+    /**
+     * The server does not accept the access token of this connection: it has expired, it is unknown or the
+     * socket was opened without one. Before the user is sent to the login page, try to get a new access
+     * token with the refresh token - that is what "stay logged in" is for.
+     */
+    private onReauthenticate(): void {
+        const tokens = Connection.readTokens();
+        if (!tokens?.refresh_token) {
+            console.log(`[AUTH/${new Date().toISOString()}] No refresh token => login page`);
+            this.authenticate();
+            return;
+        }
+        if (this.tokenRefreshInProgress) {
+            // the result of the running refresh will be announced to the server
+            return;
+        }
+        if (Date.now() - this.lastTokenUpdateAt < 5_000) {
+            // The server has just accepted a new token. Events that were already on the wire before that
+            // still carry the old verdict and must not trigger another refresh.
+            return;
+        }
+        if (this.lastAccessToken !== tokens.access_token && tokens.expires_in.getTime() > Date.now() + 5_000) {
+            // Another tab has already renewed the token, the server only has to learn about it
+            console.log(`[AUTH/${new Date().toISOString()}] Announcing the token renewed by another tab`);
+            this.updateTokenExpiration(tokens.access_token);
+            return;
+        }
+        console.log(`[AUTH/${new Date().toISOString()}] Access token rejected by the server => refreshing it`);
+        this.refreshTokens(tokens, true);
     }
 
     private refreshTokens(tokenStructure: StoredTokens, takeOwnership?: boolean): void {
@@ -704,8 +764,13 @@ export class Connection<
 
         if (takeOwnership || !tokenStructure.owner || tokenStructure.owner === this.connId) {
             console.log(`[REFRESH/${new Date().toISOString()}] claim ownership of the token`);
+            if (this.tokenRefreshInProgress) {
+                console.log(`[REFRESH/${new Date().toISOString()}] a refresh is already running`);
+                return;
+            }
             if (this.acquireTokenLock()) {
                 console.log(`[REFRESH/${new Date().toISOString()}] refreshing token`);
+                this.tokenRefreshInProgress = true;
                 // Access token will expire soon => Send authentication again
                 fetch('./oauth/token', {
                     method: 'POST',
@@ -718,35 +783,70 @@ export class Connection<
                         if (response.ok) {
                             return response.json();
                         }
-                        throw new Error('Cannot refresh access token');
+                        // 400/401: the server has rejected the refresh token. Everything else (the adapter is
+                        // restarting, a proxy is down) says nothing about the token.
+                        const error: Error & { invalidGrant?: boolean } = new Error(
+                            `Cannot refresh access token: ${response.status}`,
+                        );
+                        error.invalidGrant = response.status === 400 || response.status === 401;
+                        throw error;
                     })
                     .then((data: OAuth2Response): void => {
                         if (data.access_token) {
                             console.log(
                                 `[REFRESH/${new Date().toISOString()}] received new token: ${data.access_token}`,
                             );
+                            this.tokenRefreshInProgress = false;
                             this.saveTokens(data, tokenStructure.stayLoggedIn);
 
                             this.releaseTokenLock();
 
                             this.updateTokenExpiration(data.access_token);
                         } else {
-                            throw new Error('Cannot get access token');
+                            const error: Error & { invalidGrant?: boolean } = new Error('Cannot get access token');
+                            error.invalidGrant = true;
+                            throw error;
                         }
                     })
-                    .catch(err => {
+                    .catch((err: Error & { invalidGrant?: boolean }) => {
                         console.warn(`[REFRESH/${new Date().toISOString()}] cannot refresh token: ${err}`);
+                        this.tokenRefreshInProgress = false;
                         this.releaseTokenLock();
-                        this.deleteTokens(tokenStructure.stayLoggedIn);
-                        console.error(err);
-                        globalThis.location.reload();
+
+                        // A refresh token can be used only once. If the stored refresh token is no longer the
+                        // one that was just tried, another tab has renewed the tokens in the meantime: they
+                        // are good, only the server has to learn about the new access token.
+                        const current = Connection.readTokens();
+                        if (current && current.refresh_token !== tokenStructure.refresh_token) {
+                            console.log(`[REFRESH/${new Date().toISOString()}] tokens were renewed by another tab`);
+                            this.updateTokenExpiration(current.access_token);
+                            return;
+                        }
+
+                        if (!err.invalidGrant) {
+                            // The server could not be reached; the tokens may well be fine. Try again in a moment.
+                            this._refreshTimer ||= setTimeout(() => {
+                                this._refreshTimer = null;
+                                this.checkAccessTokenExpire();
+                            }, 5_000);
+                            return;
+                        }
+
+                        // The refresh token is really invalid, so it is worthless for every tab: forget it,
+                        // no matter which connection owns it, and log in again
+                        Connection.deleteStoredTokens(tokenStructure.stayLoggedIn);
+                        this.authenticate();
                     });
             } else {
                 console.log(
                     `[REFRESH/${new Date().toISOString()}] Someone else is updating the token, so wait for the next check`,
                 );
-                // Someone else is updating the token, so wait for the next check
-                this.checkAccessTokenExpire();
+                // Someone else is updating the token, so check again a bit later. Never synchronously: the
+                // check would end up here again and spin until the lock expires.
+                this._refreshTimer ||= setTimeout(() => {
+                    this._refreshTimer = null;
+                    this.checkAccessTokenExpire();
+                }, 2_000);
             }
         } else if (this.lastAccessToken !== tokenStructure.access_token) {
             this.updateTokenExpiration(tokenStructure.access_token);
@@ -806,6 +906,10 @@ export class Connection<
         if (this._refreshTimer) {
             clearTimeout(this._refreshTimer);
             this._refreshTimer = null;
+        }
+        if (this.tokenRefreshInProgress) {
+            // the running refresh ends with a new token being announced, which schedules the next check
+            return;
         }
         if (this.isSecure) {
             const tokens = Connection.readTokens();
