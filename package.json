@@ -27,9 +27,9 @@
     }
   },
   "scripts": {
-    "build": "tsc && node tasks",
-    "build-backend": "cd backend && npm run build",
-    "npm-backend": "cd backend && npm i",
+    "build": "tsc && node tasks && npm run build:backend",
+    "build:backend": "cd backend && npm run build",
+    "npm:backend": "cd backend && npm i",
     "postbuild": "esm2cjs --in build/esm --out build/cjs -l error",
     "watch": "npm run build -- --watch",
     "lint": "eslint -c eslint.config.mjs && cd backend && npm run lint",
@@ -38,8 +38,8 @@
     "release-patch": "release-script patch --yes --lf",
     "release-minor": "release-script minor --yes --lf",
     "release-major": "release-script major --yes --lf",
-    "update-packages": "npx -y npm-check-updates --upgrade",
-    "npm": "npm i -f"
+    "update-packages": "npx -y npm-check-updates --upgrade && cd backend && npx -y npm-check-updates --upgrade",
+    "npm": "npm i && cd backend && npm i"
   },
   "repository": {
     "type": "git",
@@ -66,7 +66,7 @@
     "@alcalzone/release-script-plugin-license": "^5.2.2",
     "@iobroker/eslint-config": "^2.3.4",
     "@iobroker/types": "^7.2.2",
-    "@types/node": "^26.4.1",
+    "@types/node": "^22.20.1",
     "typescript": "~6.0.3"
   }
 }

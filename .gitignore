@@ -4,5 +4,4 @@ build/
 
 # npm package files
 *.tgz
-/backend/package-lock.json
 /.claude/

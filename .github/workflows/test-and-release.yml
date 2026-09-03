@@ -32,6 +32,8 @@ jobs:
             - uses: ioBroker/testing-action-check@v2.0.0
               with:
                   node-version: '24.x'
+                  # Backend dependencies first, so that "prepare" in the root install can build the backend too
+                  install-command: 'cd backend && npm ci && cd .. && npm ci'
                   test-command: 'false'
                   lint: true
 
@@ -56,8 +58,13 @@ jobs:
             - uses: ioBroker/testing-action-deploy@v1
               with:
                   node-version: '24.x'
+                  # Backend dependencies first, so that "prepare" in the root installation can build the backend too
+                  install-command: 'cd backend && npm ci && cd .. && npm ci'
                   build: true
-                  # Uncomment the following line if your adapter cannot be installed using 'npm ci'
-                  # install-command: 'npm install'
-                  # npm-token: ${{ secrets.NPM_TOKEN }}
                   github-token: ${{ secrets.GITHUB_TOKEN }}
+
+            # The deployment action only publishes the root package, so publish the backend package separately.
+            # Uses npm trusted publishing (id-token: write); pre-releases go to the "next" tag like in the action.
+            - name: Publish backend package to npm
+              working-directory: backend
+              run: npm publish ${{ contains(github.ref_name, '-') && '--tag next' || '' }}

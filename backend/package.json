@@ -7,11 +7,16 @@
         "prepublish": "npm run build",
         "build": "tsc -p tsconfig.build.json",
         "lint": "eslint -c eslint.config.mjs",
-        "update-packages": "npx -y npm-check-updates --upgrade",
+        "update-packages": "npx -y npm-check-updates --upgrade && cd backend && npx -y npm-check-updates --upgrade",
         "npm": "npm i -f"
     },
     "author": "",
     "license": "MIT",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/ioBroker/socket-client.git",
+        "directory": "backend"
+    },
     "bugs": {
         "url": "https://github.com/ioBroker/socket-client/issues"
     },
@@ -26,18 +31,15 @@
     },
     "homepage": "https://github.com/ioBroker/socket-client",
     "dependencies": {
-        "@iobroker/socket-client": "^5.1.0",
-        "@iobroker/ws": "^3.0.5",
-        "ws": "^8.19.0"
+        "@iobroker/socket-client": "^5.2.2",
+        "@iobroker/ws": "^3.1.0",
+        "ws": "^8.21.3"
     },
     "devDependencies": {
-        "@iobroker/eslint-config": "^2.2.0",
-        "@iobroker/types": "^7.1.0",
-        "@types/node": "^25.3.0",
+        "@iobroker/eslint-config": "^2.3.4",
+        "@iobroker/types": "^7.2.2",
+        "@types/node": "^22.20.1",
         "@types/ws": "^8.18.1",
-        "typescript": "~5.9.3"
-    },
-    "overrides": {
-        "p-limit": "^4.0.0"
+        "typescript": "~6.0.3"
     }
 }

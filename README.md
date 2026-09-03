@@ -44,7 +44,7 @@ console.log(await adminConnection.getHosts());
 	Placeholder for the next version (at the beginning of the line):
 	### **WORK IN PROGRESS**
 -->
-### 5.2.2 (2026-09-03)
+### **WORK IN PROGRESS**
 - (@GermanBluefox) When the server rejects the access token (`reauthenticate`), the connection first tries to get a new one with the refresh token and only goes to the login page if that fails. Until now every `reauthenticate` led to the login page, although the user had asked to stay logged in
 - (@GermanBluefox) A failed token refresh no longer throws the tokens away when another tab has renewed them in the meantime (a refresh token can be used only once); the new access token is announced to the server instead. Tokens are only deleted when the server has really rejected the refresh token, a server that cannot be reached leads to a retry
 - (@GermanBluefox) Only one refresh request runs at a time, and waiting for the lock of another tab no longer spins synchronously
