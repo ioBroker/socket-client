@@ -301,6 +301,16 @@ export class Connection<
     /** Cache for server requests */
     private readonly _promises: Record<string, Promise<any>> = {};
 
+    /**
+     * Ends the requests that are still waiting for an answer of the server.
+     *
+     * Almost every request is sent with `commandTimeout: false`, and an answer can only arrive over
+     * the connection the request went out on - an acknowledgement is not repeated after a reconnect.
+     * Without this, a connection that drops mid request leaves its caller waiting forever: no
+     * answer, no error. Uploading a large file over a slow line runs into it regularly.
+     */
+    private readonly _pendingRequests = new Set<(error: Error) => void>();
+
     protected _authTimer: ReturnType<typeof setTimeout> | null = null;
     protected _refreshTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -497,6 +507,8 @@ export class Connection<
             this.connected = false;
             this.subscribed = false;
             this.props.onProgress?.(PROGRESS.CONNECTING);
+            // whatever was on its way will never be answered on this connection
+            this.rejectPendingRequests(new Error(ERRORS.NOT_CONNECTED));
             this.onConnectionHandlers.forEach(cb => cb(false));
         });
 
@@ -1639,6 +1651,7 @@ export class Connection<
             }
         }
 
+        let abort: ((error: Error) => void) | undefined;
         // eslint-disable-next-line no-async-promise-executor
         const promise = new Promise<T>(async (resolve, reject) => {
             const timeoutControl = {
@@ -1648,6 +1661,19 @@ export class Connection<
                 },
             };
             let timeout: ReturnType<typeof setTimeout> | undefined;
+
+            // Remember how to end this request from the outside. Nothing else can: once the
+            // executor has sent the request off, only the answer of the server settles it.
+            abort = (error: Error): void => {
+                timeoutControl.clearTimeout();
+                // do not cache responses with timeout or no connection
+                if (cacheKey && this._promises[cacheKey] instanceof Promise) {
+                    delete this._promises[cacheKey];
+                }
+                reject(error);
+            };
+            this._pendingRequests.add(abort);
+
             if (commandTimeout !== false) {
                 timeout = setTimeout(() => {
                     timeoutControl.elapsed = true;
@@ -1676,10 +1702,36 @@ export class Connection<
                 reject(new Error(e.toString()));
             }
         });
+        // however the request ends, it is not waiting for an answer any more
+        void promise
+            .finally(() => {
+                if (abort) {
+                    this._pendingRequests.delete(abort);
+                }
+            })
+            .catch(() => {
+                // the caller of request() handles the rejection
+            });
+
         if (cacheKey) {
             this._promises[cacheKey] = promise;
         }
         return promise;
+    }
+
+    /**
+     * Reject every request that is still waiting for an answer of the server.
+     *
+     * @param error the reason those requests cannot be answered any more
+     */
+    protected rejectPendingRequests(error: Error): void {
+        if (!this._pendingRequests.size) {
+            return;
+        }
+        // copied first, the rejection removes the entry from the set again
+        const pending = Array.from(this._pendingRequests);
+        this._pendingRequests.clear();
+        pending.forEach(abort => abort(error));
     }
 
     /**
@@ -3252,5 +3304,8 @@ export class Connection<
 
         this.connected = false;
         this.onReadyDone = false;
+
+        // nothing will answer these any more
+        this.rejectPendingRequests(new Error(ERRORS.NOT_CONNECTED));
     }
 }
