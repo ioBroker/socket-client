@@ -238,6 +238,21 @@ interface IPAddresses {
     IPs6: IPAddress[];
 }
 
+/**
+ * The error that a host answered instead of the data: `'permissionError'` as string (older servers), or
+ * `{ error }` as socket-classes 2.x answers `sendToHost` if the permission is missing or the command failed
+ */
+function getHostError(data: unknown): string | undefined {
+    if (data === ERRORS.PERMISSION_ERROR) {
+        return data;
+    }
+    const error = data && typeof data === 'object' ? (data as { error?: unknown }).error : undefined;
+    if (!error) {
+        return undefined;
+    }
+    return typeof error === 'string' ? error : JSON.stringify(error);
+}
+
 function parseIPAddresses(host: ioBroker.HostObject | null | undefined): IPAddresses {
     const IPs4: IPAddress[] = [
         {
@@ -690,8 +705,11 @@ export class AdminConnection extends Connection<AdminListenEvents, AdminEmitEven
                         return;
                     }
                     timeout.clearTimeout();
-                    if (data === ERRORS.PERMISSION_ERROR) {
+                    const error = getHostError(data);
+                    if (error === ERRORS.PERMISSION_ERROR) {
                         reject('May not read "getHostInfo"');
+                    } else if (error) {
+                        reject(error);
                     } else if (!data) {
                         reject('Cannot read "getHostInfo"');
                     } else {
@@ -721,8 +739,11 @@ export class AdminConnection extends Connection<AdminListenEvents, AdminEmitEven
                         return;
                     }
                     timeout.clearTimeout();
-                    if (data === ERRORS.PERMISSION_ERROR) {
+                    const error = getHostError(data);
+                    if (error === ERRORS.PERMISSION_ERROR) {
                         reject('May not read "getHostInfoShort"');
+                    } else if (error) {
+                        reject(error);
                     } else if (!data) {
                         reject('Cannot read "getHostInfoShort"');
                     } else {
@@ -758,8 +779,11 @@ export class AdminConnection extends Connection<AdminListenEvents, AdminEmitEven
                         return;
                     }
                     timeout.clearTimeout();
-                    if (data === ERRORS.PERMISSION_ERROR) {
+                    const error = getHostError(data);
+                    if (error === ERRORS.PERMISSION_ERROR) {
                         reject('May not read "getRepository"');
+                    } else if (error) {
+                        reject(error);
                     } else if (!data) {
                         reject('Cannot read "getRepository"');
                     } else {
@@ -790,8 +814,11 @@ export class AdminConnection extends Connection<AdminListenEvents, AdminEmitEven
                         return;
                     }
                     timeout.clearTimeout();
-                    if (data === ERRORS.PERMISSION_ERROR) {
+                    const error = getHostError(data);
+                    if (error === ERRORS.PERMISSION_ERROR) {
                         reject('May not read "getInstalled"');
+                    } else if (error) {
+                        reject(error);
                     } else if (!data) {
                         reject('Cannot read "getInstalled"');
                     } else {
@@ -870,12 +897,13 @@ export class AdminConnection extends Connection<AdminListenEvents, AdminEmitEven
                     }
                     timeout.clearTimeout();
 
-                    if (data === ERRORS.PERMISSION_ERROR) {
+                    const error = getHostError(data);
+                    if (error === ERRORS.PERMISSION_ERROR) {
                         reject('May not read "BaseSettings"');
                     } else if (!data) {
                         reject('Cannot read "BaseSettings"');
-                    } else if ((data as { error?: string }).error) {
-                        reject(new Error((data as { error?: string }).error));
+                    } else if (error) {
+                        reject(new Error(error));
                     } else {
                         resolve(data);
                     }
@@ -903,7 +931,7 @@ export class AdminConnection extends Connection<AdminListenEvents, AdminEmitEven
                     }
                     timeout.clearTimeout();
 
-                    if (data === ERRORS.PERMISSION_ERROR) {
+                    if (getHostError(data) === ERRORS.PERMISSION_ERROR) {
                         reject('May not write "BaseSettings"');
                     } else if (!data) {
                         reject('Cannot write "BaseSettings"');
@@ -1474,12 +1502,15 @@ export class AdminConnection extends Connection<AdminListenEvents, AdminEmitEven
                     }
                     timeout.clearTimeout();
 
-                    if (data === ERRORS.PERMISSION_ERROR) {
+                    const error = getHostError(data);
+                    if (error === ERRORS.PERMISSION_ERROR) {
                         reject('May not read "getCompactInstalled"');
+                    } else if (error) {
+                        reject(error);
                     } else if (!data) {
                         reject('Cannot read "getCompactInstalled"');
                     } else {
-                        resolve(data);
+                        resolve(data as CompactInstalledInfo);
                     }
                 });
             },
@@ -1520,12 +1551,15 @@ export class AdminConnection extends Connection<AdminListenEvents, AdminEmitEven
                     }
                     timeout.clearTimeout();
 
-                    if (data === ERRORS.PERMISSION_ERROR) {
+                    const error = getHostError(data);
+                    if (error === ERRORS.PERMISSION_ERROR) {
                         reject('May not read "getCompactRepository"');
+                    } else if (error) {
+                        reject(error);
                     } else if (!data) {
                         reject('Cannot read "getCompactRepository"');
                     } else {
-                        resolve(data);
+                        resolve(data as CompactRepository);
                     }
                 });
             },

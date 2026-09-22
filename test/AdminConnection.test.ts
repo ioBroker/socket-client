@@ -542,6 +542,22 @@ describe('AdminConnection host commands with checked answers', () => {
             await assert.rejects(promise, is(`May not read "${method}"`));
         });
 
+        it(`${method} rejects on the permission error of socket-classes 2.x`, async () => {
+            const promise = call(conn, 'a');
+            socket.lastAnswer(event)({ error: ERRORS.PERMISSION_ERROR });
+
+            await assert.rejects(promise, is(`May not read "${method}"`));
+        });
+
+        it(`${method} rejects with an error that came instead of the data and asks anew on the next call`, async () => {
+            const promise = call(conn, 'a');
+            socket.lastAnswer(event)({ error: 'Cannot reach the host' });
+            await assert.rejects(promise, is('Cannot reach the host'));
+
+            void call(conn, 'a').catch(() => {});
+            assert.equal(socket.requestsOf(event).length, 2);
+        });
+
         it(`${method} rejects on an empty answer`, async () => {
             const promise = call(conn, 'a');
             socket.lastAnswer(event)(null);
@@ -1562,6 +1578,13 @@ describe('AdminConnection.cmdExec', () => {
 describe('AdminConnection.readBaseSettings and writeBaseSettings', () => {
     useConnection();
     beforeEach(() => socket.respond('checkFeatureSupported', () => [null, true]));
+
+    it('rejects on the permission error of socket-classes 2.x', async () => {
+        socket.respond('sendToHost', () => [{ error: ERRORS.PERMISSION_ERROR }]);
+
+        await assert.rejects(conn.readBaseSettings('a'), is('May not read "BaseSettings"'));
+        await assert.rejects(conn.writeBaseSettings('a', BASE_SETTINGS), is('May not write "BaseSettings"'));
+    });
 
     it('checks the controller feature before reading', async () => {
         socket.respond('sendToHost', () => [{ config: BASE_SETTINGS }]);

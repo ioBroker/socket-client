@@ -402,7 +402,7 @@ Host names can be given as `'myHost'` or as object id `'system.host.myHost'`.
 | Security                | `getCertificates`, `encrypt`, `decrypt`                                                                                                                                                                                                                          |
 | Admin                   | `getCurrentInstance`, `getCurrentSession`, `getEasyMode`, `getIsEasyModeStrict`                                                                                                                                                                                  |
 
-The methods that ask a host (`getHostInfo`, `getRepository`, `getInstalled`, ...) take a timeout in ms as last parameter.
+The methods that ask a host (`getHostInfo`, `getRepository`, `getInstalled`, ...) take a timeout in ms as last parameter, and reject with `'May not read "..."'` if the user has no permission.
 
 ## Authentication
 
