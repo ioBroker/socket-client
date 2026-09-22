@@ -541,7 +541,7 @@ describe('Connection requests', () => {
             assert.deepEqual(await conn.getEnums('rooms'), byId(KITCHEN));
             assert.equal(socket.requests.length, 1);
 
-            void conn.getEnums('functions');
+            void conn.getEnums('functions').catch(() => {});
             assert.equal(socket.requests.length, 2);
 
             const updated = conn.getEnums('rooms', true);
@@ -573,7 +573,7 @@ describe('Connection requests', () => {
         beforeEach(() => start());
 
         it('asks for all ids without start and end', () => {
-            void conn.getObjectViewCustom('custom', 'state');
+            void conn.getObjectViewCustom('custom', 'state').catch(() => {});
 
             assert.deepEqual(socket.lastRequest('getObjectView').args, [
                 'custom',
@@ -624,8 +624,8 @@ describe('Connection requests', () => {
             assert.deepEqual(await cached(), byId(STATE_OBJ));
             assert.equal(socket.requests.length, 1);
 
-            void cached('state', 'zigbee.0.');
-            void cached('channel');
+            void cached('state', 'zigbee.0.').catch(() => {});
+            void cached('channel').catch(() => {});
             assert.equal(socket.requests.length, 3);
         });
 
@@ -647,7 +647,7 @@ describe('Connection requests', () => {
             socket.lastAnswer('getObjectView')(null, rows(STATE_OBJ));
             await fresh;
 
-            void cached();
+            void cached().catch(() => {});
             assert.equal(socket.requests.length, 2);
         });
 
@@ -656,7 +656,7 @@ describe('Connection requests', () => {
             socket.lastAnswer('getObjectView')('permissionError');
             await assert.rejects(failed, error => error === 'permissionError');
 
-            void cached();
+            void cached().catch(() => {});
             assert.equal(socket.requests.length, 2);
         });
     });
@@ -673,13 +673,13 @@ describe('Connection requests', () => {
         });
 
         it('passes a list of ids unchanged', () => {
-            void conn.getForeignStates([STATE_ID, OTHER_OBJ._id]);
+            void conn.getForeignStates([STATE_ID, OTHER_OBJ._id]).catch(() => {});
 
             assert.deepEqual(socket.lastRequest('getForeignStates').args, [[STATE_ID, OTHER_OBJ._id]]);
         });
 
         it('asks for all objects of a type without a pattern', () => {
-            void conn.getForeignObjects(null, 'channel');
+            void conn.getForeignObjects(null, 'channel').catch(() => {});
 
             assert.deepEqual(socket.lastRequest('getForeignObjects').args, ['*', 'channel']);
         });
@@ -740,7 +740,7 @@ describe('Connection requests', () => {
         });
 
         it('keeps a full host id', () => {
-            void conn.cmdExec('system.host.myhost', 'ls', 7);
+            void conn.cmdExec('system.host.myhost', 'ls', 7).catch(() => {});
 
             assert.equal(socket.lastRequest('cmdExec').args[0], 'system.host.myhost');
         });
@@ -759,7 +759,7 @@ describe('Connection requests', () => {
         });
 
         it('leaves out an empty list of files for older servers', () => {
-            void conn.cmdExec('myhost', 'ls', 7, undefined, []);
+            void conn.cmdExec('myhost', 'ls', 7, undefined, []).catch(() => {});
 
             assert.deepEqual(socket.lastRequest('cmdExec').args, ['system.host.myhost', 7, 'ls']);
         });
@@ -861,7 +861,7 @@ describe('Connection requests', () => {
             assert.deepEqual(await conn.getCompactSystemConfig(), SYSTEM_CONFIG);
             assert.equal(socket.requests.length, 1);
 
-            void conn.getCompactSystemConfig(true);
+            void conn.getCompactSystemConfig(true).catch(() => {});
             assert.equal(socket.requests.length, 2);
         });
     });
@@ -895,9 +895,9 @@ describe('Connection requests', () => {
             assert.deepEqual(await conn.getIpAddresses('system.host.myhost'), ['192.168.1.2', '::1']);
             assert.equal(socket.requests.length, 1);
 
-            void conn.getIpAddresses('otherhost');
+            void conn.getIpAddresses('otherhost').catch(() => {});
             assert.equal(socket.lastRequest('getObject').args[0], 'system.host.otherhost');
-            void conn.getIpAddresses('myhost', true);
+            void conn.getIpAddresses('myhost', true).catch(() => {});
             assert.equal(socket.requests.length, 3);
         });
 
@@ -906,7 +906,7 @@ describe('Connection requests', () => {
             socket.lastAnswer('getObject')('permissionError');
             await assert.rejects(failed, error => error instanceof Error && error.message === 'permissionError');
 
-            void conn.getIpAddresses('myhost');
+            void conn.getIpAddresses('myhost').catch(() => {});
             assert.equal(socket.requests.length, 2);
         });
     });
@@ -936,7 +936,7 @@ describe('Connection requests', () => {
             socket.lastAnswer('getObject')('permissionError');
             await assert.rejects(failed, error => error instanceof Error && error.message === 'permissionError');
 
-            void conn.getUuid();
+            void conn.getUuid().catch(() => {});
             assert.equal(socket.requests.length, 2);
         });
     });
@@ -1031,8 +1031,8 @@ describe('Connection requests', () => {
             assert.deepEqual(await conn.getAdapterInstances('hm-rpc'), [HM_RPC_0]);
             assert.equal(socket.requests.length, 1);
 
-            void conn.getAdapterInstances('admin');
-            void conn.getAdapterInstances('hm-rpc', true);
+            void conn.getAdapterInstances('admin').catch(() => {});
+            void conn.getAdapterInstances('hm-rpc', true).catch(() => {});
             assert.equal(socket.requests.length, 3);
         });
 
@@ -1059,7 +1059,7 @@ describe('Connection requests', () => {
             socket.lastAnswer('getObjectView')('permissionError');
             await assert.rejects(failed, error => error instanceof Error && error.message === 'permissionError');
 
-            void conn.getAdapterInstances('hm-rpc');
+            void conn.getAdapterInstances('hm-rpc').catch(() => {});
             assert.equal(socket.requests.length, 2);
         });
     });
@@ -1102,8 +1102,8 @@ describe('Connection requests', () => {
             assert.deepEqual(await conn.getAdapters('hm-rpc'), [HM_RPC]);
             assert.equal(socket.requests.length, 1);
 
-            void conn.getAdapters();
-            void conn.getAdapters('hm-rpc', true);
+            void conn.getAdapters().catch(() => {});
+            void conn.getAdapters('hm-rpc', true).catch(() => {});
             assert.equal(socket.requests.length, 3);
         });
 
@@ -1112,7 +1112,7 @@ describe('Connection requests', () => {
             socket.lastAnswer('getObjectView')('permissionError');
             await assert.rejects(failed, error => error instanceof Error && error.message === 'permissionError');
 
-            void conn.getAdapters('hm-rpc');
+            void conn.getAdapters('hm-rpc').catch(() => {});
             assert.equal(socket.requests.length, 2);
         });
     });
@@ -1140,7 +1140,7 @@ describe('Connection requests', () => {
             assert.deepEqual(await conn.getGroups(), [GROUP]);
             assert.equal(socket.requests.length, 1);
 
-            void conn.getGroups(true);
+            void conn.getGroups(true).catch(() => {});
             assert.equal(socket.requests.length, 2);
         });
     });
@@ -1156,7 +1156,7 @@ describe('Connection requests', () => {
         });
 
         it('sends no data when none is given', () => {
-            void conn.sendTo('email.0', 'ping');
+            void conn.sendTo('email.0', 'ping').catch(() => {});
 
             assert.deepEqual(socket.lastRequest('sendTo').args, ['email.0', 'ping', undefined]);
         });

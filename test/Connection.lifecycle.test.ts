@@ -1193,7 +1193,7 @@ describe('Connection.lifecycle', () => {
             assert.equal(onTimeout.mock.callCount(), 1);
             assert.equal(executor.mock.calls[0].arguments[2].elapsed, true);
 
-            void rconn.call({ cacheKey: 'slow', executor });
+            void rconn.call({ cacheKey: 'slow', executor }).catch(() => {});
             assert.equal(executor.mock.callCount(), 2);
         });
 
@@ -1395,6 +1395,116 @@ describe('Connection.lifecycle', () => {
 
             await assert.rejects(conn.log('hello'), { message: ERRORS.NOT_CONNECTED });
             assert.equal(socket.requestsOf('log').length, 0);
+        });
+    });
+
+    describe('requests waiting when the connection drops', () => {
+        let rconn: RequestConnection;
+
+        beforeEach(async () => {
+            ({ conn: rconn, socket } = await createLoggedInConnection(RequestConnection));
+            conn = rconn;
+        });
+
+        /** The requests that are still waiting for an answer (private) */
+        function pending(): number {
+            return (rconn as unknown as { _pendingRequests: Set<unknown> })._pendingRequests.size;
+        }
+
+        it('rejects a request without timeout with NOT_CONNECTED, e.g. the upload of a large file', async () => {
+            const upload = track(conn.writeFile64('vis.0', 'big.bin', 'data'));
+            mock.timers.tick(3_600_000);
+            await flush();
+            assert.equal(upload.settled, false);
+
+            socket.fire('disconnect');
+            await flush();
+
+            assert.equal((upload.error as Error)?.message, ERRORS.NOT_CONNECTED);
+            assert.equal(pending(), 0);
+        });
+
+        it('rejects all requests on their way and ignores their late answers', async () => {
+            const state = track(conn.getState('a.0.b'));
+            const sendTo = track(conn.sendTo('email.0', 'send', { text: 'hi' }));
+
+            socket.fire('disconnect');
+            socket.lastAnswer('getState')(null, { val: 1 });
+            socket.lastAnswer('sendTo')({ result: 'ok' });
+            await flush();
+
+            assert.equal((state.error as Error)?.message, ERRORS.NOT_CONNECTED);
+            assert.equal((sendTo.error as Error)?.message, ERRORS.NOT_CONNECTED);
+        });
+
+        it('keeps the result of a request that was answered before the drop', async () => {
+            const state = track(conn.getState('a.0.b'));
+            socket.lastAnswer('getState')(null, { val: 1 });
+            await flush();
+
+            socket.fire('disconnect');
+            await flush();
+
+            assert.deepEqual(state.value, { val: 1 });
+            assert.equal(state.error, undefined);
+        });
+
+        it('answers a new request after the reconnect', async () => {
+            void conn.getState('a.0.b').catch(() => {});
+            socket.fire('disconnect');
+            socket.fire('connect', true);
+            await flush();
+
+            const state = conn.getState('a.0.b');
+            socket.lastAnswer('getState')(null, { val: 2 });
+
+            assert.deepEqual(await state, { val: 2 });
+        });
+
+        it('stops the timeout of a rejected request', async () => {
+            const onTimeout = mock.fn();
+            const request = track(rconn.call({ commandTimeout: 1000, onTimeout, executor: () => {} }));
+
+            socket.fire('disconnect');
+            mock.timers.tick(2000);
+            await flush();
+
+            assert.equal((request.error as Error)?.message, ERRORS.NOT_CONNECTED);
+            assert.equal(onTimeout.mock.callCount(), 0);
+        });
+
+        it('does not keep a request rejected by the drop in the cache', async () => {
+            void rconn.call({ cacheKey: 'key', executor: () => {} }).catch(() => {});
+            socket.fire('disconnect');
+            socket.fire('connect', true);
+            await flush();
+
+            assert.equal(await rconn.call<number>({ cacheKey: 'key', executor: resolve => resolve(5) }), 5);
+        });
+
+        it('forgets the requests that are answered, rejected or timed out', async () => {
+            const answered = conn.getState('a.0.b');
+            socket.lastAnswer('getState')(null, { val: 1 });
+            const failed = conn.getState('a.0.c');
+            socket.lastAnswer('getState')('error');
+            const timedOut = track(rconn.call({ commandTimeout: 1000, executor: () => {} }));
+            mock.timers.tick(1000);
+
+            await answered;
+            await assert.rejects(failed);
+            await flush();
+
+            assert.equal((timedOut.error as Error)?.message, ERRORS.TIMEOUT);
+            assert.equal(pending(), 0);
+        });
+
+        it('rejects the requests on their way on destroy', async () => {
+            const state = track(conn.getState('a.0.b'));
+
+            conn.destroy();
+            await flush();
+
+            assert.equal((state.error as Error)?.message, ERRORS.NOT_CONNECTED);
         });
     });
 

@@ -309,6 +309,16 @@ export class Connection<
     /** Cache for server requests */
     private readonly _promises: Record<string, Promise<any>> = {};
 
+    /**
+     * Ends the requests that are still waiting for an answer of the server.
+     *
+     * Almost every request is sent with `commandTimeout: false`, and an answer can only arrive over
+     * the connection the request went out on - an acknowledgement is not repeated after a reconnect.
+     * Without this, a connection that drops mid request leaves its caller waiting forever: no
+     * answer, no error. Uploading a large file over a slow line runs into it regularly.
+     */
+    private readonly _pendingRequests = new Set<(error: Error) => void>();
+
     protected _authTimer: ReturnType<typeof setTimeout> | null = null;
     protected _refreshTimer: ReturnType<typeof setTimeout> | null = null;
     /** Asks for the version shortly after the connect of a socket.io socket */
@@ -478,12 +488,16 @@ export class Connection<
                                     );
                                 }
                             })
-                            .catch(e =>
-                                this.onError({
-                                    message: e.toString(),
-                                    operation: 'getVersion',
-                                }),
-                            ),
+                            .catch(e => {
+                                // The connection dropped while waiting for the version, e.g. to the ioBroker
+                                // cloud: nothing to report, the connect handler asks anew after the reconnect
+                                if (e?.message !== ERRORS.NOT_CONNECTED) {
+                                    this.onError({
+                                        message: e.toString(),
+                                        operation: 'getVersion',
+                                    });
+                                }
+                            }),
                     500,
                 );
             } else {
@@ -512,6 +526,8 @@ export class Connection<
             this.connected = false;
             this.subscribed = false;
             this.props.onProgress?.(PROGRESS.CONNECTING);
+            // whatever was on its way will never be answered on this connection
+            this.rejectPendingRequests(new Error(ERRORS.NOT_CONNECTED));
             this.onConnectionHandlers.forEach(cb => cb(false));
         });
 
@@ -1711,6 +1727,7 @@ export class Connection<
             }
         }
 
+        let abort: ((error: Error) => void) | undefined;
         // eslint-disable-next-line no-async-promise-executor
         const promise = new Promise<T>(async (resolve, reject) => {
             const timeoutControl = {
@@ -1720,6 +1737,16 @@ export class Connection<
                 },
             };
             let timeout: ReturnType<typeof setTimeout> | undefined;
+
+            // Remember how to end this request from the outside. Nothing else can: once the
+            // executor has sent the request off, only the answer of the server settles it.
+            // A failed request is removed from the cache below, like on a timeout.
+            abort = (error: Error): void => {
+                timeoutControl.clearTimeout();
+                reject(error);
+            };
+            this._pendingRequests.add(abort);
+
             if (commandTimeout !== false) {
                 timeout = setTimeout(() => {
                     timeoutControl.elapsed = true;
@@ -1739,6 +1766,17 @@ export class Connection<
                 reject(e instanceof Error ? e : new Error(String(e)));
             }
         });
+        // however the request ends, it is not waiting for an answer anymore
+        void promise
+            .finally(() => {
+                if (abort) {
+                    this._pendingRequests.delete(abort);
+                }
+            })
+            .catch(() => {
+                // the caller of request() handles the rejection
+            });
+
         if (cacheKey) {
             // Do not cache a failure (error of the server, timeout, no connection): the next call asks anew.
             // Only this request is forgotten, not a newer one that has replaced it in the meantime.
@@ -1753,6 +1791,24 @@ export class Connection<
             return cached;
         }
         return promise;
+    }
+
+    /**
+     * Rejects every request that is still waiting for an answer of the server.
+     *
+     * The server may have executed such a request already, only its answer is lost: a caller that repeats
+     * a request that is not idempotent (e.g. `sendTo` or `cmdExec`) may execute it twice.
+     *
+     * @param error the reason those requests cannot be answered anymore
+     */
+    protected rejectPendingRequests(error: Error): void {
+        if (!this._pendingRequests.size) {
+            return;
+        }
+        // copied first, the rejection removes the entry from the set again
+        const pending = Array.from(this._pendingRequests);
+        this._pendingRequests.clear();
+        pending.forEach(abort => abort(error));
     }
 
     /**
@@ -2880,8 +2936,9 @@ export class Connection<
      * The connection asks for it on every connect and authenticates only after the answer. The ioBroker cloud answers
      * every request with "ioBroker is not connected" while the ioBroker of the user is away from it, e.g. during a
      * restart, so the version is asked again every few seconds then, instead of failing for good.
-     * A failed request is not cached, the next call asks anew. A request still open when the socket disconnects never
-     * settles: its answer is lost with the connection, and the connect handler asks anew after the reconnect.
+     * A failed request is not cached, the next call asks anew. A request still open when the socket disconnects is
+     * rejected with `ERRORS.NOT_CONNECTED`: its answer is lost with the connection, and the connect handler asks anew
+     * after the reconnect.
      *
      * @param update Ask the server even if the version is cached
      */
@@ -3370,5 +3427,8 @@ export class Connection<
 
         this.connected = false;
         this.onReadyDone = false;
+
+        // nothing will answer these anymore
+        this.rejectPendingRequests(new Error(ERRORS.NOT_CONNECTED));
     }
 }

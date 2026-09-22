@@ -568,8 +568,8 @@ describe('AdminConnection host commands with checked answers', () => {
     }
 
     it('getRepository sends the arguments as they are', () => {
-        void conn.getRepository('system.host.a', 'stable');
-        void conn.getRepository('system.host.b');
+        void conn.getRepository('system.host.a', 'stable').catch(() => {});
+        void conn.getRepository('system.host.b').catch(() => {});
 
         assert.deepEqual(socket.requestsOf('sendToHost')[0].args, ['system.host.a', 'getRepository', 'stable']);
         assert.deepEqual(socket.requestsOf('sendToHost')[1].args, ['system.host.b', 'getRepository', undefined]);
@@ -765,17 +765,17 @@ describe('AdminConnection host ids', () => {
 
     for (const { method, call, event } of CACHED_PER_HOST) {
         it(`${method} caches per host and shares the cache of a host name and its object id`, () => {
-            void call(conn, 'a');
-            void call(conn, 'system.host.a');
-            void call(conn, 'b');
+            void call(conn, 'a').catch(() => {});
+            void call(conn, 'system.host.a').catch(() => {});
+            void call(conn, 'b').catch(() => {});
 
             assert.equal(socket.requestsOf(event).length, 2);
         });
     }
 
     it('getRepository shares the cache of a host name and its object id', () => {
-        void conn.getRepository('a');
-        void conn.getRepository('system.host.a');
+        void conn.getRepository('a').catch(() => {});
+        void conn.getRepository('system.host.a').catch(() => {});
 
         assert.equal(socket.requestsOf('sendToHost').length, 1);
     });

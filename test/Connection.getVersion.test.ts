@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { afterEach, beforeEach, describe, it, mock } from 'node:test';
 
-import { Connection } from '../src/Connection.js';
+import { Connection, ERRORS } from '../src/Connection.js';
 import { FakeSocket } from './lib/FakeSocket.js';
 import { flush, resetGlobals, track } from './lib/helpers.js';
 
@@ -136,7 +136,7 @@ describe('Connection.getVersion', () => {
         });
 
         it('warns only once', () => {
-            void conn.getVersion();
+            void conn.getVersion().catch(() => {});
             for (let i = 0; i < 3; i++) {
                 socket.lastAnswer('getVersion')(CLOUD_NOT_CONNECTED);
                 mock.timers.tick(5000);
@@ -161,7 +161,7 @@ describe('Connection.getVersion', () => {
             assert.equal(socket.listenerCount('disconnect'), before);
         });
 
-        it('stops asking when the socket disconnects', async () => {
+        it('stops asking and rejects with NOT_CONNECTED when the socket disconnects', async () => {
             const promise = track(conn.getVersion());
             socket.lastAnswer('getVersion')(CLOUD_NOT_CONNECTED);
 
@@ -170,25 +170,26 @@ describe('Connection.getVersion', () => {
 
             assert.equal(socket.requestsOf('getVersion').length, 1);
             await flush();
-            assert.equal(promise.settled, false);
+            assert.equal((promise.error as Error)?.message, ERRORS.NOT_CONNECTED);
         });
     });
 
     describe('when the socket disconnects during the request', () => {
         beforeEach(() => connectAndAnswer());
 
-        it('ignores an answer that comes after the disconnect', async () => {
+        it('rejects with NOT_CONNECTED and ignores an answer that comes after the disconnect', async () => {
             const promise = track(conn.getVersion());
 
             socket.fire('disconnect');
             socket.lastAnswer('getVersion')(null, VERSION.version, VERSION.serverName);
             await flush();
 
-            assert.equal(promise.settled, false);
+            assert.equal(promise.value, undefined);
+            assert.equal((promise.error as Error)?.message, ERRORS.NOT_CONNECTED);
         });
 
         it('does not ask again for a "not connected" that comes after the disconnect', () => {
-            void conn.getVersion();
+            void conn.getVersion().catch(() => {});
 
             socket.fire('disconnect');
             socket.lastAnswer('getVersion')(CLOUD_NOT_CONNECTED);
@@ -199,7 +200,7 @@ describe('Connection.getVersion', () => {
         });
 
         it('is asked anew by the connect handler after the reconnect', async () => {
-            void conn.getVersion();
+            void conn.getVersion().catch(() => {});
             socket.fire('disconnect');
 
             socket.fire('connect');
@@ -213,7 +214,7 @@ describe('Connection.getVersion', () => {
         });
 
         it('does not skip the disconnect handler registered after its own', () => {
-            void conn.getVersion();
+            void conn.getVersion().catch(() => {});
             const other = mock.fn();
             socket.on('disconnect', other);
 
@@ -224,7 +225,7 @@ describe('Connection.getVersion', () => {
 
         it('removes its disconnect handler after the disconnect', () => {
             const before = socket.listenerCount('disconnect');
-            void conn.getVersion();
+            void conn.getVersion().catch(() => {});
 
             socket.fire('disconnect');
             mock.timers.tick(1);
@@ -249,6 +250,21 @@ describe('Connection.getVersion', () => {
 
             assert.equal(socket.requestsOf('authenticate').length, 1);
             assert.equal(onError.mock.callCount(), 0);
+        });
+
+        it('does not report a connection that drops while it waits for the version, and asks anew', async () => {
+            socket.lastAnswer('getVersion')(CLOUD_NOT_CONNECTED);
+            await flush();
+
+            // e.g. the connection to the ioBroker cloud drops while the ioBroker of the user is away
+            socket.fire('disconnect');
+            socket.fire('connect');
+            mock.timers.tick(500);
+            socket.lastAnswer('getVersion')(null, VERSION.version, VERSION.serverName);
+            await flush();
+
+            assert.equal(onError.mock.callCount(), 0);
+            assert.equal(socket.requestsOf('authenticate').length, 1);
         });
 
         it('reports an error of the server', async () => {

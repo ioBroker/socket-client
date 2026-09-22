@@ -52,9 +52,11 @@ jobs:
               with:
                   node-version: ${{ matrix.node-version }}
                   os: ${{ matrix.os }}
-                  # Uncomment the following line if your adapter cannot be installed using 'npm ci'
-                  # install-command: 'npm install'
-                  build: true
+                  # Backend dependencies first, so that "prepare" in the root install can build the backend too
+                  install-command: 'cd backend && npm ci && cd .. && npm ci'
+                  # This is no adapter, there are no integration tests: run the tests of both packages instead.
+                  # No build step: "prepare" builds both packages during the installation
+                  integration-test-command: 'npm test'
 
     # Deploys the final package to NPM
     deploy:

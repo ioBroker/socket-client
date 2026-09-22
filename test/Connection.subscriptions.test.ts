@@ -245,7 +245,7 @@ describe('Connection.subscriptions', () => {
             await assert.rejects(conn.subscribeState('a.0.x', undefined as any), /must be a function/);
             assert.equal(socket.requests.length, 0);
 
-            void conn.subscribeState('a.0.x', handler);
+            void conn.subscribeState('a.0.x', handler).catch(() => {});
             assert.deepEqual(idsOf('subscribe'), ['a.0.x']);
         });
 
