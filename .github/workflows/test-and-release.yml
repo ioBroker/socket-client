@@ -42,7 +42,11 @@ jobs:
         if: contains(github.event.head_commit.message, '[skip ci]') == false
 
         runs-on: ${{ matrix.os }}
+        # The build tool esm2cjs (with yargs 17) does not run on Node.js 26 yet: its result must not block the release
+        continue-on-error: ${{ matrix.node-version == '26.x' }}
         strategy:
+            # Show the results of all systems, not only the first failure
+            fail-fast: false
             matrix:
                 node-version: [22.x, 24.x, 26.x]
                 os: [ubuntu-latest, windows-latest, macos-latest]
