@@ -51,7 +51,7 @@ console.log(await adminConnection.getHosts());
 	Placeholder for the next version (at the beginning of the line):
 	### **WORK IN PROGRESS**
 -->
-### **WORK IN PROGRESS**
+### 5.3.0 (2026-09-22)
 - (@GermanBluefox) Fixed a connection in the ioBroker cloud getting stuck if it was opened while the ioBroker of the user was not connected to the cloud, e.g. during its restart: every later connect got the same failed answer to `getVersion` from the cache and never authenticated. While the cloud reports `ioBroker is not connected`, the version is asked again every few seconds now, and a failed or interrupted request is not kept in the cache anymore
 - (@joltcoke) Requests that are still waiting for an answer are rejected with `notConnectedError` when the connection drops or `destroy()` is called. Until now they waited forever, e.g. the upload of a large file over a slow line. Please note: a caller that does not handle errors gets an unhandled rejection now, and the server may have executed a request whose answer was lost
 - (@krobipd, @GermanBluefox) Fixed the admin staying on its start screen when the connection dropped while the data was loading at start (ioBroker.admin#3641, analysed and reproduced by @krobipd): the ws client reports every later connection as reconnect, which did not load the data, so the loading gave up when the reconnect took longer than 10 seconds. Now a reconnect before the data is loaded goes through the connect sequence again, the loading waits for the connection instead of using up its attempts, and the lost connection is not reported to `onError`. The timeout of a request is stopped as soon as it is answered
