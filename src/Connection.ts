@@ -192,6 +192,11 @@ export type InstanceSubscribe = {
 
 const ADAPTERS = ['material', 'echarts', 'vis'];
 
+/** What the ioBroker cloud answers to every request while the ioBroker of the user is not connected to it */
+const CLOUD_NOT_CONNECTED = 'ioBroker is not connected';
+/** How often the version is asked again while the ioBroker of the user is not connected to the cloud */
+const CLOUD_RETRY_INTERVAL = 5000;
+
 export class Connection<
     CustomListenEvents extends Record<keyof CustomListenEvents, ListenEventHandler> = Record<string, never>,
     CustomEmitEvents extends Record<keyof CustomEmitEvents, EmitEventHandler> = Record<string, never>,
@@ -2811,6 +2816,14 @@ export class Connection<
 
     /**
      * Gets the version.
+     *
+     * The connection asks for it on every connect and authenticates only after the answer. The ioBroker cloud answers
+     * every request with "ioBroker is not connected" while the ioBroker of the user is away from it, e.g. during a
+     * restart, so the version is asked again every few seconds then, instead of failing for good.
+     * A failed request is not cached, the next call asks anew. A request still open when the socket disconnects never
+     * settles: its answer is lost with the connection, and the connect handler asks anew after the reconnect.
+     *
+     * @param update Ask the server even if the version is cached
      */
     getVersion(update?: boolean): Promise<{ version: string; serverName: string }> {
         return this.request({
@@ -2819,12 +2832,45 @@ export class Connection<
             // TODO: check if this should time out
             commandTimeout: false,
             executor: (resolve, reject) => {
-                this._socket.emit('getVersion', (err, version, serverName) => {
-                    // Old socket.io had no error parameter
-                    if (err && !version && typeof err === 'string' && err.match(/\d+\.\d+\.\d+/)) {
-                        resolve({ version: err, serverName: 'socketio' });
-                    } else {
-                        if (err) {
+                const socket = this._socket;
+                let retryTimer: ReturnType<typeof setTimeout> | null = null;
+                let dropped = false;
+                let warned = false;
+
+                const onDisconnect = (): void => {
+                    dropped = true;
+                    if (retryTimer) {
+                        clearTimeout(retryTimer);
+                        retryTimer = null;
+                    }
+                    // Not at once: the ws client of ioBroker runs the handlers directly from its array,
+                    // removing one of them during the run would skip the next one
+                    setTimeout(() => socket.off('disconnect', onDisconnect), 0);
+                    this.resetCache('version');
+                };
+
+                const ask = (): void => {
+                    retryTimer = null;
+                    socket.emit('getVersion', (err, version, serverName) => {
+                        if (dropped) {
+                            return;
+                        }
+                        if (err === CLOUD_NOT_CONNECTED) {
+                            if (!warned) {
+                                warned = true;
+                                console.warn('ioBroker is not connected to the cloud. Waiting for it...');
+                            }
+                            retryTimer = setTimeout(ask, CLOUD_RETRY_INTERVAL);
+                            return;
+                        }
+
+                        socket.off('disconnect', onDisconnect);
+
+                        // Old socket.io had no error parameter
+                        if (err && !version && typeof err === 'string' && err.match(/\d+\.\d+\.\d+/)) {
+                            resolve({ version: err, serverName: 'socketio' });
+                        } else if (err) {
+                            this.resetCache('version');
                             reject(err);
                         } else {
                             resolve({
@@ -2832,8 +2878,11 @@ export class Connection<
                                 serverName: serverName!,
                             });
                         }
-                    }
-                });
+                    });
+                };
+
+                socket.on('disconnect', onDisconnect);
+                ask();
             },
         });
     }

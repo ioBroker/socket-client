@@ -31,14 +31,14 @@
     },
     "homepage": "https://github.com/ioBroker/socket-client",
     "dependencies": {
-        "@iobroker/socket-client": "^5.2.2",
-        "@iobroker/ws": "^3.1.0",
+        "@iobroker/socket-client": "^5.2.3",
+        "@iobroker/ws": "^3.1.1",
         "ws": "^8.21.3"
     },
     "devDependencies": {
         "@iobroker/eslint-config": "^2.3.4",
-        "@iobroker/types": "^7.2.2",
-        "@types/node": "^22.20.1",
+        "@iobroker/types": "^7.2.3",
+        "@types/node": "^22.20.4",
         "@types/ws": "^8.18.1",
         "typescript": "~6.0.3"
     }

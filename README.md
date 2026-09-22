@@ -44,6 +44,9 @@ console.log(await adminConnection.getHosts());
 	Placeholder for the next version (at the beginning of the line):
 	### **WORK IN PROGRESS**
 -->
+### **WORK IN PROGRESS**
+- (@GermanBluefox) Fixed a connection in the ioBroker cloud getting stuck if it was opened while the ioBroker of the user was not connected to the cloud, e.g. during its restart: every later connect got the same failed answer to `getVersion` from the cache and never authenticated. While the cloud reports `ioBroker is not connected`, the version is asked again every few seconds now, and a failed or interrupted request is not kept in the cache anymore
+
 ### 5.2.3 (2026-09-03)
 - (@GermanBluefox) When the server rejects the access token (`reauthenticate`), the connection first tries to get a new one with the refresh token and only goes to the login page if that fails. Until now every `reauthenticate` led to the login page, although the user had asked to stay logged in
 - (@GermanBluefox) A failed token refresh no longer throws the tokens away when another tab has renewed them in the meantime (a refresh token can be used only once); the new access token is announced to the server instead. Tokens are only deleted when the server has really rejected the refresh token, a server that cannot be reached leads to a retry
