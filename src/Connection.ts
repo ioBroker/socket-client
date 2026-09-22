@@ -12,6 +12,10 @@ if (typeof (globalThis as any).process !== 'undefined') {
         host: 'localhost:8081',
         pathname: '/',
         hostname: 'localhost',
+        // read e.g. by the default of the port and by the redirect to the login page
+        port: '8081',
+        search: '',
+        hash: '',
         reload: () => {},
     };
     // @ts-expect-error globalThis.location is not defined in Node.js

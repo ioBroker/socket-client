@@ -1,5 +1,8 @@
 import assert from 'node:assert/strict';
+import { execFile } from 'node:child_process';
+import { join } from 'node:path';
 import { afterEach, beforeEach, describe, it, mock } from 'node:test';
+import { promisify } from 'node:util';
 
 import {
     Connection,
@@ -324,6 +327,12 @@ describe('Connection.lifecycle', () => {
             assert.equal(socket.url, 'https://example.com:8443');
         });
 
+        it('accepts the protocol without colon', async () => {
+            await start({ protocol: 'https', host: 'example.com', port: 8443 });
+
+            assert.equal(socket.url, 'https://example.com:8443');
+        });
+
         it('connects to port 8081 while the page is served on port 3000', async () => {
             setLocation({ port: '3000', host: 'localhost:3000' });
             await start();
@@ -423,6 +432,38 @@ describe('Connection.lifecycle', () => {
             await conn.startSocket();
 
             assert.equal(connect.mock.callCount(), 1);
+        });
+    });
+
+    describe('in Node.js', () => {
+        it('replaces the location of a browser, so the port has a default and the redirect to the login works', async () => {
+            // The tests set their own location with resetGlobals(): a fresh process shows the replacement of the package
+            const script = `
+                const { Connection } = require(${JSON.stringify(join(__dirname, '..', 'src', 'Connection.js'))});
+                const { FakeSocket } = require(${JSON.stringify(join(__dirname, 'lib', 'FakeSocket.js'))});
+                const socket = new FakeSocket();
+                const conn = new Connection({ name: 'test', connect: url => { socket.url = url; return socket; } });
+                setImmediate(() => {
+                    let error = null;
+                    try {
+                        // the server does not accept the user: the connection opens the login page
+                        socket.fire('error', 'User not authorized');
+                    } catch (e) {
+                        error = e.message;
+                    }
+                    conn.destroy();
+                    console.log(JSON.stringify({ location: globalThis.location, url: socket.url, error }));
+                });
+            `;
+
+            const { stdout } = await promisify(execFile)(process.execPath, ['-e', script]);
+            const result = JSON.parse(stdout);
+
+            assert.equal(result.error, null);
+            assert.equal(result.url, 'http://localhost:8081');
+            assert.equal(result.location.href, 'http://localhost:8081/?login&href=');
+            assert.equal(result.location.search, '');
+            assert.equal(result.location.hash, '');
         });
     });
 

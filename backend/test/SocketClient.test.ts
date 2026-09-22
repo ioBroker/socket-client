@@ -810,6 +810,10 @@ describe('SocketClient', () => {
             assert.equal(globalThis.location.host, 'localhost:8081');
             assert.equal(globalThis.location.hostname, 'localhost');
             assert.equal(globalThis.location.pathname, '/');
+            // read by the Connection: the default of the port and the redirect to the login page (#37)
+            assert.equal(globalThis.location.port, '8081');
+            assert.equal(globalThis.location.search, '');
+            assert.equal(globalThis.location.hash, '');
             assert.equal(typeof globalThis.location.reload, 'function');
         });
 

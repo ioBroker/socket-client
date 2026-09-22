@@ -94,7 +94,7 @@ Please note: in Node.js an unhandled rejection ends the process by default. Hand
 | Option                | Default             | Meaning                                                                                                                                               |
 | --------------------- | ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `name`                |                     | Name of the connection, sent to the server                                                                                                            |
-| `protocol`            | of the page         | `'http:'`, `'https:'`, `'ws:'` or `'wss:'`                                                                                                            |
+| `protocol`            | of the page         | `'http:'`, `'https:'`, `'ws:'` or `'wss:'`, also without colon                                                                                        |
 | `host`                | of the page         | Host name or IP of the server                                                                                                                         |
 | `port`                | of the page         | Port of the server. A page on port 3000 (development server) connects to 8081                                                                         |
 | `ioTimeout`           | 20000               | Timeout to connect in ms, at least 20000                                                                                                              |

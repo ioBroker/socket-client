@@ -26,8 +26,8 @@ export interface ConnectionProps {
     autoSubscribes?: string[];
     /** Automatically subscribe to logging. */
     autoSubscribeLog?: boolean;
-    /** The protocol to use for the socket.io connection. */
-    protocol?: 'ws:' | 'wss:' | 'http:' | 'https:';
+    /** The protocol to use for the socket.io connection, with or without colon, e.g. `'https:'` or `'https'`. */
+    protocol?: 'ws:' | 'wss:' | 'http:' | 'https:' | 'ws' | 'wss' | 'http' | 'https';
     /** The host name to use for the socket.io connection. */
     host?: string;
     /** The port to use for the socket.io connection. */
