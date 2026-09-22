@@ -44,6 +44,10 @@ console.log(await adminConnection.getHosts());
 	Placeholder for the next version (at the beginning of the line):
 	### **WORK IN PROGRESS**
 -->
+### **WORK IN PROGRESS**
+- (@krobipd) Fixed: a request that was still waiting for its answer when the connection was lost never settled, because the websocket client drops its pending callbacks on close. Requests without a timeout (the system config, all objects, the log lines) therefore waited forever - the admin stayed on its start screen until the page was reloaded. Such a request is now rejected with `notConnectedError`, the same error a request gets that is made while the connection is down
+- (@krobipd) Fixed: a request that failed stayed in the cache and was handed to every later caller. Only a timeout was removed so far, so one server error or one lost connection could keep a cached read (`getCompactSystemConfig`, `getCompactHosts`, ...) broken for the lifetime of the page
+
 ### 5.2.3 (2026-09-03)
 - (@GermanBluefox) When the server rejects the access token (`reauthenticate`), the connection first tries to get a new one with the refresh token and only goes to the login page if that fails. Until now every `reauthenticate` led to the login page, although the user had asked to stay logged in
 - (@GermanBluefox) A failed token refresh no longer throws the tokens away when another tab has renewed them in the meantime (a refresh token can be used only once); the new access token is announced to the server instead. Tokens are only deleted when the server has really rejected the refresh token, a server that cannot be reached leads to a retry

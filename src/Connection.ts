@@ -301,6 +301,14 @@ export class Connection<
     /** Cache for server requests */
     private readonly _promises: Record<string, Promise<any>> = {};
 
+    /**
+     * Requests that still wait for the answer of the server. When the connection is lost, the
+     * websocket client drops every pending callback, so such a request would never settle - and a
+     * cached one (e.g. the system config read at start) would be served as "still loading" forever.
+     * The disconnect handler rejects them all instead.
+     */
+    private readonly _inFlight = new Set<{ reject: (error: unknown) => void }>();
+
     protected _authTimer: ReturnType<typeof setTimeout> | null = null;
     protected _refreshTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -496,6 +504,7 @@ export class Connection<
             this.onReadyDone = false;
             this.connected = false;
             this.subscribed = false;
+            this.rejectInFlightRequests();
             this.props.onProgress?.(PROGRESS.CONNECTING);
             this.onConnectionHandlers.forEach(cb => cb(false));
         });
@@ -1639,6 +1648,16 @@ export class Connection<
             }
         }
 
+        // The request is registered while it waits for its answer, so that a lost connection can
+        // reject it (see `rejectInFlightRequests`). `settled` guards against a late answer or a
+        // second rejection after that - a settled promise ignores them anyway, but they must not
+        // touch the cache, which may hold a newer request under the same key by then
+        const entry: { reject: (error: unknown) => void; promise?: Promise<T> } = {
+            reject: (_error: unknown): void => undefined,
+        };
+        let settled = false;
+        let failed = false;
+
         // eslint-disable-next-line no-async-promise-executor
         const promise = new Promise<T>(async (resolve, reject) => {
             const timeoutControl = {
@@ -1647,18 +1666,40 @@ export class Connection<
                     // no-op unless there is a timeout
                 },
             };
+            const settle = (): void => {
+                settled = true;
+                timeoutControl.clearTimeout();
+                this._inFlight.delete(entry);
+            };
+            const fail = (error: unknown): void => {
+                if (settled) {
+                    return;
+                }
+                settle();
+                failed = true;
+                // A rejected request is never served from the cache: the next call asks the server again.
+                // Until now only a timeout was removed - a server error or a lost connection stayed cached
+                // for the lifetime of the page
+                // (`entry.promise` is known once the promise is constructed; an executor that throws at
+                // once fails before that - then there is nothing in the cache yet, see below)
+                if (cacheKey && entry.promise && this._promises[cacheKey] === entry.promise) {
+                    delete this._promises[cacheKey];
+                }
+                // the server answers with plain strings ('permissionError', 'timeout'); they are passed
+                // through unchanged, as they always were
+                // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors
+                reject(error);
+            };
+            entry.reject = fail;
+            this._inFlight.add(entry);
+
             let timeout: ReturnType<typeof setTimeout> | undefined;
             if (commandTimeout !== false) {
                 timeout = setTimeout(() => {
                     timeoutControl.elapsed = true;
                     // Let the caller know that the timeout elapsed
                     onTimeout?.();
-
-                    // do not cache responses with timeout or no connection
-                    if (cacheKey && this._promises[cacheKey] instanceof Promise) {
-                        delete this._promises[cacheKey];
-                    }
-                    reject(new Error(ERRORS.TIMEOUT));
+                    fail(new Error(ERRORS.TIMEOUT));
                 }, commandTimeout ?? this.props.cmdTimeout);
                 timeoutControl.clearTimeout = () => {
                     clearTimeout(timeout);
@@ -1667,19 +1708,42 @@ export class Connection<
             // Call the actual function - awaiting it allows us to catch sync and async errors
             // no matter if the executor is async or not
             try {
-                await executor(resolve, reject, timeoutControl);
+                await executor(
+                    value => {
+                        if (!settled) {
+                            settle();
+                            resolve(value);
+                        }
+                    },
+                    fail,
+                    timeoutControl,
+                );
             } catch (e) {
-                // do not cache responses with timeout or no connection
-                if (cacheKey && this._promises[cacheKey] instanceof Promise) {
-                    delete this._promises[cacheKey];
-                }
-                reject(new Error(e.toString()));
+                fail(new Error(e.toString()));
             }
         });
-        if (cacheKey) {
+        entry.promise = promise;
+        // a request that failed synchronously (the executor threw at once) is not cached either
+        if (cacheKey && !failed) {
             this._promises[cacheKey] = promise;
         }
         return promise;
+    }
+
+    /**
+     * Rejects every request that still waits for an answer. Called when the connection is lost:
+     * the websocket client drops its pending callbacks on close, so those requests would never
+     * settle - a caller that awaits one (the system config at start, all objects, the log lines)
+     * would wait forever, and a cached one would be handed to every later caller as well.
+     * The caller sees `notConnectedError`, the same error a request gets that is made while the
+     * connection is down, and can ask again after the reconnect.
+     */
+    private rejectInFlightRequests(): void {
+        const pending = [...this._inFlight];
+        this._inFlight.clear();
+        for (const entry of pending) {
+            entry.reject(new Error(ERRORS.NOT_CONNECTED));
+        }
     }
 
     /**
