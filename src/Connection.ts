@@ -325,6 +325,8 @@ export class Connection<
     private _versionTimer: ReturnType<typeof setTimeout> | null = null;
     /** destroy() was called: do not open the socket anymore and stop loading the data */
     private _destroyed: boolean = false;
+    /** loadData is running */
+    private _loadingData: boolean = false;
 
     protected _systemConfig?: ioBroker.SystemConfigObject;
     /** The "system.config" object */
@@ -510,12 +512,18 @@ export class Connection<
 
         this._socket.on('reconnect', () => {
             this.onReadyDone = false;
-            this.props.onProgress?.(PROGRESS.READY);
             this.connected = true;
 
             if (this.waitForRestart) {
+                this.props.onProgress?.(PROGRESS.READY);
                 globalThis.location.reload();
+            } else if (!this.loaded) {
+                // The connection dropped before the data was loaded at start, e.g. on a busy host (ioBroker.admin#3641).
+                // The ws client of ioBroker reports every later connection as "reconnect", not as "connect":
+                // go through the connect sequence again, which loads the data
+                this._socket.emit('authenticate', (isOk, isSecure) => this.onPreConnect(isOk, isSecure));
             } else {
+                this.props.onProgress?.(PROGRESS.READY);
                 this._subscribe(true);
                 this.onConnectionHandlers.forEach(cb => cb(true));
             }
@@ -1117,20 +1125,27 @@ export class Connection<
 
     /** Loads the important data and retries a couple of times if it takes too long */
     private async loadData(): Promise<void> {
-        if (this.loaded) {
+        // One run at a time: a reconnect during a run lets the running one go on
+        if (this.loaded || this._loadingData) {
             return;
         }
-        const maxAttempts = 10;
-        for (let i = 1; i <= maxAttempts; i++) {
-            if (this._destroyed) {
-                return;
+        this._loadingData = true;
+        try {
+            const maxAttempts = 10;
+            for (let i = 1; i <= maxAttempts; i++) {
+                // Without a connection every attempt fails at once: stop, the reconnect starts the loading again
+                if (this._destroyed || !this.connected) {
+                    return;
+                }
+                void this.doLoadData().catch(e => console.error(`Cannot load data: ${e}`));
+                if (this.loaded) {
+                    return;
+                }
+                // give more time via remote connection
+                await wait(Connection.isCloud() ? 5000 : 1000);
             }
-            void this.doLoadData().catch(e => console.error(`Cannot load data: ${e}`));
-            if (this.loaded) {
-                return;
-            }
-            // give more time via remote connection
-            await wait(Connection.isCloud() ? 5000 : 1000);
+        } finally {
+            this._loadingData = false;
         }
     }
 
@@ -1147,7 +1162,10 @@ export class Connection<
             try {
                 this.acl = await this.getUserPermissions();
             } catch (e) {
-                this.onError(`Cannot read user permissions: ${e}`);
+                // a lost connection is no error here: the loading starts again after the reconnect
+                if (e?.message !== ERRORS.NOT_CONNECTED) {
+                    this.onError(`Cannot read user permissions: ${e}`);
+                }
                 return;
             }
         }
@@ -1164,7 +1182,10 @@ export class Connection<
                 this._systemConfig = await this.getSystemConfig();
             }
         } catch (e) {
-            this.onError(`Cannot read system config: ${e}`);
+            // a lost connection is no error here: the loading starts again after the reconnect
+            if (e?.message !== ERRORS.NOT_CONNECTED) {
+                this.onError(`Cannot read system config: ${e}`);
+            }
             return;
         }
 
@@ -1761,7 +1782,21 @@ export class Connection<
             // Call the actual function - awaiting it allows us to catch sync and async errors
             // no matter if the executor is async or not
             try {
-                await executor(resolve, reject, timeoutControl);
+                // Stop the timeout as soon as the request is settled (idea of @krobipd, #70): an answered
+                // request must not keep a timer running, which keeps e.g. a Node.js process alive
+                await executor(
+                    value => {
+                        timeoutControl.clearTimeout();
+                        resolve(value);
+                    },
+                    reason => {
+                        timeoutControl.clearTimeout();
+                        // the server answers with plain strings (e.g. 'permissionError'), passed through as always
+                        // eslint-disable-next-line @typescript-eslint/prefer-promise-reject-errors
+                        reject(reason);
+                    },
+                    timeoutControl,
+                );
             } catch (e) {
                 reject(e instanceof Error ? e : new Error(String(e)));
             }

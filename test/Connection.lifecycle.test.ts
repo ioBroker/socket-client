@@ -772,6 +772,104 @@ describe('Connection.lifecycle', () => {
             assert.equal(onReady.mock.callCount(), 1);
         });
 
+        it('loads the data after a reconnect, however long the connection was lost (ioBroker.admin#3641)', async () => {
+            await create();
+            // the system config is on its way when the connection drops
+            await connectOnly();
+            socket.fire('disconnect');
+            mock.timers.tick(15_000);
+            await settle();
+
+            // no attempts without connection, and the lost connection is no error
+            assert.equal(socket.requestsOf('getObject').length, 1);
+            assert.equal(onError.mock.callCount(), 0);
+            assert.equal(onReady.mock.callCount(), 0);
+
+            socket.respond('getObject', (id: string) =>
+                id === 'system.config' ? [null, SYSTEM_CONFIG] : [null, null],
+            );
+            // the ws client of ioBroker reports every later connection as "reconnect"
+            socket.fire('reconnect');
+            await settle();
+
+            assert.equal(socket.requestsOf('authenticate').length, 2);
+            assert.deepEqual(argsOf(onReady), [[{ 'system.config': SYSTEM_CONFIG }]]);
+            assert.equal(onError.mock.callCount(), 0);
+        });
+
+        it('goes on loading when the connection comes back before the next attempt', async () => {
+            await create();
+            await connectOnly();
+            socket.fire('disconnect');
+            socket.respond('getObject', (id: string) =>
+                id === 'system.config' ? [null, SYSTEM_CONFIG] : [null, null],
+            );
+            socket.fire('reconnect');
+            await settle();
+            mock.timers.tick(1000);
+            await settle();
+
+            // the lost request and one after the reconnect: no second run of the loading in parallel
+            assert.equal(socket.requestsOf('getObject').length, 2);
+            assert.equal(onReady.mock.callCount(), 1);
+            assert.equal(onError.mock.callCount(), 0);
+        });
+
+        it('loads the data when the connection comes back just before the attempts would run out', async () => {
+            await create();
+            await connectOnly();
+            socket.fire('disconnect');
+            // 9 of the 10 attempts would be used up by now, if the loading went on without connection
+            mock.timers.tick(9_000);
+            await settle();
+
+            socket.respond('getObject', (id: string) =>
+                id === 'system.config' ? [null, SYSTEM_CONFIG] : [null, null],
+            );
+            socket.fire('reconnect');
+            await settle();
+            for (let i = 0; i < 3; i++) {
+                mock.timers.tick(1000);
+                await settle();
+            }
+
+            assert.equal(onReady.mock.callCount(), 1);
+        });
+
+        it('runs one loading at a time after a reconnect', async () => {
+            await create({ doNotLoadACL: false });
+            await connectOnly();
+            // the permissions are on their way, the connection drops and comes back at once
+            socket.fire('disconnect');
+            socket.fire('reconnect');
+            await settle();
+            mock.timers.tick(1000);
+            await settle();
+
+            // the lost request and one more of the loading that goes on: not two runs in parallel
+            assert.equal(socket.requestsOf('getUserPermissions').length, 2);
+            // and the lost connection is no error
+            assert.equal(onError.mock.callCount(), 0);
+        });
+
+        it('gets ready when the connection dropped before the authentication was answered', async () => {
+            await create();
+            const firstConnection = track(conn.waitForFirstConnection());
+            // authenticate is sent, but not answered
+            socket.fire('connect', true);
+            socket.fire('disconnect');
+
+            socket.respond('authenticate', () => [true, false]);
+            socket.respond('getObject', (id: string) =>
+                id === 'system.config' ? [null, SYSTEM_CONFIG] : [null, null],
+            );
+            socket.fire('reconnect');
+            await settle();
+
+            assert.equal(firstConnection.settled, true);
+            assert.equal(onReady.mock.callCount(), 1);
+        });
+
         it('reloads the page instead of loading the data while waiting for a restart', async () => {
             await create();
             conn.waitForRestart = true;
@@ -1319,6 +1417,19 @@ describe('Connection.lifecycle', () => {
             await flush();
 
             assert.equal((outer.error as Error).message, ERRORS.TIMEOUT);
+        });
+
+        it('stops the timeout as soon as the request is answered or rejected', async () => {
+            await setup();
+            const onTimeout = mock.fn();
+
+            await rconn.call({ commandTimeout: 1000, onTimeout, executor: resolve => resolve(1) });
+            await assert.rejects(
+                rconn.call({ commandTimeout: 1000, onTimeout, executor: (_resolve, reject) => reject('error') }),
+            );
+            mock.timers.tick(2000);
+
+            assert.equal(onTimeout.mock.callCount(), 0);
         });
 
         it('does not cache a request that the server rejected', async () => {
