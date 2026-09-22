@@ -37,9 +37,28 @@ jobs:
                   test-command: 'npm test'
                   lint: true
 
+    test:
+        needs: [check-and-lint]
+        if: contains(github.event.head_commit.message, '[skip ci]') == false
+
+        runs-on: ${{ matrix.os }}
+        strategy:
+            matrix:
+                node-version: [22.x, 24.x, 26.x]
+                os: [ubuntu-latest, windows-latest, macos-latest]
+
+        steps:
+            - uses: ioBroker/testing-action-adapter@v1
+              with:
+                  node-version: ${{ matrix.node-version }}
+                  os: ${{ matrix.os }}
+                  # Uncomment the following line if your adapter cannot be installed using 'npm ci'
+                  # install-command: 'npm install'
+                  build: true
+
     # Deploys the final package to NPM
     deploy:
-        needs: [check-and-lint]
+        needs: [check-and-lint, test]
 
         # Permissions are required to create GitHub releases and npm trusted publishing
         permissions:
