@@ -33,7 +33,6 @@
     "homepage": "https://github.com/ioBroker/socket-client",
     "dependencies": {
         "@iobroker/socket-client": "^5.2.3",
-        "@iobroker/ws": "^3.1.1",
         "ws": "^8.21.3"
     },
     "devDependencies": {
