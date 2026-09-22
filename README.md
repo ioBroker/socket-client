@@ -14,6 +14,11 @@ There are 2 connection types in it:
 `npm run build` for one-time builds.
 `npm run watch` for continuous builds.
 
+## Tests
+
+`npm test` runs the unit tests of the frontend package (`test/`) and of the backend package (`backend/test/`) with the test runner of Node.js.
+The frontend tests replace the socket with a fake one (`test/lib/FakeSocket.ts`), the backend tests talk to a real WebSocket server.
+
 ## How to use in frontend
 
 Include the socket library from Admin or Web adapter:
@@ -46,6 +51,14 @@ console.log(await adminConnection.getHosts());
 -->
 ### **WORK IN PROGRESS**
 - (@GermanBluefox) Fixed a connection in the ioBroker cloud getting stuck if it was opened while the ioBroker of the user was not connected to the cloud, e.g. during its restart: every later connect got the same failed answer to `getVersion` from the cache and never authenticated. While the cloud reports `ioBroker is not connected`, the version is asked again every few seconds now, and a failed or interrupted request is not kept in the cache anymore
+- (@GermanBluefox) Added unit tests for the frontend and the backend package
+- (@GermanBluefox) A failed request is not kept in the cache anymore, the next call asks the server again. Until now e.g. `getEnums`, `getCompactSystemConfig`, `checkFeatureSupported`, `getGroups` or `getHostInfo` returned the same error until `update` was requested. Successful answers are cached as before
+- (@GermanBluefox) `doNotLoadAllObjects: false` really loads all objects and passes them to `onReady`; until now `onReady` got an empty list. If the objects cannot be loaded, the error goes to `onError` and `onReady` is called anyway. `getObjects()` without `update` still answers from the cache
+- (@GermanBluefox) Fixed subscriptions: `unsubscribeState` unsubscribed at the server also ids that still had other handlers, object subscriptions were sent twice after every reconnect, the state to ignore was subscribed at the server, `unsubscribeFromInstance` without a type sent an empty type, and `subscribeOnInstance` did not settle when the instance answered without a result (it resolves `null` now). An exception of one handler does not stop the other handlers anymore
+- (@GermanBluefox) `destroy()` also works before the socket is created and stops the version request, the data loading, the token checks, the token refresh and the reloads of the page. A rejection of the access token during a running token refresh does not reload the page anymore, and broken stored tokens are ignored
+- (@GermanBluefox) Fixed small things: `readMetaItems` without rows, `zh-CN` as browser language, the detection of the cloud (`iobroker.internal` is no cloud), socket errors without `toString`, errors thrown inside a request keep their message (`timeout` instead of `Error: timeout`), the data is loaded only once when the server answers slowly
+- (@GermanBluefox) AdminConnection: `getInstalledResetCache` and `getRepositoryResetCache` accept a host name, `getRepository` shares the cache of a host name and its object id, `getHostByIp` answers for an unknown IP and rejects on a permission error, short PEM certificates and EC or encrypted private keys are recognized, `upgradeController` and `restartController` reject on a permission error
+- (@GermanBluefox) Backend: fixed the query parameters of the URL, an answer without arguments (e.g. of `logout`) does not crash the process anymore, a second `authenticate` does not close the connection anymore, the authenticate timeout and errors of the WebSocket constructor reach the error handlers, the late close of a replaced socket does not close the new connection anymore, "too many attempts" is reported once, no double slash for the URL `/`, invalid messages are ignored, no debug output anymore. New option `callbackTimeout`: a request without answer gets `timeout` after this time (off by default, as before)
 
 ### 5.2.3 (2026-09-03)
 - (@GermanBluefox) When the server rejects the access token (`reauthenticate`), the connection first tries to get a new one with the refresh token and only goes to the login page if that fails. Until now every `reauthenticate` led to the login page, although the user had asked to stay logged in

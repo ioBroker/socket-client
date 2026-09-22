@@ -41,6 +41,7 @@ const socket = new AdminConnection({
             // authTimeout: 5000,
             // connectInterval: 1000,
             // connectMaxAttempt: 10,
+            // callbackTimeout: 60000, // a request without answer gets "timeout" after 60 seconds (default: waits)
             WebSocket,
         });
         return socketClient;

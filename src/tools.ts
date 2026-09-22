@@ -1,11 +1,12 @@
 export function getObjectViewResultToArray<T extends ioBroker.Object>(
     doc:
         | {
-              rows: ioBroker.GetObjectViewItem<T>[];
+              rows?: ioBroker.GetObjectViewItem<T>[];
           }
+        | null
         | undefined,
 ): T[] {
-    return doc?.rows.map(item => item.value).filter((val): val is T => !!val) ?? [];
+    return doc?.rows?.map(item => item.value).filter((val): val is T => !!val) ?? [];
 }
 
 /** Makes sure that a host id starts with "system.host." */

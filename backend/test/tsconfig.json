@@ -1,0 +1,13 @@
+{
+    "extends": "../tsconfig.json",
+    "compilerOptions": {
+        // Compile the sources and the tests into build-test, so node --test can run them directly
+        "noEmit": false,
+        "rootDir": "..",
+        "outDir": "../build-test",
+        "declaration": false,
+        "types": ["@iobroker/types", "node"]
+    },
+    "include": ["../src/**/*", "./**/*"],
+    "exclude": []
+}

@@ -48,7 +48,8 @@ export type GetVersionCallback = (err?: string | null, version?: string, serverN
 
 export type GetAdapterNameCallback = (err?: string | null, serverName?: string) => void;
 
-export type GetHostByIPCallback = (ip: string, host: ioBroker.HostObject) => void;
+/** host is null for an unknown IP and undefined if an error (e.g. "permissionError") came back instead of ip */
+export type GetHostByIPCallback = (ip: string, host?: ioBroker.HostObject | null) => void;
 
 export type GenericCallbackNoExtraError<T> = (result?: ERRORS.PERMISSION_ERROR | T) => void;
 

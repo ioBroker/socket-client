@@ -1,0 +1,14 @@
+{
+    "extends": "../tsconfig.json",
+    "compilerOptions": {
+        // The tests run in Node.js directly, so emit CommonJS like the package has no "type": "module"
+        "module": "nodenext",
+        "moduleResolution": "nodenext",
+        "rootDir": "..",
+        "outDir": "../build-test",
+        "declaration": false,
+        "types": ["@iobroker/types", "node"]
+    },
+    "include": ["../src/**/*", "./**/*"],
+    "exclude": []
+}

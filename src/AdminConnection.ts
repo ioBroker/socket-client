@@ -193,8 +193,9 @@ function parseCertificate(name: string, cert: string): Certificate | void {
     }
 
     let type: Certificate['type'];
-    // If it is a filename, it could be everything
-    if (cert.length < 700 && (cert.indexOf('/') !== -1 || cert.indexOf('\\') !== -1)) {
+    const pem = cert.trim();
+    // If it is a filename, it could be everything. A PEM text is no file name, even if its base64 contains a "/"
+    if (!pem.startsWith('-----BEGIN') && cert.length < 700 && (cert.includes('/') || cert.includes('\\'))) {
         if (name.toLowerCase().includes('private')) {
             type = 'private';
         } else if (cert.toLowerCase().includes('private')) {
@@ -212,14 +213,11 @@ function parseCertificate(name: string, cert: string): Certificate | void {
             return;
         }
     } else {
-        type =
-            cert.substring(0, '-----BEGIN RSA PRIVATE KEY'.length) === '-----BEGIN RSA PRIVATE KEY' ||
-            cert.substring(0, '-----BEGIN PRIVATE KEY'.length) === '-----BEGIN PRIVATE KEY'
-                ? 'private'
-                : 'public';
+        // "-----BEGIN PRIVATE KEY-----", but also RSA, EC, ENCRYPTED ... PRIVATE KEY
+        type = /^-----BEGIN [A-Z0-9 ]*PRIVATE KEY-----/.test(pem) ? 'private' : 'public';
 
         if (type === 'public') {
-            const m = cert.split('-----END CERTIFICATE-----');
+            const m = pem.split('-----END CERTIFICATE-----');
             if (m.filter(t => t.replace(/\r\n|\r|\n/, '').trim()).length > 1) {
                 type = 'chained';
             }
@@ -240,7 +238,7 @@ interface IPAddresses {
     IPs6: IPAddress[];
 }
 
-function parseIPAddresses(host: ioBroker.HostObject): IPAddresses {
+function parseIPAddresses(host: ioBroker.HostObject | null | undefined): IPAddresses {
     const IPs4: IPAddress[] = [
         {
             name: '[IPv4] 0.0.0.0 - Listen on all IPs',
@@ -255,9 +253,9 @@ function parseIPAddresses(host: ioBroker.HostObject): IPAddresses {
             family: 'ipv6',
         },
     ];
-    if (host.native?.hardware?.networkInterfaces) {
+    if (host?.native?.hardware?.networkInterfaces) {
         const list: Record<string, { family: 'IPv6' | 'IPv4'; address: string }[] | undefined> =
-            host.native?.hardware?.networkInterfaces;
+            host.native.hardware.networkInterfaces;
 
         Object.keys(list).forEach(inter => {
             list[inter]?.forEach(ip => {
@@ -377,14 +375,21 @@ export class AdminConnection extends Connection<AdminListenEvents, AdminEmitEven
                         adminInstance,
                     } as any,
                     (result: unknown) => {
-                        const _result = result as {
-                            result: string;
-                            error?: string;
-                        };
-                        if (_result.error) {
+                        const _result = result as
+                            | {
+                                  result: string;
+                                  error?: string;
+                              }
+                            | string
+                            | null
+                            | undefined;
+                        if (typeof _result === 'string') {
+                            // e.g. "permissionError"
+                            reject(_result);
+                        } else if (_result?.error) {
                             reject(_result.error);
                         } else {
-                            resolve(_result.result);
+                            resolve(_result?.result as string);
                         }
                     },
                 );
@@ -743,7 +748,8 @@ export class AdminConnection extends Connection<AdminListenEvents, AdminEmitEven
         timeoutMs?: number,
     ): Promise<Repository> {
         return this.request({
-            cacheKey: `repository_${host}`,
+            // The same cache for a host name and its object id, like in getCompactRepository
+            cacheKey: `repository_${normalizeHostId(host)}`,
             forceUpdate: update,
             commandTimeout: timeoutMs,
             executor: (resolve, reject, timeout) => {
@@ -920,12 +926,21 @@ export class AdminConnection extends Connection<AdminListenEvents, AdminEmitEven
 
         return this.request({
             executor: (resolve, reject, timeout) => {
-                this._socket.emit('sendToHost', host, 'restartController', null, () => {
+                this._socket.emit('sendToHost', host, 'restartController', null, result => {
                     if (timeout.elapsed) {
                         return;
                     }
                     timeout.clearTimeout();
-                    resolve(true);
+                    // The controller answers "" before it restarts. Errors come as {error: 'permissionError'}
+                    // (socket-classes 2.x) or as a string (older servers)
+                    const _result = result as { error?: string } | string | null | undefined;
+                    if (typeof _result === 'string' && _result) {
+                        reject(_result);
+                    } else if (_result && typeof _result === 'object' && _result.error) {
+                        reject(_result.error);
+                    } else {
+                        resolve(true);
+                    }
                 });
             },
         });
@@ -1024,6 +1039,11 @@ export class AdminConnection extends Connection<AdminListenEvents, AdminEmitEven
                     }
                     timeout.clearTimeout();
 
+                    if (host === undefined) {
+                        // Only an error came back, e.g. "permissionError". For an unknown IP the host is null
+                        reject(ip);
+                        return;
+                    }
                     const { IPs4, IPs6 } = parseIPAddresses(host);
                     resolve([...IPs4, ...IPs6]);
                 });
@@ -1472,6 +1492,8 @@ export class AdminConnection extends Connection<AdminListenEvents, AdminEmitEven
             this.resetCache(`installedCompact_`, true);
             this.resetCache(`installed_`, true);
         } else {
+            // the cache keys have the object id of the host, see getInstalled
+            host = normalizeHostId(host);
             this.resetCache(`installedCompact_${host}`);
             this.resetCache(`installed_${host}`);
         }
@@ -1516,6 +1538,8 @@ export class AdminConnection extends Connection<AdminListenEvents, AdminEmitEven
             this.resetCache(`repositoryCompact_`, true);
             this.resetCache(`repository_`, true);
         } else {
+            // the cache keys have the object id of the host, see getRepository
+            host = normalizeHostId(host);
             this.resetCache(`repositoryCompact_${host}`);
             this.resetCache(`repository_${host}`);
         }

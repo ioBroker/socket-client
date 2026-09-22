@@ -4,7 +4,8 @@
  * Released under the MIT License.
  * v 3.0.0 (2025_06_21)
  *
- * This is a exact copy of the ioBroker WebSocket client: https://github.com/ioBroker/ioBroker.ws.client/blob/main/socket.io.ts
+ * Based on the ioBroker WebSocket client: https://github.com/ioBroker/ioBroker.ws.client/blob/main/socket.io.ts
+ * with fixes for Node.js (events of replaced sockets, error handlers, answers without arguments) and the option callbackTimeout
  */
 
 if (typeof (globalThis as any).process !== 'undefined') {
@@ -34,6 +35,11 @@ export interface ConnectOptions {
     connectInterval?: number;
     /** Every connection attempt the interval increasing at options.connectInterval till max this number */
     connectMaxAttempt?: number;
+    /**
+     * Time in ms after which a request without answer gets "timeout" as answer, and a later answer is ignored.
+     * 0 or not set: wait for the answer as long as the connection lasts
+     */
+    callbackTimeout?: number;
     /** Token for authentication */
     token?: string;
     /** WebSocket constructor, if you want to use a custom one */
@@ -47,7 +53,7 @@ const MESSAGE_TYPES: Record<string, number> = {
     CALLBACK: 3,
 };
 
-const DEBUG = true;
+const DEBUG = false;
 
 const ERRORS: Record<number, string> = {
     1000: 'CLOSE_NORMAL', // Successful operation / regular socket shutdown
@@ -118,13 +124,28 @@ export class SocketClient {
         };
     }
 
-    private static getQuery(_url: string): Record<string, string> {
+    private static decodeQueryPart(part: string): string {
+        try {
+            return decodeURIComponent(part.replace(/\+/g, ' '));
+        } catch {
+            return part;
+        }
+    }
+
+    /** The query parameters of the URL. A parameter without "=" has the value undefined */
+    private static getQuery(_url: string): Record<string, string | undefined> {
         const query = _url.split('?')[1] || '';
         const parts = query.split('&');
-        const result: Record<string, string> = {};
+        const result: Record<string, string | undefined> = {};
         for (let p = 0; p < parts.length; p++) {
-            const parts1 = parts[p].split('=');
-            result[parts1[0]] = decodeURIComponent(parts[1]);
+            const pos = parts[p].indexOf('=');
+            if (pos === -1) {
+                result[SocketClient.decodeQueryPart(parts[p])] = undefined;
+            } else {
+                result[SocketClient.decodeQueryPart(parts[p].substring(0, pos))] = SocketClient.decodeQueryPart(
+                    parts[p].substring(pos + 1),
+                );
+            }
         }
         return result;
     }
@@ -159,6 +180,7 @@ export class SocketClient {
         this.options.authTimeout = parseInt(this.options.authTimeout as unknown as string, 10) || 3000; // Authentication timeout
         this.options.connectInterval = parseInt(this.options.connectInterval as unknown as string, 10) || 1000; // Interval between connection attempts
         this.options.connectMaxAttempt = parseInt(this.options.connectMaxAttempt as unknown as string, 10) || 5; // Every connection attempt the interval increasing at options.connectInterval till max this number
+        this.options.callbackTimeout = parseInt(this.options.callbackTimeout as unknown as string, 10) || 0; // 0: requests wait for the answer as long as the connection lasts
 
         this.sessionID = Date.now();
         try {
@@ -169,14 +191,14 @@ export class SocketClient {
                     parts.pop();
                 }
 
-                this.url = `${globalThis.location.protocol || 'ws:'}//${globalThis.location.host || 'localhost'}/${parts.join('/')}`;
+                // parts starts with "", so the joined path starts with "/"
+                this.url = `${globalThis.location.protocol || 'ws:'}//${globalThis.location.host || 'localhost'}${parts.join('/')}`;
             }
 
             // extract all query attributes
             const query = SocketClient.getQuery(this.url);
-            if (query.sid) {
-                delete query.sid;
-            }
+            // also "?sid" and "?sid=", otherwise the URL gets a second sid
+            delete query.sid;
 
             if (Object.prototype.hasOwnProperty.call(query, '')) {
                 delete query[''];
@@ -187,20 +209,25 @@ export class SocketClient {
             // Apply a query to new url
             if (Object.keys(query).length) {
                 u += `&${Object.keys(query)
-                    .map(attr => (query[attr] === undefined ? attr : `${attr}=${query[attr]}`))
+                    .map(attr =>
+                        query[attr] === undefined
+                            ? encodeURIComponent(attr)
+                            : `${encodeURIComponent(attr)}=${encodeURIComponent(query[attr])}`,
+                    )
                     .join('&')}`;
             }
 
-            if (this.options?.name && !query.name) {
+            if (this.options?.name && !Object.prototype.hasOwnProperty.call(query, 'name')) {
                 u += `&name=${encodeURIComponent(this.options.name)}`;
             }
             if (this.options?.token) {
-                u += `&token=${this.options.token}`;
+                u += `&token=${encodeURIComponent(this.options.token)}`;
             }
             // "ws://www.example.com/socketserver"
             this.socket = new (this.options.WebSocket || globalThis.WebSocket)(u);
         } catch (error) {
-            this.handlers.error?.forEach(cb => cb.call(this, error));
+            const message: string = error instanceof Error ? error.message : String(error);
+            this.errorHandlers.forEach(cb => cb.call(this, message));
             this.close();
             return this;
         }
@@ -219,8 +246,14 @@ export class SocketClient {
             this.close(); // re-init connection, because no ___ready___ received in 2000 ms
         }, this.options.connectTimeout);
 
-        if (this.socket) {
-            this.socket.onopen = (): void /*event*/ => {
+        // The events of a socket that was closed and replaced by close() or a reconnect must not touch the
+        // current connection: e.g. its late "close" event would close the new socket
+        const socket = this.socket;
+        if (socket) {
+            socket.onopen = (): void /*event*/ => {
+                if (this.socket !== socket) {
+                    return;
+                }
                 this.lastPong = Date.now();
                 this.connectionCount = 0;
 
@@ -246,7 +279,10 @@ export class SocketClient {
                 }, this.options?.pingInterval || 5000);
             };
 
-            this.socket.onclose = (event: CloseEvent): void => {
+            socket.onclose = (event: CloseEvent): void => {
+                if (this.socket !== socket) {
+                    return;
+                }
                 if (event.code === 3001) {
                     this.log.warn('ws closed');
                 } else {
@@ -256,7 +292,10 @@ export class SocketClient {
             };
 
             // @ts-expect-error invalid typing
-            this.socket.onerror = (error: CloseEvent): void => {
+            socket.onerror = (error: CloseEvent): void => {
+                if (this.socket !== socket) {
+                    return;
+                }
                 if (this.connected && this.socket) {
                     if (this.socket.readyState === 1) {
                         this.log.error(`ws normal error: ${error.type}`);
@@ -271,7 +310,10 @@ export class SocketClient {
                 this.close();
             };
 
-            this.socket.onmessage = (message: MessageEvent<string>): void => {
+            socket.onmessage = (message: MessageEvent<string>): void => {
+                if (this.socket !== socket) {
+                    return;
+                }
                 this.lastPong = Date.now();
                 if (!message?.data || typeof message.data !== 'string') {
                     console.error(`Received invalid message: ${JSON.stringify(message)}`);
@@ -281,6 +323,10 @@ export class SocketClient {
                 try {
                     data = JSON.parse(message.data);
                 } catch {
+                    console.error(`Received invalid message: ${JSON.stringify(message.data)}`);
+                    return;
+                }
+                if (!Array.isArray(data)) {
                     console.error(`Received invalid message: ${JSON.stringify(message.data)}`);
                     return;
                 }
@@ -326,7 +372,11 @@ export class SocketClient {
                     }
                 } else if (type === MESSAGE_TYPES.PING) {
                     if (this.socket) {
-                        this.socket.send(JSON.stringify([MESSAGE_TYPES.PONG]));
+                        try {
+                            this.socket.send(JSON.stringify([MESSAGE_TYPES.PONG]));
+                        } catch {
+                            this.log.warn('Cannot send pong: connection closing');
+                        }
                     } else {
                         this.log.warn('Cannot do pong: connection closed');
                     }
@@ -344,19 +394,18 @@ export class SocketClient {
     private _garbageCollect(): void {
         const now = Date.now();
         let empty = 0;
-        if (!DEBUG) {
-            for (let i = 0; i < this.callbacks.length; i++) {
-                const callback: { ts: number; cb: SocketEventHandler; id: number } | null = this.callbacks[i];
-                if (callback) {
-                    if (callback.ts > now) {
-                        const cb = callback.cb;
-                        setTimeout(cb, 0, 'timeout');
-                        this.callbacks[i] = null;
-                        empty++;
-                    } // else callback is still valid
-                } else {
+        for (let i = 0; i < this.callbacks.length; i++) {
+            const callback: { ts: number; cb: SocketEventHandler; id: number } | null = this.callbacks[i];
+            if (callback) {
+                // ts is 0 without callbackTimeout: the callback never times out
+                if (callback.ts && callback.ts < now) {
+                    const cb = callback.cb;
+                    setTimeout(cb, 0, 'timeout');
+                    this.callbacks[i] = null;
                     empty++;
-                }
+                } // else callback is still valid
+            } else {
+                empty++;
             }
         }
 
@@ -372,16 +421,22 @@ export class SocketClient {
 
     private withCallback(name: string, id: number, args: any[], cb: SocketEventHandler): void {
         if (name === 'authenticate') {
+            // A second authenticate replaces the timer of the first one, which would close the connection otherwise
+            if (this.authTimeout) {
+                clearTimeout(this.authTimeout);
+            }
             this.authTimeout = setTimeout(() => {
                 this.authTimeout = null;
                 if (this.connected) {
                     this.log.debug('Authenticate timeout');
-                    this.handlers.error?.forEach(cb => cb.call(this, 'Authenticate timeout'));
+                    this.errorHandlers.forEach(cb => cb.call(this, 'Authenticate timeout'));
                 }
                 this.close();
             }, this.options?.authTimeout || 3000);
         }
-        this.callbacks.push({ id, cb, ts: DEBUG ? 0 : Date.now() + 30000 });
+        // ts 0: the callback does not time out
+        const timeout = this.options?.callbackTimeout || 0;
+        this.callbacks.push({ id, cb, ts: timeout ? Date.now() + timeout : 0 });
         this.socket?.send(JSON.stringify([MESSAGE_TYPES.CALLBACK, id, name, args]));
     }
 
@@ -390,7 +445,8 @@ export class SocketClient {
             const callback = this.callbacks[i];
             if (callback?.id === id) {
                 const cb = callback.cb;
-                cb.call(null, ...args);
+                // The server sends no arguments if its callback was called without any, e.g. for "logout"
+                cb.call(null, ...(Array.isArray(args) ? args : []));
                 this.callbacks[i] = null;
             }
         }
@@ -546,13 +602,15 @@ export class SocketClient {
 
         const maxAttemptsReached = this.connectionCount >= (this.options?.connectMaxAttempt || 5);
 
-        if (!noReconnect && !this.closing && !maxAttemptsReached) {
-            this._reconnect();
-        } else if (maxAttemptsReached) {
-            // Only report an error when max reconnect attempts are exhausted,
-            // not for an intentional close (noReconnect=true).
-            this.closing = true;
-            this.errorHandlers.forEach(cb => cb.call(this, 'connection error. too many attempts'));
+        if (!noReconnect && !this.closing) {
+            if (maxAttemptsReached) {
+                // Only report an error when max reconnect attempts are exhausted, and only once,
+                // not for an intentional close (noReconnect=true).
+                this.closing = true;
+                this.errorHandlers.forEach(cb => cb.call(this, 'connection error. too many attempts'));
+            } else {
+                this._reconnect();
+            }
         }
 
         return this;

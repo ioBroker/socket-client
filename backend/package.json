@@ -7,6 +7,7 @@
         "prepublish": "npm run build",
         "build": "tsc -p tsconfig.build.json",
         "lint": "eslint -c eslint.config.mjs",
+        "test": "node -e \"require('node:fs').rmSync('build-test', { recursive: true, force: true })\" && tsc -p test/tsconfig.json && node --test \"build-test/test/**/*.test.js\"",
         "update-packages": "npx -y npm-check-updates --upgrade && cd backend && npx -y npm-check-updates --upgrade",
         "npm": "npm i -f"
     },

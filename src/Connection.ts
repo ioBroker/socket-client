@@ -239,7 +239,10 @@ export class Connection<
         this.waitForSocketLib()
             .then(() => this.startSocket())
             .catch(e => {
-                alert(`Socket connection could not be initialized: ${e}`);
+                // A destroyed connection (e.g. the first mount of React StrictMode) does not bother the user
+                if (!this._destroyed) {
+                    alert(`Socket connection could not be initialized: ${e}`);
+                }
             });
     }
 
@@ -308,6 +311,10 @@ export class Connection<
 
     protected _authTimer: ReturnType<typeof setTimeout> | null = null;
     protected _refreshTimer: ReturnType<typeof setTimeout> | null = null;
+    /** Asks for the version shortly after the connect of a socket.io socket */
+    private _versionTimer: ReturnType<typeof setTimeout> | null = null;
+    /** destroy() was called: do not open the socket anymore and stop loading the data */
+    private _destroyed: boolean = false;
 
     protected _systemConfig?: ioBroker.SystemConfigObject;
     /** The "system.config" object */
@@ -369,7 +376,7 @@ export class Connection<
      * Starts the socket.io connection.
      */
     async startSocket(): Promise<void> {
-        if (this._socket) {
+        if (this._socket || this._destroyed) {
             return;
         }
 
@@ -452,7 +459,10 @@ export class Connection<
             // If the user is not admin, it takes some time to install the handlers, because all rights must be checked
             if (noTimeout !== true) {
                 this.connected = true;
-                setTimeout(
+                if (this._versionTimer) {
+                    clearTimeout(this._versionTimer);
+                }
+                this._versionTimer = setTimeout(
                     () =>
                         this.getVersion()
                             .then(info => {
@@ -515,22 +525,21 @@ export class Connection<
         this._socket.on('error', (err: any) => {
             let _err: string;
 
-            if (err == undefined) {
-                _err = '';
-            } else if (typeof err.toString === 'function') {
-                _err = err.toString();
-            } else {
+            if (err != undefined && typeof err.toString !== 'function') {
+                // e.g. an object without prototype, which cannot be converted to a string
                 _err = JSON.stringify(err);
                 console.error(`Received strange error: ${_err}`);
+            } else {
+                _err = String(err);
             }
 
             if (_err.includes('User not authorized')) {
                 this.authenticate();
             } else if (_err.includes('websocket error')) {
-                console.error(`Socket Error => reload: ${err}`);
+                console.error(`Socket Error => reload: ${_err}`);
                 globalThis.location.reload();
             } else {
-                console.error(`Socket Error: ${err}`);
+                console.error(`Socket Error: ${_err}`);
             }
         });
 
@@ -621,6 +630,11 @@ export class Connection<
 
         const [refresh_token, refresh_token_expires_in, access_token, expires_in, owner] = tokenString.split(';');
         const refreshExpires = new Date(refresh_token_expires_in);
+        const accessExpires = new Date(expires_in);
+        if (isNaN(refreshExpires.getTime()) || isNaN(accessExpires.getTime())) {
+            // broken tokens: an invalid date is never "expired", so the tokens would be checked again and again
+            return null;
+        }
         if (refreshExpires.getTime() < Date.now()) {
             // refresh token expired
             return null;
@@ -629,7 +643,7 @@ export class Connection<
             refresh_token,
             refresh_token_expires_in: refreshExpires,
             access_token,
-            expires_in: new Date(expires_in),
+            expires_in: accessExpires,
             owner,
             stayLoggedIn,
         };
@@ -699,6 +713,10 @@ export class Connection<
     };
 
     private updateTokenExpiration(accessToken: string): void {
+        if (this._destroyed) {
+            // The socket is gone. A refresh that ended after destroy() has already saved the tokens for the other tabs
+            return;
+        }
         // This connection is not a token owner, so only read the new access token and inform the server
         if (this.lastAccessToken !== accessToken) {
             this.lastAccessToken = accessToken;
@@ -711,8 +729,13 @@ export class Connection<
                     // The server does not know the announced access token, so it is stale. As long as there
                     // is a refresh token, a fresh access token is only one request away - a reload would
                     // just come back here with the same stale token.
+                    if (this.tokenRefreshInProgress) {
+                        // The running refresh announces its new access token. A reload would abort it, although
+                        // it may already have used up the refresh token, which can be used only once
+                        return;
+                    }
                     const tokens = Connection.readTokens();
-                    if (tokens?.refresh_token && !this.tokenRefreshInProgress && this.tokenUpdateFailures < 3) {
+                    if (tokens?.refresh_token && this.tokenUpdateFailures < 3) {
                         this.refreshTokens(tokens, true);
                     } else {
                         globalThis.location.reload();
@@ -760,10 +783,14 @@ export class Connection<
     }
 
     private refreshTokens(tokenStructure: StoredTokens, takeOwnership?: boolean): void {
+        if (this._destroyed) {
+            // e.g. the tokenTimeoutHandler answered after destroy(): do not use up the refresh token of the other tabs
+            return;
+        }
         if (!tokenStructure) {
             console.log(`[REFRESH/${new Date().toISOString()}] No token structure found => reloading the page`);
             // Refresh the page, as we cannot refresh the token
-            setTimeout(() => globalThis.location.reload(), 500);
+            this.reloadPageLater(500);
             return;
         }
 
@@ -907,10 +934,23 @@ export class Connection<
         }
     }
 
+    /** Reloads the page after the delay, unless the connection is destroyed in the meantime */
+    private reloadPageLater(delay: number): void {
+        setTimeout(() => {
+            if (!this._destroyed) {
+                globalThis.location.reload();
+            }
+        }, delay);
+    }
+
     private checkAccessTokenExpire(): void {
         if (this._refreshTimer) {
             clearTimeout(this._refreshTimer);
             this._refreshTimer = null;
+        }
+        if (this._destroyed) {
+            // e.g. a refresh that was running during destroy() ended: do not schedule the next check
+            return;
         }
         if (this.tokenRefreshInProgress) {
             // the running refresh ends with a new token being announced, which schedules the next check
@@ -929,8 +969,7 @@ export class Connection<
                             `[TOKEN/${new Date().toISOString()}] We do not have a refresh token, so we need to reauthenticate`,
                         );
                         // Refresh the page, as we cannot refresh the token
-                        setTimeout(
-                            () => globalThis.location.reload(),
+                        this.reloadPageLater(
                             Date.now() > accessExpireInUnixMs ? 500 : accessExpireInUnixMs - Date.now(),
                         );
                     } else if (
@@ -960,8 +999,7 @@ export class Connection<
                                         `[TOKEN/${new Date().toISOString()}] Token will not be prolonged. Reloading the page`,
                                     );
                                     // Refresh the page, as we cannot refresh the token
-                                    setTimeout(
-                                        () => globalThis.location.reload(),
+                                    this.reloadPageLater(
                                         Date.now() > accessExpireInUnixMs ? 500 : accessExpireInUnixMs - Date.now(),
                                     );
                                 }
@@ -1007,18 +1045,23 @@ export class Connection<
      * Checks if running in ioBroker cloud
      */
     static isCloud(): boolean {
-        if (
-            globalThis.location.hostname.includes('amazonaws.com') ||
-            globalThis.location.hostname.includes('iobroker.in')
-        ) {
+        if (Connection.isCloudHost(globalThis.location.hostname)) {
             return true;
         }
-        if (typeof (globalThis as any).socketUrl === 'undefined') {
+        const socketUrl: string | undefined = (globalThis as any).socketUrl;
+        if (!socketUrl) {
             return false;
         }
-        return (
-            (globalThis as any).socketUrl.includes('iobroker.in') || (globalThis as any).socketUrl.includes('amazonaws')
-        );
+        try {
+            return Connection.isCloudHost(new globalThis.URL(socketUrl).hostname);
+        } catch {
+            return false;
+        }
+    }
+
+    /** The host names of the ioBroker cloud: iobroker.in or amazonaws.com and their subdomains, not e.g. "iobroker.internal" */
+    private static isCloudHost(hostname: string | undefined): boolean {
+        return !!hostname && /(^|\.)(iobroker\.in|amazonaws\.com)$/i.test(hostname);
     }
 
     /**
@@ -1063,6 +1106,9 @@ export class Connection<
         }
         const maxAttempts = 10;
         for (let i = 1; i <= maxAttempts; i++) {
+            if (this._destroyed) {
+                return;
+            }
             void this.doLoadData().catch(e => console.error(`Cannot load data: ${e}`));
             if (this.loaded) {
                 return;
@@ -1106,13 +1152,20 @@ export class Connection<
             return;
         }
 
+        // loadData starts a new run every second: another run, that waited for the same answers, was faster
+        if (this.loaded) {
+            return;
+        }
+
         // Detect the system language
         if (this._systemConfig) {
             this.systemLang = this._systemConfig.common?.language;
             if (!this.systemLang) {
-                this.systemLang = (globalThis.navigator as any).userLanguage || globalThis.navigator.language;
-                // Browsers may report languages like "de-DE", "en-US", etc.
-                // ioBroker expects "de", "en", ...
+                this.systemLang = String(
+                    (globalThis.navigator as any).userLanguage || globalThis.navigator.language || '',
+                ).toLowerCase() as ioBroker.Languages;
+                // Browsers may report languages like "de-DE", "en-US", "zh-CN" etc.
+                // ioBroker expects "de", "en", "zh-cn" ...
                 if (/^(en|de|ru|pt|nl|fr|it|es|pl|uk)-?/.test(this.systemLang)) {
                     this.systemLang = this.systemLang.substring(0, 2) as any;
                 } else if (!/^(en|de|ru|pt|nl|fr|it|es|pl|uk|zh-cn)$/.test(this.systemLang)) {
@@ -1130,7 +1183,13 @@ export class Connection<
 
         // Load all objects if desired
         if (!this.props.doNotLoadAllObjects) {
-            this.objects = await this.getObjects();
+            try {
+                // getObjects() without update would only answer from the (empty) cache
+                this.objects = await this.getObjects(true);
+            } catch (e) {
+                // Do not stay in the loading state (no onReady) because of the objects: go on without them
+                this.onError(`Cannot read all objects: ${e}`);
+            }
         } else if (this.props.admin5only) {
             this.objects = {};
         } else {
@@ -1203,7 +1262,7 @@ export class Connection<
                     reg: new RegExp(pattern2RegEx(_id)),
                     cbs: [cb],
                 };
-                if (id !== this.ignoreState) {
+                if (_id !== this.ignoreState) {
                     toSubscribe.push(_id);
                 }
             } else {
@@ -1232,7 +1291,7 @@ export class Connection<
                     base64 = undefined;
                 }
                 if (base64 != undefined) {
-                    (cb as BinaryStateChangeHandler)(ids[i], base64);
+                    Connection.callStateHandler(cb, ids[i], base64);
                 }
             }
         } else if (ids.find(_id => _id.includes('*'))) {
@@ -1246,28 +1305,39 @@ export class Connection<
                 }
                 if (states) {
                     for (const [id, state] of Object.entries(states)) {
-                        const mayBePromise = (cb as ioBroker.StateChangeHandler)(id, state);
-                        if (mayBePromise instanceof Promise) {
-                            void mayBePromise.catch(e => console.error(`Cannot call state change handler: ${e}`));
-                        }
+                        Connection.callStateHandler(cb, id, state);
                     }
                 }
             }
         } else {
+            let states: Record<string, ioBroker.State> | undefined;
             try {
-                const states = await (Connection.isWeb() ? this.getStates(ids) : this.getForeignStates(ids));
-                if (states) {
-                    for (const [id, state] of Object.entries(states)) {
-                        const mayBePromise = (cb as ioBroker.StateChangeHandler)(id, state);
-                        if (mayBePromise instanceof Promise) {
-                            void mayBePromise.catch(e => console.error(`Cannot call state change handler: ${e}`));
-                        }
-                    }
-                }
+                states = await (Connection.isWeb() ? this.getStates(ids) : this.getForeignStates(ids));
             } catch (e) {
-                console.error(`Cannot getState "${ids.join(', ')}": ${e.message}`);
+                console.error(`Cannot getState "${ids.join(', ')}": ${e?.message ?? e}`);
                 return;
             }
+            if (states) {
+                for (const [id, state] of Object.entries(states)) {
+                    Connection.callStateHandler(cb, id, state);
+                }
+            }
+        }
+    }
+
+    /** Calls a state change handler. Its exception or rejection is only logged, so it cannot stop the caller */
+    private static callStateHandler(
+        cb: ioBroker.StateChangeHandler | BinaryStateChangeHandler,
+        id: string,
+        state: ioBroker.State | string | null,
+    ): void {
+        try {
+            const mayBePromise = (cb as (id: string, state: ioBroker.State | string | null) => unknown)(id, state);
+            if (mayBePromise instanceof Promise) {
+                void mayBePromise.catch(e => console.error(`Cannot call state change handler: ${e}`));
+            }
+        } catch (e) {
+            console.error(`Error by callback of stateChanged: ${e}`);
         }
     }
 
@@ -1316,7 +1386,7 @@ export class Connection<
             }
         }
         if (this.connected && toUnsubscribe.length) {
-            this._socket.emit('unsubscribe', ids);
+            this._socket.emit('unsubscribe', toUnsubscribe);
         }
     }
 
@@ -1475,14 +1545,7 @@ export class Connection<
         for (const sub of Object.values(this.statesSubscribes)) {
             if (sub.reg.test(id)) {
                 for (const cb of sub.cbs) {
-                    try {
-                        const mayBePromise = cb(id, (state ?? null) as any);
-                        if (mayBePromise instanceof Promise) {
-                            void mayBePromise.catch(e => console.error(`Cannot call state change handler: ${e}`));
-                        }
-                    } catch (e) {
-                        console.error(`Error by callback of stateChanged: ${e}`);
-                    }
+                    Connection.callStateHandler(cb, id, state ?? null);
                 }
             }
         }
@@ -1498,9 +1561,13 @@ export class Connection<
     private instanceMessage(messageType: string, sourceInstance: string, data: any): void {
         this._instanceSubscriptions[sourceInstance]?.forEach(sub => {
             if (sub.messageType === messageType) {
-                const mayBePromise = sub.callback(data, sourceInstance, messageType);
-                if (mayBePromise instanceof Promise) {
-                    void mayBePromise.catch(e => console.error(`Cannot call instance message handler: ${e}`));
+                try {
+                    const mayBePromise = sub.callback(data, sourceInstance, messageType);
+                    if (mayBePromise instanceof Promise) {
+                        void mayBePromise.catch(e => console.error(`Cannot call instance message handler: ${e}`));
+                    }
+                } catch (e) {
+                    console.error(`Error by callback of instance message: ${e}`);
                 }
             }
         });
@@ -1658,11 +1725,6 @@ export class Connection<
                     timeoutControl.elapsed = true;
                     // Let the caller know that the timeout elapsed
                     onTimeout?.();
-
-                    // do not cache responses with timeout or no connection
-                    if (cacheKey && this._promises[cacheKey] instanceof Promise) {
-                        delete this._promises[cacheKey];
-                    }
                     reject(new Error(ERRORS.TIMEOUT));
                 }, commandTimeout ?? this.props.cmdTimeout);
                 timeoutControl.clearTimeout = () => {
@@ -1674,15 +1736,21 @@ export class Connection<
             try {
                 await executor(resolve, reject, timeoutControl);
             } catch (e) {
-                // do not cache responses with timeout or no connection
-                if (cacheKey && this._promises[cacheKey] instanceof Promise) {
-                    delete this._promises[cacheKey];
-                }
-                reject(new Error(e.toString()));
+                reject(e instanceof Error ? e : new Error(String(e)));
             }
         });
         if (cacheKey) {
-            this._promises[cacheKey] = promise;
+            // Do not cache a failure (error of the server, timeout, no connection): the next call asks anew.
+            // Only this request is forgotten, not a newer one that has replaced it in the meantime.
+            // The error is thrown again, so a caller that does not handle it still gets an unhandled rejection.
+            const cached: Promise<T> = promise.catch((error: unknown) => {
+                if (this._promises[cacheKey] === cached) {
+                    delete this._promises[cacheKey];
+                }
+                throw error;
+            });
+            this._promises[cacheKey] = cached;
+            return cached;
         }
         return promise;
     }
@@ -1825,7 +1893,7 @@ export class Connection<
 
                     if (typeof ack === 'boolean') {
                         state = val as ioBroker.State;
-                    } else if (typeof val === 'object' && (val as ioBroker.State).val !== undefined) {
+                    } else if (val && typeof val === 'object' && (val as ioBroker.State).val !== undefined) {
                         state = val as ioBroker.State;
                     } else {
                         state = {
@@ -1842,16 +1910,7 @@ export class Connection<
                     // inform subscribers about changes
                     if (this.statesSubscribes[id]) {
                         for (const cb of this.statesSubscribes[id].cbs) {
-                            try {
-                                const mayBePromise = cb(id, state as any);
-                                if (mayBePromise instanceof Promise) {
-                                    void mayBePromise.catch(e =>
-                                        console.error(`Cannot call state change handler: ${e}`),
-                                    );
-                                }
-                            } catch (e) {
-                                console.error(`Error by callback of stateChanged: ${e}`);
-                            }
+                            Connection.callStateHandler(cb, id, state);
                         }
                     }
                     resolve();
@@ -1940,11 +1999,12 @@ export class Connection<
             if (ids.length) {
                 this._socket.emit('subscribeObjects', ids);
             }
-            Object.keys(this.objectsSubscribes).forEach(id => this._socket.emit('subscribeObjects', id));
             // re-subscribe logs
             this.props.autoSubscribeLog && this._socket.emit('requireLog', true);
             // re subscribe states
-            Object.keys(this.statesSubscribes).forEach(id => this._socket.emit('subscribe', id));
+            Object.keys(this.statesSubscribes)
+                .filter(id => id !== this.ignoreState)
+                .forEach(id => this._socket.emit('subscribe', id));
             // re-subscribe files
             Object.keys(this.filesSubscribes).forEach(key => {
                 const [id, filePattern] = key.split('$%$');
@@ -2398,7 +2458,7 @@ export class Connection<
                         if (err) {
                             reject(err);
                         } else {
-                            resolve(objs!.rows?.map(obj => obj.value).filter((val): val is ioBroker.Object => !!val));
+                            resolve(getObjectViewResultToArray(objs));
                         }
                     },
                 );
@@ -2870,7 +2930,6 @@ export class Connection<
                         if (err && !version && typeof err === 'string' && err.match(/\d+\.\d+\.\d+/)) {
                             resolve({ version: err, serverName: 'socketio' });
                         } else if (err) {
-                            this.resetCache('version');
                             reject(err);
                         } else {
                             resolve({
@@ -3149,6 +3208,9 @@ export class Connection<
                             }
                             resolve(subscribeResult);
                         }
+                    } else {
+                        // The instance gave no answer, so it did not accept the subscription
+                        resolve(null);
                     }
                 });
             },
@@ -3202,7 +3264,7 @@ export class Connection<
                                 this._socket.emit(
                                     'clientUnsubscribe',
                                     targetInstance,
-                                    messageType,
+                                    _messageType,
                                     (err, wasSubscribed) => (err ? reject(err) : resolve(wasSubscribed)),
                                 );
                             },
@@ -3253,6 +3315,9 @@ export class Connection<
      * Do not use the instance after calling this method.
      */
     destroy(): void {
+        // The socket library may still be loading: startSocket() must not open the socket afterward
+        this._destroyed = true;
+
         if (this._socket) {
             // Prefer hard destroy; fall back to close(true) which sets closing=true and skips reconnection
             const socketAny = this._socket as unknown as {
@@ -3273,7 +3338,11 @@ export class Connection<
         // Remove the cross-tab token update listener
         globalThis.removeEventListener?.('storage', this.onAccessTokenUpdated);
 
-        // Clear auth and token-refresh timers
+        // Clear the version request, auth and token-refresh timers
+        if (this._versionTimer) {
+            clearTimeout(this._versionTimer);
+            this._versionTimer = null;
+        }
         if (this._authTimer) {
             clearTimeout(this._authTimer);
             this._authTimer = null;

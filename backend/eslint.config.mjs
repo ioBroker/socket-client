@@ -13,7 +13,21 @@ export default [
         },
     },
     {
-        ignores: ['node_modules/', 'build/'],
+        ignores: ['node_modules/', 'build/', 'build-test/'],
+    },
+    {
+        files: ['test/**/*.ts'],
+        rules: {
+            // describe() and it() of node:test return promises, which the test runner handles
+            '@typescript-eslint/no-floating-promises': [
+                'warn',
+                {
+                    allowForKnownSafeCalls: [
+                        { from: 'package', package: 'node:test', name: ['describe', 'it', 'test', 'suite'] },
+                    ],
+                },
+            ],
+        },
     },
     {
         // disable temporary the rule 'jsdoc/require-param' and enable 'jsdoc/require-jsdoc'
