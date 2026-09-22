@@ -21,6 +21,8 @@ The frontend tests replace the socket with a fake one (`test/lib/FakeSocket.ts`)
 
 ## How to use in frontend
 
+The [documentation](docs/README.md) describes all functions with examples: how to connect in the browser and in Node.js, how to read, write and subscribe states, objects and files, and how errors, timeouts and the cache work.
+
 Include the socket library from Admin or Web adapter:
 
 ```html
@@ -54,6 +56,7 @@ console.log(await adminConnection.getHosts());
 - (@joltcoke) Requests that are still waiting for an answer are rejected with `notConnectedError` when the connection drops or `destroy()` is called. Until now they waited forever, e.g. the upload of a large file over a slow line. Please note: a caller that does not handle errors gets an unhandled rejection now, and the server may have executed a request whose answer was lost
 - (@krobipd, @GermanBluefox) Fixed the admin staying on its start screen when the connection dropped while the data was loading at start (ioBroker.admin#3641, analysed and reproduced by @krobipd): the ws client reports every later connection as reconnect, which did not load the data, so the loading gave up when the reconnect took longer than 10 seconds. Now a reconnect before the data is loaded goes through the connect sequence again, the loading waits for the connection instead of using up its attempts, and the lost connection is not reported to `onError`. The timeout of a request is stopped as soon as it is answered
 - (@GermanBluefox) Added unit tests for the frontend and the backend package
+- (@GermanBluefox) Added the [documentation](docs/README.md) of all functions with examples, and corrected the description of `autoSubscribes`: it subscribes objects, not states, and their changes are passed to `onObjectChange` (#32)
 - (@GermanBluefox) A failed request is not kept in the cache anymore, the next call asks the server again. Until now e.g. `getEnums`, `getCompactSystemConfig`, `checkFeatureSupported`, `getGroups` or `getHostInfo` returned the same error until `update` was requested. Successful answers are cached as before
 - (@GermanBluefox) `doNotLoadAllObjects: false` really loads all objects and passes them to `onReady`; until now `onReady` got an empty list. If the objects cannot be loaded, the error goes to `onError` and `onReady` is called anyway. `getObjects()` without `update` still answers from the cache
 - (@GermanBluefox) Fixed subscriptions: `unsubscribeState` unsubscribed at the server also ids that still had other handlers, object subscriptions were sent twice after every reconnect, the state to ignore was subscribed at the server, `unsubscribeFromInstance` without a type sent an empty type, and `subscribeOnInstance` did not settle when the instance answered without a result (it resolves `null` now). An exception of one handler does not stop the other handlers anymore

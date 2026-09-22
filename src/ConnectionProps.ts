@@ -19,7 +19,10 @@ export type LogMessage = {
 export interface ConnectionProps {
     /** The socket name. */
     name?: string;
-    /** State IDs to always automatically subscribe to. */
+    /**
+     * Object ID patterns (not state IDs) to subscribe to on every connect, e.g. `['system.adapter.*']`.
+     * The changes of these objects are passed to `onObjectChange`. To receive the values of states, use `subscribeState`.
+     */
     autoSubscribes?: string[];
     /** Automatically subscribe to logging. */
     autoSubscribeLog?: boolean;
@@ -45,11 +48,11 @@ export interface ConnectionProps {
     onLog?: (message: LogMessage) => void;
     /** Error callback. */
     onError?: (error: any) => void;
-    /** Object change callback. */
+    /** Called when an object subscribed with `autoSubscribes` or `subscribeObject` changes. `obj` is null or undefined if the object was deleted */
     onObjectChange?: ioBroker.ObjectChangeHandler;
     /** Gets called when the system language is determined */
     onLanguage?: (lang: ioBroker.Languages) => void;
-    /** Forces the use of the Compact Methods, wich only exists in admin 5 UI. */
+    /** Forces the use of the Compact Methods, which only exist in admin 5 UI. */
     admin5only?: boolean;
     /** The device UUID with which the communication must be established */
     uuid?: string;
