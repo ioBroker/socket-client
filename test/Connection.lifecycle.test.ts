@@ -436,34 +436,45 @@ describe('Connection.lifecycle', () => {
     });
 
     describe('in Node.js', () => {
-        it('replaces the location of a browser, so the port has a default and the redirect to the login works', async () => {
-            // The tests set their own location with resetGlobals(): a fresh process shows the replacement of the package
+        it('reports a rejected login to onError instead of opening a login page, and has a default port', async () => {
+            // A fresh process shows the replacement of location of the package, and there is no document like in Node.js
             const script = `
                 const { Connection } = require(${JSON.stringify(join(__dirname, '..', 'src', 'Connection.js'))});
                 const { FakeSocket } = require(${JSON.stringify(join(__dirname, 'lib', 'FakeSocket.js'))});
                 const socket = new FakeSocket();
-                const conn = new Connection({ name: 'test', connect: url => { socket.url = url; return socket; } });
+                const errors = [];
+                const conn = new Connection({
+                    name: 'test',
+                    connect: url => { socket.url = url; return socket; },
+                    onError: error => errors.push(error),
+                });
                 setImmediate(() => {
-                    let error = null;
+                    let thrown = null;
                     try {
-                        // the server does not accept the user: the connection opens the login page
+                        // the server does not accept the user (#54: the access token has expired)
                         socket.fire('error', 'User not authorized');
                     } catch (e) {
-                        error = e.message;
+                        thrown = e.message;
                     }
                     conn.destroy();
-                    console.log(JSON.stringify({ location: globalThis.location, url: socket.url, error }));
+                    console.log(JSON.stringify({ location: globalThis.location, url: socket.url, thrown, errors }));
                 });
             `;
 
             const { stdout } = await promisify(execFile)(process.execPath, ['-e', script]);
             const result = JSON.parse(stdout);
 
-            assert.equal(result.error, null);
-            assert.equal(result.url, 'http://localhost:8081');
-            assert.equal(result.location.href, 'http://localhost:8081/?login&href=');
+            assert.equal(result.thrown, null);
+            assert.deepEqual(result.errors, [
+                {
+                    message: 'The access token has expired or was not accepted: a new login is required',
+                    operation: 'authenticate',
+                },
+            ]);
+            assert.equal(result.location.href, 'http://localhost:8081/');
             assert.equal(result.location.search, '');
             assert.equal(result.location.hash, '');
+            assert.equal(result.url, 'http://localhost:8081');
         });
     });
 

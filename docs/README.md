@@ -420,3 +420,46 @@ const connection = new Connection({
 ```
 
 `logout()` logs the user out.
+
+### Tokens in Node.js
+
+Node.js has no login page. Log in at the OAuth2 endpoint of the admin or web adapter, save the tokens with `Connection.saveTokensStatic()` and give the access token to the socket. Then the connection renews the access token before it expires, like in the browser, and asks `tokenTimeoutHandler` before. The option `token` alone only authenticates the socket: the connection does not know when the token expires and cannot renew it.
+
+```ts
+import WebSocket from 'ws';
+import type { OAuth2Response } from '@iobroker/socket-client';
+import { AdminConnection, Connection, SocketClient } from '@iobroker/socket-client-backend';
+
+const response = await fetch('http://192.168.1.2:8081/oauth/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+        grant_type: 'password',
+        username: 'admin',
+        password: 'secret',
+        client_id: 'ioBroker',
+        stayloggedin: 'true',
+    }).toString(),
+});
+const tokens: OAuth2Response = await response.json();
+Connection.saveTokensStatic(tokens, true);
+
+const connection = new AdminConnection({
+    host: '192.168.1.2',
+    port: 8081,
+    token: tokens.access_token,
+    tokenTimeoutHandler: async () => true, // renew the token without asking
+    onError: error => {
+        if (error?.operation === 'authenticate') {
+            // The refresh token has expired or was rejected: log in again and create a new connection
+        }
+    },
+    connect: (url: string, options: any): any => {
+        const client = new SocketClient();
+        client.connect(url.replace(/^http/, 'ws'), { name: options.name, token: options.token, WebSocket });
+        return client;
+    },
+});
+```
+
+When a new login is required, the connection calls `onError` with `{ message, operation: 'authenticate' }` instead of opening a login page.

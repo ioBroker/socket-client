@@ -650,6 +650,59 @@ describe('Connection.checkAccessTokenExpire', () => {
     });
 });
 
+describe('Connection tokens in Node.js (#54)', () => {
+    useEnvironment();
+    // no document: the connection runs in Node.js, where no page and no login page exist
+    beforeEach(() => delete (globalThis as any).document);
+
+    it('renews the token at the URL of the connection, a relative URL is not possible in Node.js', async () => {
+        await loginWithTokens({ accessIn: 20_000 }, { protocol: 'https:', host: 'myhost', port: 8443 });
+
+        assert.equal(lastFetch().url, 'https://myhost:8443/oauth/token');
+        assert.match(lastBody(), /grant_type=refresh_token&refresh_token=refresh-1&/);
+    });
+
+    it('renews the token over http for ws', async () => {
+        await loginWithTokens({ accessIn: 20_000 }, { protocol: 'ws', host: 'myhost', port: 8081 });
+
+        assert.equal(lastFetch().url, 'http://myhost:8081/oauth/token');
+    });
+
+    it('renews the token over https for wss', async () => {
+        await loginWithTokens({ accessIn: 20_000 }, { protocol: 'wss:', host: 'myhost', port: 8443 });
+
+        assert.equal(lastFetch().url, 'https://myhost:8443/oauth/token');
+    });
+
+    it('asks the tokenTimeoutHandler before it renews the token', async () => {
+        const tokenTimeoutHandler = mock.fn((_expires: number) => Promise.resolve(true));
+
+        await loginWithTokens({ accessIn: 20_000 }, { host: 'myhost', port: 8081, tokenTimeoutHandler });
+        await settle();
+
+        assert.deepEqual(tokenTimeoutHandler.mock.calls[0].arguments, [NOW + 20_000]);
+        assert.equal(lastFetch().url, 'http://myhost:8081/oauth/token');
+    });
+
+    it('reports a rejected refresh token to onError instead of opening a login page', async () => {
+        const onError = mock.fn();
+        await loginWithTokens({ accessIn: 20_000 }, { host: 'myhost', port: 8081, onError });
+
+        await answerFetch(401, { error: 'invalid_grant' });
+
+        assert.deepEqual(
+            onError.mock.calls.map(call => call.arguments[0]),
+            [
+                {
+                    message: 'The access token has expired or was not accepted: a new login is required',
+                    operation: 'authenticate',
+                },
+            ],
+        );
+        assert.equal(globalThis.location.href, START_PAGE);
+    });
+});
+
 describe('Connection.refreshTokens', () => {
     useEnvironment();
 

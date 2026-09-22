@@ -350,6 +350,27 @@ export class Connection<
         return (globalThis as any).socketUrl !== undefined;
     }
 
+    /** Runs in a browser (with a page, a login page and relative URLs), not in Node.js */
+    private static isBrowser(): boolean {
+        return typeof (globalThis as any).document !== 'undefined';
+    }
+
+    /**
+     * The OAuth2 endpoint that renews the tokens: relative to the page in the browser (also behind a reverse proxy),
+     * built from the options of the connection in Node.js, where a relative URL is not possible
+     */
+    private getTokenUrl(): string {
+        if (Connection.isBrowser()) {
+            return './oauth/token';
+        }
+        // 'ws:' => 'http', 'wss' => 'https'
+        const protocol = String(this.props.protocol || 'http:')
+            .replace(':', '')
+            .replace(/^ws/, 'http');
+        const port = this.props.port ? `:${this.props.port}` : '';
+        return `${protocol}://${this.props.host}${port}/oauth/token`;
+    }
+
     private waitForSocketLib(): Promise<void> {
         // Only wait once
         if (this._waitForSocketPromise) {
@@ -832,7 +853,7 @@ export class Connection<
                 console.log(`[REFRESH/${new Date().toISOString()}] refreshing token`);
                 this.tokenRefreshInProgress = true;
                 // Access token will expire soon => Send authentication again
-                fetch('./oauth/token', {
+                fetch(this.getTokenUrl(), {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/x-www-form-urlencoded',
@@ -1248,6 +1269,14 @@ export class Connection<
      * Called internally.
      */
     private authenticate(): void {
+        if (!Connection.isBrowser()) {
+            // Node.js has no login page: tell the application, it has to get a new access token and connect again
+            this.onError({
+                message: 'The access token has expired or was not accepted: a new login is required',
+                operation: 'authenticate',
+            });
+            return;
+        }
         if (globalThis.location.search.includes('&href=')) {
             globalThis.location.href = `${globalThis.location.protocol}//${globalThis.location.host}${globalThis.location.pathname}${globalThis.location.search}`;
         } else {

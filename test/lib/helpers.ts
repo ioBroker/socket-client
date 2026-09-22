@@ -71,6 +71,7 @@ export class MemoryStorage {
  * Sets the browser globals the connection uses to a known state: a location of "http://localhost:8081/",
  * separate empty localStorage and sessionStorage and no socketUrl, socketPath or socket library.
  * The stubs of Connection.ts share one storage for both, so the tests could not tell them apart.
+ * A `document` makes the connection behave like in a browser; delete it to test the behavior in Node.js.
  */
 export function resetGlobals(): void {
     const g = globalThis as any;
@@ -87,6 +88,7 @@ export function resetGlobals(): void {
     };
     g.localStorage = new MemoryStorage();
     g.sessionStorage = new MemoryStorage();
+    g.document = {};
     delete g.socketUrl;
     delete g.socketPath;
     delete g.socketForceWebSockets;
