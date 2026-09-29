@@ -70,6 +70,13 @@ export interface CompactInstanceInfo {
     version: ioBroker.InstanceCommon['version'];
 }
 
+export interface ObjectsCount {
+    /** Number of all objects */
+    total: number;
+    /** Number of objects per type, e.g. `{ state: 8170, channel: 979 }` */
+    byType: Record<string, number>;
+}
+
 export interface CompactAdapterInfo {
     icon: ioBroker.AdapterCommon['icon'];
     v: ioBroker.AdapterCommon['version'];
@@ -297,6 +304,7 @@ export interface AdminEmitEvents {
     ): void;
     getCompactInstances(callback: GenericCallback<Record<string, CompactInstanceInfo>>): void;
     getCompactAdapters(callback: GenericCallback<Record<string, CompactAdapterInfo>>): void;
+    getObjectsCount(callback: GenericCallback<ObjectsCount>): void;
     getCompactInstalled(host: string, callback: GenericCallbackNoExtraError<CompactInstalledInfo>): void;
     getCompactRepository(host: string, callback: GenericCallbackNoExtraError<CompactRepository>): void;
     getCompactHosts(callback: GenericCallback<CompactHost[]>): void;

@@ -11,6 +11,7 @@ import type {
     CompactSystemRepository,
     License,
     LogFile,
+    ObjectsCount,
 } from './SocketEvents.js';
 import { getObjectViewResultToArray, normalizeHostId, objectIdToHostname } from './tools.js';
 
@@ -1447,6 +1448,34 @@ export class AdminConnection extends Connection<AdminListenEvents, AdminEmitEven
                         reject(err);
                     }
                     resolve(adapters!);
+                });
+            },
+        });
+    }
+
+    /**
+     * Number of all objects and the number per type, counted by the server.
+     *
+     * Reading all objects only to count them transfers the whole database - tens of megabytes on a
+     * grown installation - and the adapter is busy packing them up while it could be answering
+     * something else. Needs the feature `OBJECTS_COUNT`, so a caller has to be ready for
+     * `ERRORS.NOT_SUPPORTED` and count the objects itself on an older admin.
+     */
+    getObjectsCount(): Promise<ObjectsCount> {
+        return this.request({
+            requireAdmin: true,
+            requireFeatures: ['OBJECTS_COUNT'],
+            executor: (resolve, reject, timeout) => {
+                this._socket.emit('getObjectsCount', (err, count) => {
+                    if (timeout.elapsed) {
+                        return;
+                    }
+                    timeout.clearTimeout();
+                    if (err) {
+                        reject(err);
+                    } else {
+                        resolve(count!);
+                    }
                 });
             },
         });

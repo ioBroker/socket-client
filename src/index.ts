@@ -32,6 +32,8 @@ export {
     type CommandFile,
 } from './Connection.js';
 
+export type { ObjectsCount } from './SocketEvents.js';
+
 export type { ConnectionProps } from './ConnectionProps.js';
 
 export type { EmitEventHandler, ListenEventHandler, ConnectOptions, SocketClient } from './SocketClient.js';
