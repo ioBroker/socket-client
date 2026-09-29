@@ -51,7 +51,7 @@ console.log(await adminConnection.getHosts());
 	Placeholder for the next version (at the beginning of the line):
 	### **WORK IN PROGRESS**
 -->
-### **WORK IN PROGRESS**
+### 5.4.0 (2026-09-29)
 - (@GermanBluefox) Added the command `getObjectsCount` to get the number of objects in the system
 
 ### 5.3.0 (2026-09-22)
