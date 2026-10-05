@@ -51,7 +51,7 @@ console.log(await adminConnection.getHosts());
 	Placeholder for the next version (at the beginning of the line):
 	### **WORK IN PROGRESS**
 -->
-### **WORK IN PROGRESS**
+### 5.4.1 (2026-10-05)
 - (@GermanBluefox) `subscribeOnInstance` hands over the answer of the instance as it came. The answer was typed as `{ error, accepted, heartbeat }` although everything the instance puts next to those fields is passed through unchanged, so a caller had to cast to read it. The method takes the shape of those extra fields as a type parameter now - `subscribeOnInstance<{ session?: string }>(...)` - and the result type `InstanceSubscribeResult` is exported. Without the parameter nothing changes
 
 ### 5.4.0 (2026-09-29)
