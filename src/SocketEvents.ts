@@ -29,9 +29,24 @@ export type ErrorCallback = ErrorAsString<ioBroker.ErrorCallback>;
 export type AuthenticateCallback = (isOk: boolean, isSecure: boolean) => void;
 export type AuthEnabledCallback = (isSecure: boolean, user: string) => void;
 export type GetUserPermissionsCallback = (err?: string, acl?: SocketACL | null) => void;
+/**
+ * What an instance answers a `clientSubscribe` with.
+ *
+ * The answer is passed through unchanged, so an instance may put fields of its own next to these -
+ * `subscribeOnInstance` takes a type parameter for them.
+ */
+export interface InstanceSubscribeResult {
+    /** Set if the instance refused the subscription */
+    error?: string;
+    /** Whether the instance accepted the subscription */
+    accepted?: boolean;
+    /** If set, the subscription has to be renewed within this interval or the instance drops it */
+    heartbeat?: number;
+}
+
 export type SubscribeOnInstanceCallback = (
     error: string | null,
-    result?: { error?: string; accepted?: boolean; heartbeat?: number },
+    result?: InstanceSubscribeResult & Record<string, any>,
 ) => void;
 export type UnsubscribeFromInstanceCallback = (err: string | null, wasSubscribed: boolean) => void;
 

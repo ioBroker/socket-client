@@ -32,7 +32,7 @@ export {
     type CommandFile,
 } from './Connection.js';
 
-export type { ObjectsCount } from './SocketEvents.js';
+export type { ObjectsCount, InstanceSubscribeResult } from './SocketEvents.js';
 
 export type { ConnectionProps } from './ConnectionProps.js';
 

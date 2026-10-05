@@ -1,6 +1,7 @@
 import type { ConnectionProps, LogMessage } from './ConnectionProps.js';
 import { createDeferredPromise } from './DeferredPromise.js';
 import type { EmitEventHandler, ListenEventHandler, SocketClient } from './SocketClient.js';
+import type { InstanceSubscribeResult } from './SocketEvents.js';
 import { getObjectViewResultToArray, normalizeHostId, pattern2RegEx, wait } from './tools.js';
 
 if (typeof (globalThis as any).process !== 'undefined') {
@@ -2298,9 +2299,7 @@ export class Connection<
             // TODO: check if this should time out
             commandTimeout: false,
             executor: resolve => {
-                this._socket.emit('sendTo', instance, command, data, (result: any) => {
-                    resolve(result);
-                });
+                this._socket.emit('sendTo', instance, command, data, (result: any) => resolve(result));
             },
         });
     }
@@ -2325,13 +2324,7 @@ export class Connection<
             // TODO: check if this should time out
             commandTimeout: false,
             executor: (resolve, reject) => {
-                this._socket.emit('extendObject', id, obj, err => {
-                    if (err) {
-                        reject(err);
-                    } else {
-                        resolve();
-                    }
-                });
+                this._socket.emit('extendObject', id, obj, err => (err ? reject(err) : resolve()));
             },
         });
     }
@@ -2354,7 +2347,9 @@ export class Connection<
      */
     unregisterLogHandler(handler: (message: LogMessage) => void): void {
         const pos = this.onLogHandlers.indexOf(handler);
-        pos !== -1 && this.onLogHandlers.splice(pos, 1);
+        if (pos !== -1) {
+            this.onLogHandlers.splice(pos, 1);
+        }
     }
 
     /**
@@ -2375,7 +2370,9 @@ export class Connection<
      */
     unregisterConnectionHandler(handler: (connected: boolean) => void): void {
         const pos = this.onConnectionHandlers.indexOf(handler);
-        pos !== -1 && this.onConnectionHandlers.splice(pos, 1);
+        if (pos !== -1) {
+            this.onConnectionHandlers.splice(pos, 1);
+        }
     }
 
     /**
@@ -2553,7 +2550,7 @@ export class Connection<
                         reject(err);
                     } else {
                         const _res: Record<string, ioBroker.AnyObject & { type: T }> = {};
-                        if (res && res.rows) {
+                        if (res?.rows) {
                             for (let i = 0; i < res.rows.length; i++) {
                                 _res[res.rows[i].id] = res.rows[i].value;
                             }
@@ -2830,11 +2827,11 @@ export class Connection<
             commandTimeout: false,
             executor: async resolve => {
                 let systemConfig = await this.getObject('system.config');
-                (systemConfig as any) ??= {};
-                (systemConfig as any).common ??= {};
-                (systemConfig as any).native ??= {};
+                systemConfig ??= {} as ioBroker.SystemConfigObject;
+                systemConfig.common ??= {} as ioBroker.SystemConfigCommon;
+                systemConfig.native ??= {};
 
-                resolve(systemConfig!);
+                resolve(systemConfig);
             },
         });
     }
@@ -2851,10 +2848,10 @@ export class Connection<
                     if (err) {
                         reject(err);
                     } else {
-                        (systemConfig as any) ??= {};
-                        (systemConfig as any).common ??= {};
-                        (systemConfig as any).native ??= {};
-                        resolve(systemConfig!);
+                        systemConfig ??= {} as ioBroker.SystemConfigObject;
+                        systemConfig.common ??= {} as ioBroker.SystemConfigCommon;
+                        systemConfig.native ??= {};
+                        resolve(systemConfig);
                     }
                 });
             },
@@ -3288,21 +3285,22 @@ export class Connection<
     /**
      * Subscribe on instance message
      *
+     * The answer of the instance is returned as it came, so an instance that puts something of its own
+     * into it - a session id, a resolution, a version - can be read without a cast: name the shape of
+     * those extra fields as the type parameter, e.g.
+     * `subscribeOnInstance<{ session?: string }>('admin.0', 'pushedAnswer', null, onPush)`.
+     *
      * @param targetInstance instance, like 'cameras.0'
      * @param messageType message type like 'startCamera/cam3'
      * @param data optional data object
      * @param callback message handler
      */
-    subscribeOnInstance(
+    subscribeOnInstance<T = unknown>(
         targetInstance: string,
         messageType: string,
         data: any,
         callback: InstanceMessageCallback,
-    ): Promise<{
-        error?: string;
-        accepted?: boolean;
-        heartbeat?: number;
-    } | null> {
+    ): Promise<(InstanceSubscribeResult & T) | null> {
         return this.request({
             commandTimeout: false,
             executor: (resolve, reject) => {
@@ -3331,7 +3329,9 @@ export class Connection<
                                     callback,
                                 });
                             }
-                            resolve(subscribeResult);
+                            // the extra fields are whatever the instance put there - naming their
+                            // shape is the caller's assertion, so this is where it is applied
+                            resolve(subscribeResult as InstanceSubscribeResult & T);
                         }
                     } else {
                         // The instance gave no answer, so it did not accept the subscription

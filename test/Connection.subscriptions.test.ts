@@ -1204,6 +1204,18 @@ describe('Connection.subscriptions', () => {
             assert.deepEqual(await promise, { accepted: true, heartbeat: 30000 });
         });
 
+        it('hands over the fields the instance added, under the named type', async () => {
+            // what an instance answers is passed through: admin returns the secret of a GUI session
+            // here, and naming its shape means the caller needs no cast
+            const promise = conn.subscribeOnInstance<{ session?: string }>('admin.0', MESSAGE_TYPE, null, callback);
+
+            socket.lastAnswer('clientSubscribe')(null, { accepted: true, session: 'deadbeef' });
+            const result = await promise;
+
+            assert.equal(result?.accepted, true);
+            assert.equal(result?.session, 'deadbeef');
+        });
+
         it('passes the messages of the type from the instance to the callback after the current event', async () => {
             await subscribe(callback);
 
