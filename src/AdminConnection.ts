@@ -12,6 +12,7 @@ import type {
     License,
     LogFile,
     ObjectsCount,
+    ReducedRepositoryOptions,
 } from './SocketEvents.js';
 import { getObjectViewResultToArray, normalizeHostId, objectIdToHostname } from './tools.js';
 
@@ -789,6 +790,50 @@ export class AdminConnection extends Connection<AdminListenEvents, AdminEmitEven
                         reject('Cannot read "getRepository"');
                     } else {
                         resolve(data as Repository);
+                    }
+                });
+            },
+        });
+    }
+
+    /**
+     * Get the repository with what the GUI shows of it.
+     *
+     * The whole repository is several megabytes, most of it the `news` of every version in every
+     * language. This one has them only for the adapters installed on any host and for the controller,
+     * and with `lang` all translated texts only in that language and English. Needs the feature
+     * `REDUCED_REPOSITORY`, so a caller has to be ready for `ERRORS.NOT_SUPPORTED` and fall back to
+     * `getRepository` on an older admin.
+     *
+     * @param host The host to ask if admin cannot answer from its own objects.
+     * @param options What to read and how to reduce it.
+     * @param update Do not take the answer from the cache.
+     * @param timeoutMs timeout in ms.
+     */
+    getReducedRepository(
+        host: string,
+        options?: ReducedRepositoryOptions | null,
+        update?: boolean,
+        timeoutMs?: number,
+    ): Promise<Repository> {
+        const { repo, lang, adapters } = options || {};
+        return this.request({
+            // every combination of options is another answer; the host part is reset by getRepositoryResetCache
+            cacheKey: `repositoryReduced_${normalizeHostId(host)}_${JSON.stringify({ repo, lang, adapters })}`,
+            forceUpdate: update || options?.update,
+            commandTimeout: timeoutMs,
+            requireAdmin: true,
+            requireFeatures: ['REDUCED_REPOSITORY'],
+            executor: (resolve, reject, timeout) => {
+                this._socket.emit('getReducedRepository', host, options || null, (err, repository) => {
+                    if (timeout.elapsed) {
+                        return;
+                    }
+                    timeout.clearTimeout();
+                    if (err) {
+                        reject(err);
+                    } else {
+                        resolve((repository || {}) as Repository);
                     }
                 });
             },
@@ -1599,11 +1644,13 @@ export class AdminConnection extends Connection<AdminListenEvents, AdminEmitEven
     getRepositoryResetCache(host: string): void {
         if (!host) {
             this.resetCache(`repositoryCompact_`, true);
+            this.resetCache(`repositoryReduced_`, true);
             this.resetCache(`repository_`, true);
         } else {
             // the cache keys have the object id of the host, see getRepository
             host = normalizeHostId(host);
             this.resetCache(`repositoryCompact_${host}`);
+            this.resetCache(`repositoryReduced_${host}_`, true);
             this.resetCache(`repository_${host}`);
         }
     }

@@ -92,6 +92,18 @@ export interface ObjectsCount {
     byType: Record<string, number>;
 }
 
+/** Options of `getReducedRepository` */
+export interface ReducedRepositoryOptions {
+    /** The repositories to merge, like `common.activeRepo` of `system.config`, which is the default */
+    repo?: string | string[];
+    /** Download the repositories anew first */
+    update?: boolean;
+    /** Language of the GUI: the translated texts keep only this language and English */
+    lang?: ioBroker.Languages;
+    /** Only these entries, all of them with their `news` */
+    adapters?: string[];
+}
+
 export interface CompactAdapterInfo {
     icon: ioBroker.AdapterCommon['icon'];
     v: ioBroker.AdapterCommon['version'];
@@ -320,6 +332,11 @@ export interface AdminEmitEvents {
     getCompactInstances(callback: GenericCallback<Record<string, CompactInstanceInfo>>): void;
     getCompactAdapters(callback: GenericCallback<Record<string, CompactAdapterInfo>>): void;
     getObjectsCount(callback: GenericCallback<ObjectsCount>): void;
+    getReducedRepository(
+        host: string,
+        options: ReducedRepositoryOptions | null,
+        callback: GenericCallback<Record<string, any>>,
+    ): void;
     getCompactInstalled(host: string, callback: GenericCallbackNoExtraError<CompactInstalledInfo>): void;
     getCompactRepository(host: string, callback: GenericCallbackNoExtraError<CompactRepository>): void;
     getCompactHosts(callback: GenericCallback<CompactHost[]>): void;
