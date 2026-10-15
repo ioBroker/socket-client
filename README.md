@@ -51,7 +51,7 @@ console.log(await adminConnection.getHosts());
 	Placeholder for the next version (at the beginning of the line):
 	### **WORK IN PROGRESS**
 -->
-### **WORK IN PROGRESS**
+### 5.5.0 (2026-10-15)
 - (@GermanBluefox) Added: `getReducedRepository` - the repository without unneeded news and languages
 
 ### 5.4.1 (2026-10-05)
