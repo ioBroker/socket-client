@@ -85,6 +85,8 @@ export interface SocketACL {
         create: boolean;
         delete: boolean;
         write: boolean;
+        read?: boolean;
+        list?: boolean;
     };
     other?: {
         http: boolean;
@@ -99,6 +101,12 @@ export interface SocketACL {
         delete: boolean;
     };
 }
+
+/** A block of rights of a user, e.g. `other` - see {@link SocketACL} */
+export type SocketPermissionType = 'object' | 'state' | 'users' | 'other' | 'file';
+
+/** A right inside a block, e.g. `sendto` in the block `other` */
+export type SocketPermissionOperation<T extends SocketPermissionType> = keyof NonNullable<SocketACL[T]> & string;
 
 /** Possible progress states. */
 export enum PROGRESS {
@@ -124,6 +132,38 @@ export enum ERRORS {
 export const PERMISSION_ERROR = ERRORS.PERMISSION_ERROR;
 /** @deprecated Use {@link ERRORS.NOT_CONNECTED} instead */
 export const NOT_CONNECTED = ERRORS.NOT_CONNECTED;
+
+const ADMIN_USER = 'system.user.admin';
+const ADMIN_GROUP = 'system.group.administrator';
+
+/**
+ * The user `admin` and the members of the group `administrator` may do everything - the controller
+ * gives that group every right, whatever is stored in the group
+ *
+ * @param acl the rights of the user
+ */
+function isAdministratorAcl(acl: SocketACL | null | undefined): boolean {
+    return !!acl && (acl.user === ADMIN_USER || !!acl.groups?.includes(ADMIN_GROUP));
+}
+
+/**
+ * Was the request refused because the user lacks the right for it? Such an error does not go away
+ * by asking again.
+ *
+ * The server answers `permissionError` - as text, as error or as `{ error: 'permissionError' }` of a
+ * host - and the host commands of the `AdminConnection` turn it into `May not read "…"`.
+ *
+ * @param error what the request was rejected with
+ */
+export function isPermissionError(error: unknown): boolean {
+    let text: unknown = error;
+    if (error instanceof Error) {
+        text = error.message;
+    } else if (error && typeof error === 'object') {
+        text = (error as { error?: unknown }).error;
+    }
+    return typeof text === 'string' && (text.includes(ERRORS.PERMISSION_ERROR) || text.startsWith('May not read "'));
+}
 
 // Options to use for the backend request wrapper
 /**
@@ -1188,11 +1228,19 @@ export class Connection<
             try {
                 this.acl = await this.getUserPermissions();
             } catch (e) {
-                // a lost connection is no error here: the loading starts again after the reconnect
-                if (e?.message !== ERRORS.NOT_CONNECTED) {
-                    this.onError(`Cannot read user permissions: ${e}`);
+                // An older server wants the right to read objects for it. Without the rights the start
+                // goes on - asking again would not change the answer, and the server checks every
+                // command anyway; `hasPermission` leaves the decision to it then
+                if (isPermissionError(e)) {
+                    console.warn(`Cannot read user permissions: ${e}`);
+                    this.acl = null;
+                } else {
+                    // a lost connection is no error here: the loading starts again after the reconnect
+                    if (e?.message !== ERRORS.NOT_CONNECTED) {
+                        this.onError(`Cannot read user permissions: ${e}`);
+                    }
+                    return;
                 }
-                return;
             }
         }
 
@@ -3108,6 +3156,33 @@ export class Connection<
                 });
             },
         });
+    }
+
+    /**
+     * Is the logged-in user an administrator - the user `admin` or a member of the group `administrator`?
+     *
+     * `false` as long as the rights are not known.
+     */
+    isAdministrator(): boolean {
+        return isAdministratorAcl(this.acl);
+    }
+
+    /**
+     * May the logged-in user do this? Answers from the rights the connection read with
+     * `getUserPermissions` right after connecting - without a request of its own.
+     *
+     * Meant for the display, e.g. to lock a tab or a button in advance instead of waiting for the
+     * `permissionError`: the server checks every command again anyway. As long as the rights are
+     * not known (not read yet, or `doNotLoadACL`), the answer is `true` and the server decides.
+     *
+     * @param type block of the right, e.g. `other`
+     * @param operation the right in the block, e.g. `sendto`
+     */
+    hasPermission<T extends SocketPermissionType>(type: T, operation: SocketPermissionOperation<T>): boolean {
+        if (!this.acl || isAdministratorAcl(this.acl)) {
+            return true;
+        }
+        return !!(this.acl[type] as Record<string, boolean | undefined> | undefined)?.[operation];
     }
 
     /**

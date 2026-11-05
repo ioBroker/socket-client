@@ -51,6 +51,10 @@ console.log(await adminConnection.getHosts());
 	Placeholder for the next version (at the beginning of the line):
 	### **WORK IN PROGRESS**
 -->
+### **WORK IN PROGRESS**
+- (@GermanBluefox) Added: `hasPermission`, `isAdministrator`, `isPermissionError`
+- (@GermanBluefox) Fixed: start hangs if `getUserPermissions` is refused
+
 ### 5.5.0 (2026-10-15)
 - (@GermanBluefox) Added: `getReducedRepository` - the repository without unneeded news and languages
 

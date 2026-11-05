@@ -662,9 +662,9 @@ describe('Connection.lifecycle', () => {
             socket.respond('getObject', () => [null, SYSTEM_CONFIG]);
             await connectOnly();
 
-            socket.lastAnswer('getUserPermissions')('permissionError');
+            socket.lastAnswer('getUserPermissions')('internal error');
             await settle();
-            assert.deepEqual(argsOf(onError), [['Cannot read user permissions: permissionError']]);
+            assert.deepEqual(argsOf(onError), [['Cannot read user permissions: internal error']]);
             assert.equal(socket.requestsOf('getObject').length, 0);
 
             mock.timers.tick(999);
@@ -678,6 +678,17 @@ describe('Connection.lifecycle', () => {
             socket.lastAnswer('getUserPermissions')(null, ACL);
             await settle();
             assert.deepEqual(conn.acl, ACL);
+            assert.equal(onReady.mock.callCount(), 1);
+        });
+
+        it('goes on without the permissions when the server refuses them', async () => {
+            await create({ doNotLoadACL: false });
+            socket.respond('getUserPermissions', () => ['permissionError']);
+            await login(conn, socket);
+
+            assert.equal(conn.acl, null);
+            assert.equal(onError.mock.callCount(), 0);
+            assert.equal(socket.requestsOf('getUserPermissions').length, 1);
             assert.equal(onReady.mock.callCount(), 1);
         });
 
@@ -701,7 +712,7 @@ describe('Connection.lifecycle', () => {
 
         it('gives up after ten attempts', async () => {
             await create({ doNotLoadACL: false });
-            socket.respond('getUserPermissions', () => ['permissionError']);
+            socket.respond('getUserPermissions', () => ['internal error']);
             await connectOnly();
             for (let i = 0; i < 15; i++) {
                 mock.timers.tick(1000);
@@ -716,7 +727,7 @@ describe('Connection.lifecycle', () => {
         it('waits 5 s between the attempts in the cloud', async () => {
             setLocation({ hostname: 'eu-west-1.amazonaws.com' });
             await create({ doNotLoadACL: false });
-            socket.respond('getUserPermissions', () => ['permissionError']);
+            socket.respond('getUserPermissions', () => ['internal error']);
             await connectOnly();
 
             mock.timers.tick(4999);

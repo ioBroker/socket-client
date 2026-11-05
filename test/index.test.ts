@@ -12,6 +12,7 @@ describe('index', () => {
             'NOT_CONNECTED',
             'PERMISSION_ERROR',
             'PROGRESS',
+            'isPermissionError',
         ]);
     });
 
