@@ -136,6 +136,11 @@ export const NOT_CONNECTED = ERRORS.NOT_CONNECTED;
 const ADMIN_USER = 'system.user.admin';
 const ADMIN_GROUP = 'system.group.administrator';
 
+/** Bit of the right to read in the rights of an object, for "everybody" - see `hasObjectPermission` */
+const ACCESS_READ = 0x4;
+/** Bit of the right to write in the rights of an object, for "everybody" */
+const ACCESS_WRITE = 0x2;
+
 /**
  * The user `admin` and the members of the group `administrator` may do everything - the controller
  * gives that group every right, whatever is stored in the group
@@ -3183,6 +3188,59 @@ export class Connection<
             return true;
         }
         return !!(this.acl[type] as Record<string, boolean | undefined> | undefined)?.[operation];
+    }
+
+    /**
+     * May the logged-in user do this with this object? Besides the right of the group (see
+     * `hasPermission`), every object has rights of its own (`obj.acl`): for its owner, for the
+     * members of its owner group and for everybody else, like the file rights of Linux. Objects
+     * belong to `admin` and the group `administrator` by default, everybody else may only read them.
+     *
+     * The rules are those of js-controller: `object` checks `acl.object`, `state` - the value of a
+     * state - checks `acl.state` (`acl.object` if it is missing). Deleting needs the right to delete
+     * of the group and the right to write the object. Meant for the display, like `hasPermission`:
+     * as long as the rights are not known, the answer is `true` and the server decides.
+     *
+     * @param obj the object, e.g. from `getObject`
+     * @param operation what the user wants to do
+     * @param part `object` for the object itself, `state` for the value of a state
+     */
+    hasObjectPermission(
+        obj: { acl?: ioBroker.ObjectACL | ioBroker.StateACL } | null | undefined,
+        operation: 'read' | 'write' | 'delete',
+        part: 'object' | 'state' = 'object',
+    ): boolean {
+        if (!this.acl || isAdministratorAcl(this.acl)) {
+            return true;
+        }
+        // first the right of the group, as the server checks it first
+        if (!this.hasPermission(part, operation)) {
+            return false;
+        }
+        const acl = obj?.acl;
+        if (!acl) {
+            // an object without rights of its own is not checked
+            return true;
+        }
+        let rights: number;
+        if (part === 'state') {
+            rights = (acl as ioBroker.StateACL).state || acl.object;
+            if (!rights) {
+                // the controller does not check a state without rights
+                return true;
+            }
+        } else {
+            rights = acl.object || 0;
+        }
+        const flag = operation === 'read' ? ACCESS_READ : ACCESS_WRITE;
+        // owner: bits 8-11, owner group: bits 4-7, everybody else: bits 0-3
+        let shift = 0;
+        if (acl.owner === this.acl.user) {
+            shift = 8;
+        } else if (this.acl.groups?.includes(acl.ownerGroup as `system.group.${string}`)) {
+            shift = 4;
+        }
+        return !!(rights & (flag << shift));
     }
 
     /**

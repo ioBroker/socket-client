@@ -53,6 +53,7 @@ console.log(await adminConnection.getHosts());
 -->
 ### **WORK IN PROGRESS**
 - (@GermanBluefox) Added: `hasPermission`, `isAdministrator`, `isPermissionError`
+- (@GermanBluefox) Added: `hasObjectPermission` - checks the rights of a single object or state too
 - (@GermanBluefox) Fixed: start hangs if `getUserPermissions` is refused
 
 ### 5.5.0 (2026-10-15)
