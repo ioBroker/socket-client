@@ -51,7 +51,7 @@ console.log(await adminConnection.getHosts());
 	Placeholder for the next version (at the beginning of the line):
 	### **WORK IN PROGRESS**
 -->
-### **WORK IN PROGRESS**
+### 5.6.1 (2026-11-06)
 - (@GermanBluefox) Fixed: token refresh hangs forever without an answer (ioBroker.admin#3110)
 
 ### 5.6.0 (2026-11-05)
