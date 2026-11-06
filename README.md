@@ -51,6 +51,9 @@ console.log(await adminConnection.getHosts());
 	Placeholder for the next version (at the beginning of the line):
 	### **WORK IN PROGRESS**
 -->
+### **WORK IN PROGRESS**
+- (@GermanBluefox) Fixed: token refresh hangs forever without an answer (ioBroker.admin#3110)
+
 ### 5.6.0 (2026-11-05)
 - (@GermanBluefox) Added: `hasPermission`, `isAdministrator`, `isPermissionError`
 - (@GermanBluefox) Added: `hasObjectPermission` - checks the rights of a single object or state too
