@@ -251,6 +251,14 @@ export class Connection<
     CustomListenEvents extends Record<keyof CustomListenEvents, ListenEventHandler> = Record<string, never>,
     CustomEmitEvents extends Record<keyof CustomEmitEvents, EmitEventHandler> = Record<string, never>,
 > {
+    /**
+     * How long the request for a new access token may take. Without a limit a request that is never
+     * answered kept `tokenRefreshInProgress` set forever: every later `reauthenticate` of the server was
+     * ignored, and the page stayed without a valid token until it was reloaded (ioBroker.admin#3110).
+     * After the timeout the request counts as a network error and is tried again 5 seconds later.
+     */
+    static TOKEN_REQUEST_TIMEOUT_MS = 30_000;
+
     private readonly props: ConnectionProps;
     public readonly connId: string;
     private lastAccessToken: string | null = null;
@@ -898,6 +906,23 @@ export class Connection<
             if (this.acquireTokenLock()) {
                 console.log(`[REFRESH/${new Date().toISOString()}] refreshing token`);
                 this.tokenRefreshInProgress = true;
+                // The answer must come in time, its body included, see TOKEN_REQUEST_TIMEOUT_MS
+                const controller = typeof AbortController === 'function' ? new AbortController() : null;
+                let requestTimer: ReturnType<typeof setTimeout> | null = controller
+                    ? setTimeout(() => {
+                          requestTimer = null;
+                          console.warn(
+                              `[REFRESH/${new Date().toISOString()}] no answer to the token request within ${Connection.TOKEN_REQUEST_TIMEOUT_MS / 1000} seconds`,
+                          );
+                          controller.abort();
+                      }, Connection.TOKEN_REQUEST_TIMEOUT_MS)
+                    : null;
+                const stopRequestTimer = (): void => {
+                    if (requestTimer) {
+                        clearTimeout(requestTimer);
+                        requestTimer = null;
+                    }
+                };
                 // Access token will expire soon => Send authentication again
                 fetch(this.getTokenUrl(), {
                     method: 'POST',
@@ -905,6 +930,7 @@ export class Connection<
                         'Content-Type': 'application/x-www-form-urlencoded',
                     },
                     body: `grant_type=refresh_token&refresh_token=${tokenStructure.refresh_token}&client_id=ioBroker&stayloggedin=${tokenStructure.stayLoggedIn}`,
+                    signal: controller?.signal,
                 })
                     .then(response => {
                         if (response.ok) {
@@ -919,6 +945,7 @@ export class Connection<
                         throw error;
                     })
                     .then((data: OAuth2Response): void => {
+                        stopRequestTimer();
                         if (data.access_token) {
                             console.log(
                                 `[REFRESH/${new Date().toISOString()}] received new token: ${data.access_token}`,
@@ -936,6 +963,7 @@ export class Connection<
                         }
                     })
                     .catch((err: Error & { invalidGrant?: boolean }) => {
+                        stopRequestTimer();
                         console.warn(`[REFRESH/${new Date().toISOString()}] cannot refresh token: ${err}`);
                         this.tokenRefreshInProgress = false;
                         this.releaseTokenLock();

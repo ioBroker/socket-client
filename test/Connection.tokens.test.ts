@@ -174,7 +174,13 @@ function useEnvironment(): void {
             globalThis,
             'fetch',
             (url: string | URL | Request, init?: RequestInit) =>
-                new Promise<Response>((resolve, reject) => fetches.push({ url: url as string, init, resolve, reject })),
+                new Promise<Response>((resolve, reject) => {
+                    fetches.push({ url: url as string, init, resolve, reject });
+                    // like the browser: an aborted request fails at once
+                    init?.signal?.addEventListener('abort', () =>
+                        reject(new DOMException('This operation was aborted', 'AbortError')),
+                    );
+                }),
         );
         storageListeners = new Set();
         addEventListener = mock.fn((type: string, listener: StorageListener) => {
@@ -710,11 +716,48 @@ describe('Connection.refreshTokens', () => {
         await loginWithTokens({ accessIn: 20_000 });
 
         assert.equal(lastFetch().url, './oauth/token');
-        assert.deepEqual(lastFetch().init, {
+        const { signal, ...init } = lastFetch().init ?? {};
+        assert.deepEqual(init, {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
             body: 'grant_type=refresh_token&refresh_token=refresh-1&client_id=ioBroker&stayloggedin=true',
         });
+        assert.ok(signal instanceof AbortSignal, 'the request can be aborted');
+    });
+
+    // Regression ioBroker.admin#3110: a token request that was never answered blocked every later refresh
+    it('gives up a token request without answer after 30 seconds and tries again 5 seconds later', async () => {
+        await loginWithTokens({ accessIn: 20_000 });
+        const tokens = storedTokens('local');
+
+        mock.timers.tick(Connection.TOKEN_REQUEST_TIMEOUT_MS - 1);
+        await settle();
+        assert.equal(lastFetch().init?.signal?.aborted, false);
+
+        mock.timers.tick(1);
+        await settle();
+        assert.equal(fetches[0].init?.signal?.aborted, true);
+        assert.equal(storedTokens('local'), tokens, 'a timeout says nothing about the tokens');
+        assert.equal(readLock(), null);
+        assert.equal(globalThis.location.href, START_PAGE);
+
+        mock.timers.tick(4_999);
+        assert.equal(fetches.length, 1);
+        mock.timers.tick(1);
+        assert.equal(fetches.length, 2);
+    });
+
+    it('does not abort a token request that was answered in time', async () => {
+        await loginWithTokens({ accessIn: 20_000 });
+
+        mock.timers.tick(Connection.TOKEN_REQUEST_TIMEOUT_MS - 1);
+        await answerFetch(200, oauthResponse(2));
+        mock.timers.tick(10_000);
+        await settle();
+
+        assert.equal(fetches[0].init?.signal?.aborted, false);
+        assert.equal(fetches.length, 1);
+        assert.deepEqual(announced(), ['access-2']);
     });
 
     it('holds the lock during the request', async () => {
@@ -1000,6 +1043,20 @@ describe('Connection.onReauthenticate', () => {
 
         assert.equal(fetches.length, 1);
         assert.equal(globalThis.location.href, START_PAGE);
+    });
+
+    // Regression ioBroker.admin#3110: the page ignored the server for good when the token request hung
+    it('refreshes again after a token request that was never answered', async () => {
+        await loginAndAnnounce();
+        socket.fire('reauthenticate');
+
+        mock.timers.tick(Connection.TOKEN_REQUEST_TIMEOUT_MS);
+        await settle();
+        socket.fire('reauthenticate');
+
+        assert.equal(fetches.length, 2);
+        await answerFetch(200, oauthResponse(2));
+        assert.deepEqual(announced(), ['access-1', 'access-2']);
     });
 
     it('ignores a rejection within 5 seconds after the server accepted a token', async () => {
