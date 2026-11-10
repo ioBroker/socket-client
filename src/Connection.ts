@@ -3307,18 +3307,43 @@ export class Connection<
      * @param feature The feature to check.
      * @param update Force update.
      */
-    checkFeatureSupported(feature: string, update?: boolean): Promise<any> {
+    checkFeatureSupported(feature: string, update?: boolean): Promise<boolean> {
         return this.request({
             cacheKey: `supportedFeatures_${feature}`,
             forceUpdate: update,
             // TODO: check if this should time out
             commandTimeout: false,
             executor: (resolve, reject) => {
-                this._socket.emit('checkFeatureSupported', feature, (err, features) => {
+                this._socket.emit('checkFeatureSupported', feature, (err, result) => {
                     if (err) {
                         reject(err);
                     } else {
-                        resolve(features);
+                        resolve(result!);
+                    }
+                });
+            },
+        });
+    }
+
+    /**
+     * Checks if a given feature is supported by specified host.
+     *
+     * @param host host ID
+     * @param feature The feature to check.
+     * @param update Force update.
+     */
+    checkFeatureSupportedByHost(host: string, feature: string, update?: boolean): Promise<any> {
+        return this.request({
+            cacheKey: `supportedFeatures_${host}_${feature}`,
+            forceUpdate: update,
+            // TODO: check if this should time out
+            commandTimeout: false,
+            executor: (resolve, reject) => {
+                this._socket.emit('checkFeatureSupportedByHost', host, feature, (err: string | null | undefined, result?: boolean) => {
+                    if (err) {
+                        reject(err);
+                    } else {
+                        resolve(result!);
                     }
                 });
             },

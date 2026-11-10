@@ -264,6 +264,7 @@ export interface IOEmitEvents {
 
     getCompactSystemConfig(callback: ErrorAsString<ioBroker.GetObjectCallback<'system.config'>>): void;
     checkFeatureSupported(featureName: string, callback: GenericCallback<boolean>): void;
+    checkFeatureSupportedByHost(host: string, featureName: string, callback: GenericCallback<boolean>): void;
 
     sendTo<T = any>(instance: string, command: string, data?: any, callback?: (result: T) => void): void;
     // Optional `files` (base64) can be sent between `command` and `callback`; emitted via a cast to keep
