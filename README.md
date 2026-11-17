@@ -53,6 +53,7 @@ console.log(await adminConnection.getHosts());
 -->
 ### **WORK IN PROGRESS**
 * (@GermanBluefox) Added `checkFeatureSupportedByHost` command
+* (@GermanBluefox) Added the option `callbackTimeout`, passed to the ws client: how long a request waits for its answer, before it was always 30 s (ioBroker.admin#3737)
 
 ### 5.6.1 (2026-11-06)
 - (@GermanBluefox) Fixed: token refresh hangs forever without an answer (ioBroker.admin#3110)

@@ -521,6 +521,7 @@ export class Connection<
             query: 'ws=true',
             name: this.props.name,
             timeout: this.props.ioTimeout,
+            callbackTimeout: this.props.callbackTimeout,
             uuid: this.props.uuid,
             token: this.props.token,
             transports: (globalThis as any).socketForceWebSockets ? ['websocket'] : undefined,
@@ -3339,13 +3340,18 @@ export class Connection<
             // TODO: check if this should time out
             commandTimeout: false,
             executor: (resolve, reject) => {
-                this._socket.emit('checkFeatureSupportedByHost', host, feature, (err: string | null | undefined, result?: boolean) => {
-                    if (err) {
-                        reject(err);
-                    } else {
-                        resolve(result!);
-                    }
-                });
+                this._socket.emit(
+                    'checkFeatureSupportedByHost',
+                    host,
+                    feature,
+                    (err: string | null | undefined, result?: boolean) => {
+                        if (err) {
+                            reject(err);
+                        } else {
+                            resolve(result!);
+                        }
+                    },
+                );
             },
         });
     }

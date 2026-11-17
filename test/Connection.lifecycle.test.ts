@@ -315,6 +315,7 @@ describe('Connection.lifecycle', () => {
                 query: 'ws=true',
                 name: 'test',
                 timeout: 20000,
+                callbackTimeout: undefined,
                 uuid: undefined,
                 token: undefined,
                 transports: undefined,
@@ -353,6 +354,12 @@ describe('Connection.lifecycle', () => {
             assert.equal(socket.options.timeout, 30000);
             assert.equal(socket.options.uuid, 'the-uuid');
             assert.equal(socket.options.token, 'the-token');
+        });
+
+        it('passes callbackTimeout to the socket', async () => {
+            await start({ callbackTimeout: 600_000 });
+
+            assert.equal(socket.options.callbackTimeout, 600_000);
         });
 
         it('passes at least 20 s as ioTimeout', async () => {

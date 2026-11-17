@@ -36,6 +36,16 @@ export interface ConnectionProps {
     ioTimeout?: number;
     /** The socket.io command timeout. */
     cmdTimeout?: number;
+    /**
+     * How long the ws client of ioBroker (`@iobroker/ws` 3.1.3 and newer) keeps waiting for the answer
+     * to a request, in milliseconds. Default of the ws client: 30000.
+     *
+     * After this time the ws client answers the request itself with `'timeout'` and drops the real
+     * answer when it arrives later. That ends every request that takes longer, also those that are
+     * sent without a command timeout - above all `sendTo` to an adapter that has some work to do
+     * before it answers. It applies to every request of this connection. Ignored by socket.io.
+     */
+    callbackTimeout?: number;
     /** Flag to indicate if all objects should be loaded or not. Default true (not loaded) */
     doNotLoadAllObjects?: boolean;
     /** Flag to indicate if AccessControlList for current user will be loaded or not. Default true (not loaded) */
