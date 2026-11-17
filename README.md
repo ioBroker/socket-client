@@ -51,7 +51,7 @@ console.log(await adminConnection.getHosts());
 	Placeholder for the next version (at the beginning of the line):
 	### **WORK IN PROGRESS**
 -->
-### **WORK IN PROGRESS**
+### 5.7.0 (2026-11-17)
 * (@GermanBluefox) Added `checkFeatureSupportedByHost` command
 * (@GermanBluefox) Added the option `callbackTimeout`, passed to the ws client: how long a request waits for its answer, before it was always 30 s (ioBroker.admin#3737)
 
